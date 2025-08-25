@@ -430,9 +430,12 @@ The production package contains only essential runtime files:
 #### Release Workflow
 
 **Option 1: Manual Step-by-Step**
-1. **Version bump**: `npm run version:patch` (creates git tag automatically)
-2. **Test build**: `npm run publish:dry-run` 
-3. **Publish**: `npm run publish:npm --otp=<2FA-code>`
+1. **Version bump**: `npm run version:patch` (creates git tag locally)
+2. **Push commit**: `git push origin main`
+3. **Push tag**: `git push origin v1.x.x` (replace with actual version)
+4. **Test build**: `npm run publish:dry-run` 
+5. **Publish**: `npm run publish:npm --otp=<2FA-code>`
+6. **GitHub release**: `npm run github:release`
 
 **Option 2: Complete Automated Release**
 1. **Full release**: `npm run release:patch --otp=<2FA-code>`
