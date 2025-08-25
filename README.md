@@ -416,12 +416,16 @@ The production package contains only essential runtime files:
 - `npm run version:major` - Bump major version (1.0.0 → 2.0.0) for breaking changes
 - `npm run version:prerelease` - Bump prerelease version (1.0.0 → 1.0.1-0) for alpha/beta
 
-### Release Scripts (Version + Publish)
+### GitHub Release Scripts
 
-- `npm run release:patch --otp=<2FA-code>` - Patch release + publish
-- `npm run release:minor --otp=<2FA-code>` - Minor release + publish  
-- `npm run release:major --otp=<2FA-code>` - Major release + publish
-- `npm run release:prerelease --otp=<2FA-code>` - Prerelease + publish
+- `npm run github:release` - Create GitHub release from current git tag
+
+### Complete Release Scripts (Version + npm + GitHub)
+
+- `npm run release:patch --otp=<2FA-code>` - Patch release + npm publish + GitHub release
+- `npm run release:minor --otp=<2FA-code>` - Minor release + npm publish + GitHub release
+- `npm run release:major --otp=<2FA-code>` - Major release + npm publish + GitHub release
+- `npm run release:prerelease --otp=<2FA-code>` - Prerelease + npm publish + GitHub release
 
 #### Release Workflow
 
@@ -430,11 +434,12 @@ The production package contains only essential runtime files:
 2. **Test build**: `npm run publish:dry-run` 
 3. **Publish**: `npm run publish:npm --otp=<2FA-code>`
 
-**Option 2: One-Command Release**
+**Option 2: Complete Automated Release**
 1. **Full release**: `npm run release:patch --otp=<2FA-code>`
    - Bumps version + creates git tag
    - Builds optimized package in `dist/`
    - Publishes to npm registry
+   - Creates GitHub release with automated changelog
 
 #### Version Strategy (Semantic Versioning)
 - **Patch** (1.0.1) - Bug fixes, documentation updates
@@ -447,6 +452,12 @@ The production package contains only essential runtime files:
 - Uses `README-npm.md` → `README.md` for npm
 - Package published as `@vpursuit/swipl-mcp-server`
 - Automatic git tagging with `npm version` commands
+- GitHub releases with automated changelog generation
+
+#### Prerequisites for Full Release
+- **npm login** - Must be logged into npm registry
+- **GitHub CLI** - Install with `brew install gh`, authenticate with `gh auth login`
+- **Clean git repo** - All changes must be committed first
 
 ## Contributing
 
