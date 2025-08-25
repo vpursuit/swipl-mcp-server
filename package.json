@@ -1,0 +1,47 @@
+{
+  "name": "swipl-mcp-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "build": "tsc && chmod 755 build/index.js",
+    "build:package": "node scripts/build-package.js",
+    "start": "node build/index.js",
+    "server": "npm run build && npm start",
+    "inspect": "npx @modelcontextprotocol/inspector node build/index.js",
+    "prepublishOnly": "npm run build:package",
+    "lint": "eslint . --ext .ts,.js",
+    "lint:fix": "eslint . --ext .ts,.js --fix",
+    "format": "prettier --write \"**/*.{ts,js,json,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,yml,yaml}\""
+  },
+  "keywords": [
+    "mcp",
+    "prolog",
+    "swi-prolog",
+    "swipl",
+    "model-context-protocol",
+    "logic-programming"
+  ],
+  "author": "Peter Trebing",
+  "license": "BSD-3-Clause",
+  "description": "SWI-Prolog MCP Server with dual query modes and security layer",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.2.1",
+    "jest": "^30.0.5",
+    "ts-jest": "^29.4.1",
+    "typescript": "^5.9.2",
+    "@typescript-eslint/eslint-plugin": "^8.7.0",
+    "@typescript-eslint/parser": "^8.7.0",
+    "eslint": "^9.8.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3"
+  }
+}

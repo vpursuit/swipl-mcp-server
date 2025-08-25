@@ -1,0 +1,61 @@
+# Development files
+src/
+test/
+coverage/
+docs/
+.claude/
+scripts/mcp_prolog_demo.mjs
+scripts/mcp_quickcheck.mjs
+
+# Configuration files
+jest.config.js
+tsconfig.json
+.gitignore
+CLAUDE.md
+CLAUDE.local.md
+DEPLOYMENT_PLAN.md
+AGENTS.md
+examples.md
+
+# Build artifacts
+build/
+*.tsbuildinfo
+
+# Logs and temporary files
+*.log
+*.tgz
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE and system files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git and version control
+.git/
+.gitignore
+
+# Node.js
+node_modules/
+.npm
+.node_repl_history
+
+# Test and coverage reports
+coverage/
+.nyc_output
+junit.xml
+
+# Environment files
+.env
+.env.local
+.env.test
+
+# Backup files
+*.backup
+*.bak
+*.tmp
