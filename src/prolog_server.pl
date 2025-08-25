@@ -320,7 +320,13 @@ ensure_kb_module :-
     ( current_module(kb) -> true ; create_module(kb) ),
     catch(set_prolog_flag(kb:unknown, fail), _, true),
     % Import a safe subset of library predicates into kb
-    catch(kb:use_module(library(lists), [member/2, append/3, length/2, select/3, nth0/3, nth1/3]), _, true),
+    catch(kb:use_module(library(lists), [
+        member/2, append/3, length/2, select/3, nth0/3, nth1/3,
+        permutation/2, reverse/2, memberchk/2, last/2, flatten/2,
+        sum_list/2, max_list/2, min_list/2, numlist/3, subtract/3,
+        union/3, intersection/3, list_to_set/2, is_set/1, subset/2,
+        delete/3, selectchk/3
+    ]), _, true),
     catch(kb:use_module(library(between), [between/3]), _, true),
     % Note: Extended safe set functionality removed - now handled by library(sandbox)
     true.
