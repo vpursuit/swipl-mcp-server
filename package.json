@@ -24,10 +24,10 @@
     "version:minor": "npm version minor",
     "version:major": "npm version major",
     "version:prerelease": "npm version prerelease",
-    "release:patch": "npm run version:patch && npm run publish:npm && npm run github:release",
-    "release:minor": "npm run version:minor && npm run publish:npm && npm run github:release",
-    "release:major": "npm run version:major && npm run publish:npm && npm run github:release",
-    "release:prerelease": "npm run version:prerelease && npm run publish:npm && npm run github:release"
+    "release:patch": "npm run version:patch && git push origin main && git push --tags && npm run publish:npm && npm run github:release",
+    "release:minor": "npm run version:minor && git push origin main && git push --tags && npm run publish:npm && npm run github:release",
+    "release:major": "npm run version:major && git push origin main && git push --tags && npm run publish:npm && npm run github:release",
+    "release:prerelease": "npm run version:prerelease && git push origin main && git push --tags && npm run publish:npm && npm run github:release"
   },
   "keywords": [
     "mcp",
