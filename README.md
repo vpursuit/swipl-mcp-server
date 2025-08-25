@@ -403,6 +403,51 @@ The production package contains only essential runtime files:
 - `npm run server` - Build and start server
 - `npm start` - Start pre-built server
 
+### Publishing Scripts
+
+- `npm run publish:prepare` - Create optimized distribution package in `dist/`
+- `npm run publish:dry-run` - Test publishing process without actually publishing
+- `npm run publish:npm` - Publish to npm registry (requires 2FA)
+
+### Version Management Scripts
+
+- `npm run version:patch` - Bump patch version (1.0.0 → 1.0.1) for bug fixes
+- `npm run version:minor` - Bump minor version (1.0.0 → 1.1.0) for new features
+- `npm run version:major` - Bump major version (1.0.0 → 2.0.0) for breaking changes
+- `npm run version:prerelease` - Bump prerelease version (1.0.0 → 1.0.1-0) for alpha/beta
+
+### Release Scripts (Version + Publish)
+
+- `npm run release:patch --otp=<2FA-code>` - Patch release + publish
+- `npm run release:minor --otp=<2FA-code>` - Minor release + publish  
+- `npm run release:major --otp=<2FA-code>` - Major release + publish
+- `npm run release:prerelease --otp=<2FA-code>` - Prerelease + publish
+
+#### Release Workflow
+
+**Option 1: Manual Step-by-Step**
+1. **Version bump**: `npm run version:patch` (creates git tag automatically)
+2. **Test build**: `npm run publish:dry-run` 
+3. **Publish**: `npm run publish:npm --otp=<2FA-code>`
+
+**Option 2: One-Command Release**
+1. **Full release**: `npm run release:patch --otp=<2FA-code>`
+   - Bumps version + creates git tag
+   - Builds optimized package in `dist/`
+   - Publishes to npm registry
+
+#### Version Strategy (Semantic Versioning)
+- **Patch** (1.0.1) - Bug fixes, documentation updates
+- **Minor** (1.1.0) - New features, backward compatible changes
+- **Major** (2.0.0) - Breaking changes, API modifications  
+- **Prerelease** (1.0.1-0) - Alpha/beta versions for testing
+
+#### Publishing Details
+- Builds TypeScript to `build/`, optimized package to `dist/`
+- Uses `README-npm.md` → `README.md` for npm
+- Package published as `@vpursuit/swipl-mcp-server`
+- Automatic git tagging with `npm version` commands
+
 ## Contributing
 
 Please see CONTRIBUTING.md for local setup, workflow, and the PR checklist.

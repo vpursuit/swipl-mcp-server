@@ -1,5 +1,5 @@
 {
-  "name": "swipl-mcp-server",
+  "name": "@vpursuit/swipl-mcp-server",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
@@ -15,7 +15,18 @@
     "lint": "eslint . --ext .ts,.js",
     "lint:fix": "eslint . --ext .ts,.js --fix",
     "format": "prettier --write \"**/*.{ts,js,json,yml,yaml}\"",
-    "format:check": "prettier --check \"**/*.{ts,js,json,yml,yaml}\""
+    "format:check": "prettier --check \"**/*.{ts,js,json,yml,yaml}\"",
+    "publish:prepare": "npm run build:package",
+    "publish:dry-run": "npm run publish:prepare && cd dist && npm publish --dry-run",
+    "publish:npm": "npm run publish:prepare && cd dist && npm publish",
+    "version:patch": "npm version patch",
+    "version:minor": "npm version minor", 
+    "version:major": "npm version major",
+    "version:prerelease": "npm version prerelease",
+    "release:patch": "npm run version:patch && npm run publish:npm",
+    "release:minor": "npm run version:minor && npm run publish:npm",
+    "release:major": "npm run version:major && npm run publish:npm",
+    "release:prerelease": "npm run version:prerelease && npm run publish:npm"
   },
   "keywords": [
     "mcp",
@@ -28,20 +39,29 @@
   "author": "Peter Trebing",
   "license": "BSD-3-Clause",
   "description": "SWI-Prolog MCP Server with dual query modes and security layer",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vpursuit/swipl-mcp-server.git"
+  },
+  "homepage": "https://github.com/vpursuit/swipl-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.2",
+    "@vpursuit/swipl-mcp-server": "^1.0.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^24.2.1",
-    "jest": "^30.0.5",
-    "ts-jest": "^29.4.1",
-    "typescript": "^5.9.2",
     "@typescript-eslint/eslint-plugin": "^8.7.0",
     "@typescript-eslint/parser": "^8.7.0",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^9.1.0",
-    "prettier": "^3.3.3"
+    "jest": "^30.0.5",
+    "prettier": "^3.3.3",
+    "ts-jest": "^29.4.1",
+    "typescript": "^5.9.2"
   }
 }
