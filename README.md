@@ -317,6 +317,34 @@ npx swipl-mcp-server
 
 ## Package Deployment
 
+### Development Build & Install
+
+For development and testing, build and install directly from source:
+
+```bash
+# Build from TypeScript source
+npm run build
+
+# Create tarball from current directory
+npm pack
+
+# Install locally from tarball
+npm install -g swipl-mcp-server-1.0.0.tgz
+
+# Verify installation
+which swipl-mcp-server
+swipl-mcp-server --help
+```
+
+**Alternative development installation:**
+```bash
+# Create symlink for live development (changes reflect immediately)
+npm link
+
+# Unlink when done
+npm unlink -g swipl-mcp-server
+```
+
 ### Building Production Package
 
 To create an optimized production package:

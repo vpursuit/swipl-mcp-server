@@ -28,8 +28,9 @@ Workflow Checklist (Before PR)
   - If you changed Prolog integration, sessions, or protocol, verify with MCP Inspector
 
 - Build & Package
-  - Build TypeScript: npm run build
-  - Package smoke: npm run build:package, then npm pack dist/, then inspect the tarball contents
+  - **Development workflow**: `npm run build` → `npm pack` → `npm install -g *.tgz`
+  - **Production workflow**: `npm run build:package` → `npm pack dist/` → inspect tarball contents
+  - **Live development**: Use `npm link` for immediate changes without rebuilding
 
 - Changes that need extra attention
   - Tool schemas/protocol
@@ -55,6 +56,7 @@ Workflow Checklist (Before PR)
 Release
 -------
 - Maintainers publish the package. prepublishOnly runs build:package to create a minimal dist
-- To test a candidate locally: npm pack dist/ and link dist/ with npm link
+- To test a release candidate locally: `npm pack dist/` and `cd dist && npm link`
+- To test development changes: `npm run build && npm pack && npm install -g *.tgz`
 
 Thank you for contributing! 🙌

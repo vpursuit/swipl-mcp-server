@@ -1,0 +1,215 @@
+name: Bug Report
+description: Report a bug to help us improve the SWI-Prolog MCP Server
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+projects: ["swipl-mcp-server"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the form below to help us diagnose and fix the issue.
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe what happened vs what you expected to happen...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this issue?
+      placeholder: |
+        1. Start the MCP server with '...'
+        2. Send query '...'
+        3. Call tool '...'
+        4. See error
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: Describe the expected behavior...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually happened? Include any error messages.
+      placeholder: Describe what actually happened, include full error messages...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: installation-method
+    attributes:
+      label: Installation Method
+      description: How did you install the SWI-Prolog MCP Server?
+      options:
+        - npm install -g @vpursuit/swipl-mcp-server
+        - Built from source (npm run build)
+        - npm link (development)
+        - Other (please specify in additional context)
+    validations:
+      required: true
+
+  - type: input
+    id: swipl-mcp-server-version
+    attributes:
+      label: SWI-Prolog MCP Server Version
+      description: Run `swipl-mcp-server --version` or check package.json
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js Version
+      description: Run `node --version`
+      placeholder: "v22.18.0"
+    validations:
+      required: true
+
+  - type: input
+    id: npm-version
+    attributes:
+      label: npm Version
+      description: Run `npm --version`
+      placeholder: "10.8.2"
+    validations:
+      required: true
+
+  - type: input
+    id: swipl-version
+    attributes:
+      label: SWI-Prolog Version
+      description: Run `swipl --version`
+      placeholder: "SWI-Prolog version 9.2.7 for x86_64-darwin"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      options:
+        - macOS
+        - Linux (Ubuntu)
+        - Linux (Debian)
+        - Linux (CentOS/RHEL)
+        - Linux (Arch)
+        - Linux (Other)
+        - Windows
+        - Other (please specify in additional context)
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS Version
+      description: Specific OS version (e.g., "macOS 14.6.1", "Ubuntu 22.04")
+      placeholder: "macOS 14.6.1"
+
+  - type: dropdown
+    id: mcp-client
+    attributes:
+      label: MCP Client
+      description: Which MCP client are you using?
+      options:
+        - Claude Desktop
+        - MCP Inspector
+        - Custom client
+        - Command line (stdio)
+        - Other (please specify in additional context)
+    validations:
+      required: true
+
+  - type: textarea
+    id: query-mode
+    attributes:
+      label: Query Mode
+      description: Which query mode were you using when the bug occurred?
+      placeholder: |
+        - Standard mode (query_start → query_next → query_close)
+        - Engine mode (query_startEngine → query_next → query_close)
+        - Other tools (db_assert, db_load, etc.)
+
+  - type: textarea
+    id: environment-variables
+    attributes:
+      label: Environment Variables
+      description: Any relevant environment variables (SWI_MCP_*, timeouts, etc.)
+      placeholder: |
+        SWI_MCP_TRACE=1
+        SWI_MCP_QUERY_TIMEOUT_MS=30000
+        SWI_MCP_READY_TIMEOUT_MS=5000
+
+  - type: textarea
+    id: logs-output
+    attributes:
+      label: Logs and Output
+      description: Include relevant logs, error messages, or console output. Use ```text blocks for formatting.
+      placeholder: |
+        ```text
+        Paste your logs here...
+        ```
+
+  - type: textarea
+    id: prolog-query
+    attributes:
+      label: Prolog Query/Code
+      description: If relevant, include the Prolog query or code that triggered the bug.
+      placeholder: |
+        ```prolog
+        member(X, [1,2,3]).
+        ```
+
+  - type: textarea
+    id: minimal-example
+    attributes:
+      label: Minimal Example
+      description: If possible, provide a minimal example that reproduces the issue.
+      placeholder: |
+        ```json
+        {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "query_start", "arguments": {"query": "your_query_here"}}}
+        ```
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other context about the problem (screenshots, related issues, etc.)
+      placeholder: Add any other context about the problem here...
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched for existing issues and this is not a duplicate
+          required: true
+        - label: I have provided all the requested version information
+          required: true
+        - label: I have included steps to reproduce the issue
+          required: true
+        - label: I have included relevant logs or error messages
+          required: false
