@@ -7,6 +7,7 @@
 
 import { execSync } from "child_process";
 import fs from "fs";
+import { writeFileSync, unlinkSync, existsSync } from "fs";
 
 const packageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
 const currentVersion = packageJson.version;
@@ -83,27 +84,42 @@ ${previousTag !== "HEAD~10" ? `**Full Changelog**: https://github.com/vpursuit/s
 
 // Create the GitHub release
 try {
-  const releaseArgs = [
-    "gh", "release", "create", tagName,
-    "--title", `${releaseType} ${tagName}`,
-    "--notes", releaseNotes
-  ];
-
-  if (isPrerelease) {
-    releaseArgs.push("--prerelease");
-  }
-
   console.log(`📝 Release notes preview:`);
   console.log("─".repeat(60));
   console.log(releaseNotes);
   console.log("─".repeat(60));
 
-  execSync(releaseArgs.join(" "), { stdio: "inherit" });
+  // Write notes to temporary file to avoid shell escaping issues
+  const tempNotesFile = "temp-release-notes.md";
+  writeFileSync(tempNotesFile, releaseNotes);
+
+  const releaseCommand = [
+    "gh", "release", "create", tagName,
+    "--title", `"${releaseType} ${tagName}"`,
+    "--notes-file", tempNotesFile
+  ];
+
+  if (isPrerelease) {
+    releaseCommand.push("--prerelease");
+  }
+
+  execSync(releaseCommand.join(" "), { stdio: "inherit" });
+  
+  // Clean up temp file
+  unlinkSync(tempNotesFile);
   
   console.log(`✅ GitHub release ${tagName} created successfully!`);
   console.log(`🔗 View at: https://github.com/vpursuit/swipl-mcp-server/releases/tag/${tagName}`);
 
 } catch (error) {
   console.error(`❌ Failed to create GitHub release: ${error.message}`);
+  // Clean up temp file if it exists
+  try {
+    if (existsSync("temp-release-notes.md")) {
+      unlinkSync("temp-release-notes.md");
+    }
+  } catch (cleanupError) {
+    // Ignore cleanup errors
+  }
   process.exit(1);
 }
