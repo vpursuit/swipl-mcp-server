@@ -1,8 +1,45 @@
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import fs from "fs";
-import { fileURLToPath } from "url";
 import { logger } from "./logger.js";
+import { getEntryDir, getModuleDir, prologScriptCandidates } from "./meta.js";
+
+// Constants for configuration
+const DEFAULT_READY_TIMEOUT_MS = 5000;
+const STOP_KILL_DELAY_MS = 50;
+const PROLOG_SCRIPT_NAME = "prolog_server.pl";
+const ALT_PROLOG_SCRIPT_NAME = "server.pl";
+const READY_MARK = "@@READY@@";
+const TERM_SOLUTION = "solution(";
+const TERM_ERROR = "error(";
+const NO_MORE_SOLUTIONS = "no_more_solutions";
+
+// Helper to parse boolean-like env flags
+const isOn = (v?: string) => /^(1|true|yes)$/i.test(String(v || ""));
+
+function findPrologServerScript(envPath: string | undefined, moduleDir: string, entryDir: string, traceEnabled: boolean): string {
+  const names = [PROLOG_SCRIPT_NAME, ALT_PROLOG_SCRIPT_NAME];
+  const candidates: string[] = [];
+  if (envPath) candidates.push(path.resolve(envPath));
+  for (const p of prologScriptCandidates(moduleDir, entryDir, names[0], names[1])) candidates.push(p);
+  for (const scriptPath of candidates) {
+    if (traceEnabled) {
+      logger.debug(`Trying: ${logger.redactPath(scriptPath)}`);
+    }
+    try {
+      fs.accessSync(scriptPath, fs.constants.F_OK);
+      logger.info(`Found Prolog server script at: ${logger.redactPath(scriptPath)}`);
+      return scriptPath;
+    } catch {
+      if (traceEnabled) logger.debug(`Not found at: ${logger.redactPath(scriptPath)}`);
+    }
+  }
+
+  const hint = `cwd=${process.cwd()} moduleDir=${moduleDir || "n/a"} entryDir=${entryDir || "n/a"}`;
+  throw new Error(
+    `Prolog server script not found. Tried all candidate paths (${hint}). Set SWI_MCP_PROLOG_PATH to override.`,
+  );
+}
 
 /**
  * Interface for managing SWI-Prolog process communication
@@ -29,111 +66,41 @@ export class PrologInterface {
       return;
     }
 
-    // Trace: show cwd only when explicitly enabled
-    const traceFlag = (process.env.SWI_MCP_TRACE || "").toLowerCase();
-    const traceEnabledStart = traceFlag === "1" || traceFlag === "true" || traceFlag === "yes";
-    if (traceEnabledStart) {
+    const traceOn = isOn(process.env.SWI_MCP_TRACE);
+    if (traceOn) {
       logger.debug(`cwd: ${process.cwd()}`);
     }
 
-    // Resolve Prolog server script robustly: env override, cwd, and paths relative to this module
+    // Resolve Prolog server script: env override, cwd, and paths relative to module/entry
     const envPath = process.env.SWI_MCP_PROLOG_PATH;
-    // Directory of the compiled module (e.g., build/)
-    let moduleDir = "";
-    try {
-      const metaUrl = Function(
-        "try { return import.meta && import.meta.url } catch (_) { return '' }",
-      )() as unknown as string;
-      if (metaUrl && typeof metaUrl === "string") {
-        moduleDir = path.dirname(fileURLToPath(metaUrl));
-      }
-    } catch {}
-    // Directory of the entry script (e.g., build/ when running `node build/index.js`)
-    const entryDir = (() => {
-      try {
-        return path.dirname(process.argv?.[1] || "");
-      } catch {
-        return "";
-      }
-    })();
-    const candidates: string[] = [];
-    if (envPath) candidates.push(path.resolve(envPath));
-    // src folder relative to current working directory
-    candidates.push(
-      path.resolve(process.cwd(), "src", "prolog_server.pl"),
-      path.resolve(process.cwd(), "..", "src", "prolog_server.pl"),
-    );
-    // Relative to compiled module (build folder) - look for src folder
-    if (moduleDir) {
-      candidates.push(
-        path.resolve(moduleDir, "..", "src", "prolog_server.pl"),
-        path.resolve(moduleDir, "prolog_server.pl"), // Same folder as compiled JS
-        path.resolve(moduleDir, "..", "..", "src", "prolog_server.pl"),
-        path.resolve(moduleDir, "..", "prolog", "server.pl"), // NPM package structure: lib/../prolog/server.pl
-      );
-    }
-    if (entryDir) {
-      candidates.push(
-        path.resolve(entryDir, "..", "src", "prolog_server.pl"),
-        path.resolve(entryDir, "prolog_server.pl"), // Same folder as entry script
-        path.resolve(entryDir, "..", "..", "src", "prolog_server.pl"),
-        path.resolve(entryDir, "..", "prolog", "server.pl"), // NPM package structure: lib/../prolog/server.pl
-      );
-    }
-    // De-duplicate while preserving order
-    const seen = new Set<string>();
-    const possiblePaths = candidates.filter((p) => {
-      if (!p) return false;
-      if (seen.has(p)) return false;
-      seen.add(p);
-      return true;
-    });
+    const moduleDir = getModuleDir();
+    const entryDir = getEntryDir();
 
-    let serverScript: string | null = null;
+    const serverScript = findPrologServerScript(envPath, moduleDir, entryDir, traceOn);
 
-    for (const scriptPath of possiblePaths) {
-      if (traceEnabledStart) {
-        logger.debug(`Trying: ${logger.redactPath(scriptPath)}`);
-      }
-      try {
-        fs.accessSync(scriptPath, fs.constants.F_OK);
-        logger.info(`Found Prolog server script at: ${logger.redactPath(scriptPath)}`);
-        serverScript = scriptPath;
-        break;
-      } catch {
-        if (traceEnabledStart) logger.debug(`Not found at: ${logger.redactPath(scriptPath)}`);
-      }
-    }
-
-    if (!serverScript) {
-      const hint = `cwd=${process.cwd()} moduleDir=${moduleDir || "n/a"} entryDir=${entryDir || "n/a"}`;
-      throw new Error(
-        `Prolog server script not found. Tried: ${possiblePaths.join(", ")} (${hint}). Set SWI_MCP_PROLOG_PATH to override.`,
-      );
-    }
-
-    // Ensure we reset readiness state before starting
+    // Reset readiness before starting
     this.isReady = false;
 
-    const extendedOn = /^(1|true|yes)$/i.test(String(process.env.SWI_MCP_EXTENDED_SAFE || ""));
-    const traceOn = /^(1|true|yes)$/i.test(String(process.env.SWI_MCP_TRACE || ""));
-    const args = ["-q", "-s", serverScript] as string[];
-    if (extendedOn) {
-      args.push("-g", "assert(safe_extended_enabled)");
-    }
-    if (traceOn) {
-      args.push("-g", "assert(swi_mcp_trace_enabled)");
-    }
-    args.push("-g", "server_loop", "-t", "halt");
-    
+    const args = [
+      "-q",
+      "-s",
+      serverScript,
+      ...(isOn(process.env.SWI_MCP_EXTENDED_SAFE) ? ["-g", "assert(safe_extended_enabled)"] : []),
+      ...(traceOn ? ["-g", "assert(swi_mcp_trace_enabled)"] : []),
+      "-g",
+      "server_loop",
+      "-t",
+      "halt",
+    ];
+
     try {
-      this.process = spawn("swipl", args, {
-        stdio: ["pipe", "pipe", "pipe"],
-      });
+      this.process = spawn("swipl", args, { stdio: ["pipe", "pipe", "pipe"] });
     } catch (error) {
       const err = error as NodeJS.ErrnoException;
       if (err.code === "ENOENT") {
-        throw new Error("SWI-Prolog not found in PATH. Please install SWI-Prolog and ensure 'swipl' command is available.");
+        throw new Error(
+          "SWI-Prolog not found in PATH. Please install SWI-Prolog and ensure 'swipl' command is available.",
+        );
       }
       throw new Error(`Failed to start SWI-Prolog process: ${err.message}`);
     }
@@ -141,57 +108,62 @@ export class PrologInterface {
     logger.info(`Started Prolog server (${logger.redactPid(this.process.pid)})`);
 
     if (!this.process.stdout || !this.process.stdin) {
-      throw new Error("Failed to create SWI-Prolog server process streams");
+      const e = new Error("Failed to create SWI-Prolog server process streams");
+      this.stop();
+      throw e;
     }
-    
-    // Handle spawn errors that occur after process creation
-    this.process.on("error", (error: Error) => {
-      const err = error as NodeJS.ErrnoException;
-      if (err.code === "ENOENT") {
-        logger.error("SWI-Prolog executable not found in PATH");
-      } else {
-        logger.error(`Prolog process error: ${err.message}`);
-      }
-      if (!this.isReady && this.readyRejecter) {
-        this.readyRejecter(new Error(`Prolog process failed to start: ${err.message}`));
-      }
-    });
 
-    this.process.stdout.on("data", (data: Buffer) => {
-      const output = data.toString("utf8");
-      this.handleResponse(output);
-    });
-
-    this.process.on("error", (error) => {
-      // Log, and if not ready yet, fail the wait immediately
-      logger.error(`Prolog server error: ${error.message}`);
+    let failed = false;
+    const failStartOnce = (err: Error) => {
+      if (failed) return;
+      failed = true;
       if (!this.isReady && this.readyRejecter) {
         const rej = this.readyRejecter;
         this.readyRejecter = null;
-        try {
-          rej(error instanceof Error ? error : new Error(String(error)));
-        } catch {}
+        try { rej(err); } catch { }
       }
+    };
+
+    // Single error handler
+    this.process.on("error", (e: Error) => {
+      const err = e as NodeJS.ErrnoException;
+      const msg =
+        err.code === "ENOENT"
+          ? "SWI-Prolog executable not found in PATH"
+          : `Prolog process error: ${err.message}`;
+      logger.error(msg);
+      failStartOnce(new Error(msg));
     });
 
-    this.process.on("exit", (_code, _signal) => {
+    // Trace stderr when requested to aid diagnostics
+    if (traceOn) {
+      this.process.stderr?.on("data", (b: Buffer) => {
+        const s = b.toString("utf8").trim();
+        if (s) logger.debug(`Prolog stderr: ${s}`);
+      });
+    }
+
+    this.process.stdout.on("data", (data: Buffer) => {
+      this.handleResponse(data.toString("utf8"));
+    });
+
+    this.process.on("exit", () => {
       this.process = null;
       // Reject any pending queries
       for (const [_id, promise] of this.queryPromises) {
-        promise.reject(new Error("Prolog server exited"));
+        try { promise.reject(new Error("Prolog server exited")); } catch { }
       }
       this.queryPromises.clear();
-      if (!this.isReady && this.readyRejecter) {
-        const rej = this.readyRejecter;
-        this.readyRejecter = null;
-        try {
-          rej(new Error("Prolog server exited before ready"));
-        } catch {}
-      }
+      failStartOnce(new Error("Prolog server exited before ready"));
     });
 
-    // Wait for READY signal from Prolog server
-    await this.waitForReady();
+    // Wait for READY signal from Prolog server, clean up on failure
+    try {
+      await this.waitForReady();
+    } catch (e) {
+      this.stop();
+      throw e;
+    }
   }
 
   private inputBuffer: string = "";
@@ -209,8 +181,8 @@ export class PrologInterface {
     }
 
     if (!this.readyPromise) {
-      const readyTimeoutMs = Number.parseInt(process.env.SWI_MCP_READY_TIMEOUT_MS || "5000", 10);
-      const timeout = Number.isFinite(readyTimeoutMs) && readyTimeoutMs > 0 ? readyTimeoutMs : 5000;
+      const readyTimeoutMs = Number.parseInt(process.env.SWI_MCP_READY_TIMEOUT_MS || String(DEFAULT_READY_TIMEOUT_MS), 10);
+      const timeout = Number.isFinite(readyTimeoutMs) && readyTimeoutMs > 0 ? readyTimeoutMs : DEFAULT_READY_TIMEOUT_MS;
       this.readyPromise = new Promise((resolve, reject) => {
         this.readyResolver = resolve;
         this.readyRejecter = (err: Error) => {
@@ -221,7 +193,7 @@ export class PrologInterface {
           this.readyRejecter = null;
           try {
             rej(err);
-          } catch {}
+          } catch { }
         };
 
         const timer: NodeJS.Timeout = setTimeout(() => {
@@ -257,31 +229,56 @@ export class PrologInterface {
     }
   }
 
+  private assertRunning(): void {
+    if (!this.process || !this.process.stdin) {
+      throw new Error("Prolog server not started");
+    }
+  }
+
+  private formatBindingsString(inner: string): string {
+    const cleaned = inner.replace(/'([A-Za-z_][A-Za-z0-9_]*)'=/g, "$1=");
+    return cleaned.trim() === "[]" ? "true" : cleaned;
+  }
+
+  // Normalize a server result string into a structured tag
+  private parseServerResult(result: string):
+    | { kind: "eof" }
+    | { kind: "error"; error: string }
+    | { kind: "solution"; value: string }
+    | { kind: "other"; value: string } {
+    if (result === NO_MORE_SOLUTIONS) return { kind: "eof" };
+    if (result.startsWith(TERM_ERROR)) return { kind: "error", error: result };
+    if (result.startsWith(TERM_SOLUTION)) {
+      const m = result.match(/^solution\((.*)\)$/);
+      if (m) return { kind: "solution", value: this.formatBindingsString(m[1]) };
+      return { kind: "solution", value: result };
+    }
+    return { kind: "other", value: result };
+  }
+
   /**
    * Process a complete response line from Prolog server
    */
   private processResponseLine(response: string): void {
     // Ignore internal debug markers from the Prolog server
     if (response.startsWith("@@DEBUG@@")) {
-      const traceFlag = (process.env.SWI_MCP_TRACE || "").toLowerCase();
-      const traceEnabled = traceFlag === "1" || traceFlag === "true" || traceFlag === "yes";
+      const traceEnabled = isOn(process.env.SWI_MCP_TRACE);
       if (traceEnabled) logger.debug(`Prolog debug: ${response.slice(9).trim()}`);
       return;
     }
     // Avoid logging sensitive response bodies in normal operation
     // Log a summary at debug level only
     {
-      const traceFlag = (process.env.SWI_MCP_TRACE || "").toLowerCase();
-      const traceEnabled = traceFlag === "1" || traceFlag === "true" || traceFlag === "yes";
+      const traceEnabled = isOn(process.env.SWI_MCP_TRACE);
       if (traceEnabled) {
         const tag =
-          response === "@@READY@@"
+          response === READY_MARK
             ? "READY"
-            : response.startsWith("solution(")
+            : response.startsWith(TERM_SOLUTION)
               ? "solution"
-              : response.startsWith("error(")
+              : response.startsWith(TERM_ERROR)
                 ? "error"
-                : response === "no_more_solutions"
+                : response === NO_MORE_SOLUTIONS
                   ? "eof"
                   : "other";
         logger.debug(`Prolog response: ${tag}`);
@@ -289,7 +286,7 @@ export class PrologInterface {
     }
 
     // Check for READY signal
-    if (response === "@@READY@@") {
+    if (response === READY_MARK) {
       this.isReady = true;
       if (this.readyResolver) {
         this.readyResolver();
@@ -339,9 +336,7 @@ export class PrologInterface {
       throw new Error("An engine session is already active. Close the engine first.");
     }
 
-    if (!this.process || !this.process.stdin) {
-      throw new Error("Prolog server not started");
-    }
+    this.assertRunning();
 
     this.currentQuery = query;
     this.queryActive = true;
@@ -350,7 +345,7 @@ export class PrologInterface {
     // Send start_query command to server
     const result = await this.sendCommand(`start_query(${query})`);
     // If Prolog responded with an error(...) term, reject
-    if (typeof result === "string" && result.startsWith("error(")) {
+    if (typeof result === "string" && result.startsWith(TERM_ERROR)) {
       this.queryActive = false;
       this.currentQuery = null;
       this.sessionState = "idle";
@@ -371,48 +366,27 @@ export class PrologInterface {
       return { error: "No active query. Start a query first.", more_solutions: false };
     }
 
-    if (!this.process || !this.process.stdin) {
-      throw new Error("Prolog server not started");
-    }
+    this.assertRunning();
 
     try {
       const result = await this.sendCommand("next_solution");
-
-      if (result === "no_more_solutions") {
+      const parsed = this.parseServerResult(result);
+      if (parsed.kind === "eof") {
         this.queryActive = false;
         this.currentQuery = null;
         this.sessionState = "idle";
         return { more_solutions: false };
       }
-
-      // Handle error(...) terms from unified server
-      if (result.startsWith("error(")) {
+      if (parsed.kind === "error") {
         this.queryActive = false;
         this.currentQuery = null;
         this.sessionState = "idle";
-        return { error: result, more_solutions: false };
+        return { error: parsed.error, more_solutions: false };
       }
-
-      // Handle solution(...) terms from unified server
-      if (result.startsWith("solution(")) {
-        // Extract the inside of solution(...)
-        const innerMatch = result.match(/^solution\((.*)\)$/);
-        if (innerMatch) {
-          const inner = innerMatch[1]; // typically like: [ 'X'=val, 'Y'=val ] or []
-          // Remove quotes around variable names only (keep term formatting intact)
-          const cleaned = inner.replace(/'([A-Za-z_][A-Za-z0-9_]*)'=/g, "$1=");
-          const display = cleaned.trim() === "[]" ? "true" : cleaned;
-          return { solution: display, more_solutions: true };
-        }
-        // Fallback for malformed solution terms
-        return { solution: result, more_solutions: true };
+      if (parsed.kind === "solution") {
+        return { solution: parsed.value, more_solutions: true };
       }
-
-      // Fallback for other response formats
-      return {
-        solution: result,
-        more_solutions: true,
-      };
+      return { solution: parsed.value, more_solutions: true };
     } catch (error) {
       this.queryActive = false;
       this.currentQuery = null;
@@ -432,9 +406,7 @@ export class PrologInterface {
       return { status: "no_active_query" };
     }
 
-    if (!this.process || !this.process.stdin) {
-      throw new Error("Prolog server not started");
-    }
+    this.assertRunning();
 
     try {
       this.sessionState = "closing_query";
@@ -461,9 +433,7 @@ export class PrologInterface {
    * Internal method to send commands to Prolog server
    */
   private async sendCommand(command: string): Promise<string> {
-    if (!this.process || !this.process.stdin) {
-      throw new Error("Prolog server not started");
-    }
+    this.assertRunning();
 
     return new Promise<string>((outerResolve, outerReject) => {
       const run = () =>
@@ -477,7 +447,7 @@ export class PrologInterface {
             } finally {
               try {
                 done();
-              } catch {}
+              } catch { }
             }
           };
           const wrappedReject = (err: any) => {
@@ -486,15 +456,14 @@ export class PrologInterface {
             } finally {
               try {
                 done();
-              } catch {}
+              } catch { }
             }
           };
 
           this.queryPromises.set(queryId, { resolve: wrappedResolve, reject: wrappedReject });
 
           // Send command to server
-          const traceFlag = (process.env.SWI_MCP_TRACE || "").toLowerCase();
-          const traceEnabled = traceFlag === "1" || traceFlag === "true" || traceFlag === "yes";
+          const traceEnabled = isOn(process.env.SWI_MCP_TRACE);
           const envelope = `cmd(${queryIdNum}, ${command})`;
           if (traceEnabled) logger.debug(`Send command: ${envelope}`);
           try {
@@ -519,7 +488,7 @@ export class PrologInterface {
             10,
           );
           const qTimeout =
-            Number.isFinite(queryTimeoutMs) && queryTimeoutMs > 0 ? queryTimeoutMs : 5000;
+            Number.isFinite(queryTimeoutMs) && queryTimeoutMs > 0 ? queryTimeoutMs : DEFAULT_READY_TIMEOUT_MS;
           const timer: NodeJS.Timeout = setTimeout(() => {
             if (this.queryPromises.has(queryId)) {
               this.queryPromises.delete(queryId);
@@ -537,7 +506,7 @@ export class PrologInterface {
           // If the previous task failed unexpectedly, still propagate error for this command
           try {
             outerReject(err);
-          } catch {}
+          } catch { }
         });
     });
   }
@@ -570,9 +539,7 @@ export class PrologInterface {
       throw new Error("An engine is already active. Close the current engine first.");
     }
 
-    if (!this.process || !this.process.stdin) {
-      throw new Error("Prolog server not started");
-    }
+    this.assertRunning();
 
     this.engineActive = true;
     this.sessionState = "engine";
@@ -599,36 +566,25 @@ export class PrologInterface {
       return { error: "No active engine. Start an engine first.", more_solutions: false };
     }
 
-    if (!this.process || !this.process.stdin) {
-      throw new Error("Prolog server not started");
-    }
+    this.assertRunning();
 
     try {
       const result = await this.sendCommand("next_engine");
-
-      if (result === "no_more_solutions") {
+      const parsed = this.parseServerResult(result);
+      if (parsed.kind === "eof") {
         this.engineActive = false;
         this.sessionState = "idle";
         return { more_solutions: false };
       }
-
-      if (result.startsWith("error(")) {
+      if (parsed.kind === "error") {
         this.engineActive = false;
         this.sessionState = "idle";
-        return { error: result, more_solutions: false };
+        return { error: parsed.error, more_solutions: false };
       }
-      // Use the same robust formatting as nextSolution
-      if (result.startsWith("solution(")) {
-        const innerMatch = result.match(/^solution\((.*)\)$/);
-        if (innerMatch) {
-          const inner = innerMatch[1];
-          const cleaned = inner.replace(/'([A-Za-z_][A-Za-z0-9_]*)'=/g, "$1=");
-          const display = cleaned.trim() === "[]" ? "true" : cleaned;
-          return { solution: display, more_solutions: true };
-        }
+      if (parsed.kind === "solution") {
+        return { solution: parsed.value, more_solutions: true };
       }
-      // Fallback: return raw
-      return { solution: result, more_solutions: true };
+      return { solution: parsed.value, more_solutions: true };
     } catch (error) {
       this.engineActive = false;
       this.sessionState = "idle";
@@ -647,9 +603,7 @@ export class PrologInterface {
       return { status: "no_active_engine" };
     }
 
-    if (!this.process || !this.process.stdin) {
-      throw new Error("Prolog server not started");
-    }
+    this.assertRunning();
 
     try {
       this.sessionState = "closing_engine";
@@ -675,31 +629,31 @@ export class PrologInterface {
         if (proc.stdin && !proc.killed) {
           try {
             // Swallow potential EPIPE on closed pipe
-            (proc.stdin as NodeJS.WritableStream).once?.("error", () => {});
+            (proc.stdin as NodeJS.WritableStream).once?.("error", () => { });
             proc.stdin.write("__EXIT__\n");
-          } catch {}
+          } catch { }
           try {
-            (proc.stdin as NodeJS.WritableStream).once?.("error", () => {});
+            (proc.stdin as NodeJS.WritableStream).once?.("error", () => { });
             proc.stdin.end();
-          } catch {}
+          } catch { }
         }
         // Remove listeners to avoid leaks
         try {
           proc.removeAllListeners("error");
-        } catch {}
+        } catch { }
         try {
           proc.removeAllListeners("exit");
-        } catch {}
+        } catch { }
         try {
           proc.stdout?.removeAllListeners("data");
-        } catch {}
-      } catch {}
+        } catch { }
+      } catch { }
       // Best-effort terminate after a short delay
       const timer: NodeJS.Timeout = setTimeout(() => {
         try {
           if (!proc.killed) proc.kill("SIGTERM");
-        } catch {}
-      }, 50);
+        } catch { }
+      }, STOP_KILL_DELAY_MS);
       timer.unref?.();
     }
     this.process = null;
@@ -707,7 +661,7 @@ export class PrologInterface {
     for (const [_id, promise] of this.queryPromises) {
       try {
         promise.reject(new Error("Prolog server stopped"));
-      } catch {}
+      } catch { }
     }
     this.queryPromises.clear();
     this.queryActive = false;

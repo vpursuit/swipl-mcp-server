@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { inputSchemas, toolHandlers, prologInterface } from "./tools.js";
+import { resolvePackageVersion } from "./meta.js";
 
 /**
  * SWI-Prolog MCP Server
@@ -20,7 +21,7 @@ import { inputSchemas, toolHandlers, prologInterface } from "./tools.js";
 // Create server instance
 const server = new McpServer({
   name: "swipl-mcp-server",
-  version: "1.0.0",
+  version: resolvePackageVersion(),
 });
 
 // Register help tool (guidelines for agents)

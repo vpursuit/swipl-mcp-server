@@ -1,192 +1,151 @@
-/**
- * Unit tests for PrologInterface class
- * Tests the core Prolog process management and communication
- */
-
-import path from "path";
+import fs from "fs";
 import { spawn } from "child_process";
 import { PrologInterface } from "../src/PrologInterface.js";
+import { logger } from "../src/logger.js";
 
-// Mock child_process for testing
 jest.mock("child_process");
 const mockSpawn = spawn as jest.MockedFunction<typeof spawn>;
 
-describe("PrologInterface", () => {
-  let mockProcess: any;
-  let mockStdin: any;
-  let mockStdout: any;
+describe("PrologInterface (unit)", () => {
+  let iface: PrologInterface;
+  let dataHandler: ((buf: Buffer) => void) | null = null;
+  let mockProc: any;
+  let stderrHandler: ((buf: Buffer) => void) | null = null;
+  const handlers: Record<string, Function[]> = {};
+
+  const makeMockProc = () => {
+    dataHandler = null;
+    const stdout = {
+      on: jest.fn((event: string, cb: any) => {
+        if (event === "data") dataHandler = cb;
+      }),
+    };
+    const stdin = { write: jest.fn() };
+    const on = jest.fn((event: string, cb: any) => {
+      (handlers[event] ||= []).push(cb);
+      return mockProc;
+    });
+    const stderr = {
+      on: jest.fn((event: string, cb: any) => {
+        if (event === "data") stderrHandler = cb;
+      }),
+    };
+    mockProc = { stdout, stdin, stderr, on, kill: jest.fn() };
+    mockSpawn.mockReturnValue(mockProc as any);
+  };
 
   beforeEach(() => {
-    // Reset mocks
     jest.clearAllMocks();
-
-    // Create mock process streams
-    mockStdin = {
-      write: jest.fn(),
-    };
-
-    mockStdout = {
-      on: jest.fn(),
-    };
-
-    // Create mock process
-    mockProcess = {
-      stdin: mockStdin,
-      stdout: mockStdout,
-      stderr: { on: jest.fn() },
-      on: jest.fn(),
-      kill: jest.fn(),
-    };
-
-    // Configure spawn mock
-    mockSpawn.mockReturnValue(mockProcess as any);
+    process.env.SWI_MCP_PROLOG_PATH = undefined;
+    process.env.SWI_MCP_TRACE = undefined;
+    process.env.SWI_MCP_READY_TIMEOUT_MS = undefined;
+    iface = new PrologInterface();
+    makeMockProc();
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  describe("Process Management", () => {
-    it("should spawn SWI-Prolog with correct arguments", () => {
-      // We would need to refactor the code to make PrologInterface testable
-      // For now, this is a placeholder test structure
-      expect(true).toBe(true);
+  it("start() uses env override and resolves on READY", async () => {
+    const envPath = "/fake/prolog_server.pl";
+    process.env.SWI_MCP_PROLOG_PATH = envPath;
+
+    const accessSpy = jest.spyOn(fs, "accessSync").mockImplementation((p: any) => {
+      if (String(p) !== envPath) throw Object.assign(new Error("not found"), { code: "ENOENT" });
     });
 
-    it("should handle process startup", () => {
-      expect(mockSpawn).toBeDefined();
-    });
+    const startPromise = iface.start();
+    // emit READY
+    expect(typeof dataHandler).toBe("function");
+    dataHandler && dataHandler(Buffer.from("@@READY@@\n"));
+    await startPromise;
 
-    it("should handle process cleanup", () => {
-      expect(mockProcess).toBeDefined();
-    });
+    // spawn called with -s envPath
+    expect(mockSpawn).toHaveBeenCalled();
+    const args = (mockSpawn.mock.calls[0] || [])[1] as string[];
+    expect(args).toContain("-s");
+    expect(args).toContain(envPath);
+
+    accessSpy.mockRestore();
   });
 
-  describe("Query Execution", () => {
-    it("should format queries correctly", () => {
-      const query = "test_fact(X)";
-      const expectedFormattedQuery = "test_fact(X).";
-
-      expect(query.endsWith(".") ? query : query + ".").toBe(expectedFormattedQuery);
+  it("start() rejects if swipl missing (ENOENT)", async () => {
+    mockSpawn.mockImplementation(() => {
+      const err: any = new Error("missing");
+      err.code = "ENOENT";
+      throw err;
     });
-
-    it("should handle query timeouts", async () => {
-      // Test timeout mechanism
-      const timeoutMs = 5000;
-      const start = Date.now();
-
-      // Simulate timeout
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      const elapsed = Date.now() - start;
-      expect(elapsed).toBeLessThan(timeoutMs);
-    });
+    await expect(new PrologInterface().start()).rejects.toThrow(
+      /SWI-Prolog not found in PATH/i,
+    );
   });
 
-  describe("File Consultation", () => {
-    it("should resolve file paths correctly", () => {
-      const filename = "test-data.pl";
-      const absolutePath = path.resolve(filename);
-
-      expect(absolutePath).toContain("test-data.pl");
-      expect(path.isAbsolute(absolutePath)).toBe(true);
-    });
-
-    it("should generate correct consult query", () => {
-      const filename = "/path/to/test.pl";
-      const expectedQuery = `consult('${filename}').`;
-
-      const actualQuery = `consult('${filename}')`.endsWith(".")
-        ? `consult('${filename}')`
-        : `consult('${filename}').`;
-
-      expect(actualQuery).toBe(expectedQuery);
-    });
+  it("start() times out without READY and cleans up", async () => {
+    process.env.SWI_MCP_READY_TIMEOUT_MS = "5"; // tiny timeout
+    await expect(iface.start()).rejects.toThrow(/ready timeout/i);
   });
 
-  describe("Response Processing", () => {
-    it("should handle empty responses", () => {
-      const response = "";
-      expect(response.trim()).toBe("");
-    });
-
-    it("should handle multi-line responses", () => {
-      const response = "line1\nline2\nline3";
-      const lines = response.split("\n");
-
-      expect(lines).toHaveLength(3);
-      expect(lines[0]).toBe("line1");
-      expect(lines[2]).toBe("line3");
-    });
-
-    it("should process response lines correctly", () => {
-      const testResponse = "X = a ;";
-      expect(testResponse.trim()).toBeValidPrologResponse();
-    });
+  it("start() rejects on process error before READY", async () => {
+    const envPath = "/fake/prolog_server.pl";
+    process.env.SWI_MCP_PROLOG_PATH = envPath;
+    jest.spyOn(fs, "accessSync").mockImplementation(() => {});
+    const p = iface.start();
+    // trigger process error
+    handlers["error"]?.forEach((cb) => cb(Object.assign(new Error("boom"), { code: "EFAIL" })));
+    await expect(p).rejects.toThrow(/prolog process/i);
   });
 
-  describe("Error Handling", () => {
-    it("should handle process creation errors", () => {
-      const errorMessage = "Failed to create SWI-Prolog server process";
-      expect(() => {
-        if (!mockProcess.stdin) {
-          throw new Error(errorMessage);
-        }
-      }).not.toThrow();
-    });
-
-    it("should handle invalid queries gracefully", () => {
-      const invalidQuery = "this is not valid prolog";
-      // In real implementation, this should be handled by the Prolog process
-      expect(typeof invalidQuery).toBe("string");
-    });
-
-    it("should handle process termination", () => {
-      mockProcess.kill();
-      expect(mockProcess.kill).toHaveBeenCalled();
-    });
+  it("start() rejects on process exit before READY", async () => {
+    const envPath = "/fake/prolog_server.pl";
+    process.env.SWI_MCP_PROLOG_PATH = envPath;
+    jest.spyOn(fs, "accessSync").mockImplementation(() => {});
+    const p = iface.start();
+    // trigger process exit
+    handlers["exit"]?.forEach((cb) => cb(0, null));
+    await expect(p).rejects.toThrow(/exited before ready/i);
   });
 
-  describe("Real PrologInterface Tests", () => {
-    let prologInterface: PrologInterface;
+  it("logs stderr at trace level during startup", async () => {
+    const envPath = "/fake/prolog_server.pl";
+    process.env.SWI_MCP_PROLOG_PATH = envPath;
+    process.env.SWI_MCP_TRACE = "1";
+    jest.spyOn(fs, "accessSync").mockImplementation(() => {});
+    const dbg = jest.spyOn(logger, "debug");
+    const p = iface.start();
+    // emit some stderr
+    stderrHandler && stderrHandler(Buffer.from("warning: something"));
+    // now emit READY to resolve
+    dataHandler && dataHandler(Buffer.from("@@READY@@\n"));
+    await p;
+    expect(dbg).toHaveBeenCalled();
+    const hadStderrLog = dbg.mock.calls.some((call) => String(call[0]).includes("Prolog stderr:"));
+    expect(hadStderrLog).toBe(true);
+    dbg.mockRestore();
+  });
 
-    beforeEach(() => {
-      prologInterface = new PrologInterface();
-      jest.clearAllMocks();
-    });
+  it("routes responses by id(...) and FIFO fallback", async () => {
+    // Prepare
+    const envPath = "/fake/prolog_server.pl";
+    process.env.SWI_MCP_PROLOG_PATH = envPath;
+    jest.spyOn(fs, "accessSync").mockImplementation(() => {});
+    const startPromise = iface.start();
+    dataHandler && dataHandler(Buffer.from("@@READY@@\n"));
+    await startPromise;
 
-    it("should create instance", () => {
-      expect(prologInterface).toBeInstanceOf(PrologInterface);
-    });
+    // Two queries
+    const p1 = iface.query("first");
+    const p2 = iface.query("second");
 
-    it("should handle start process errors", async () => {
-      mockSpawn.mockReturnValue({
-        stdout: null,
-        stdin: null,
-        stderr: null,
-        on: jest.fn(),
-        kill: jest.fn(),
-      } as any);
+    // Allow queue to register promises/writes
+    await Promise.resolve();
 
-      await expect(prologInterface.start()).rejects.toThrow(
-        "Failed to create SWI-Prolog server process",
-      );
-    });
+    // id-route first
+    dataHandler && dataHandler(Buffer.from("id(0, ok_first)\n"));
+    await expect(p1).resolves.toBe("ok_first");
 
-    it("should handle query without started process", async () => {
-      await expect(prologInterface.query("test.")).rejects.toThrow("Prolog server not started");
-    });
-
-    it("should handle consultFile method", async () => {
-      await expect(prologInterface.consultFile("test.pl")).rejects.toThrow(
-        "Prolog server not started",
-      );
-    });
-
-    it("should stop process safely", () => {
-      prologInterface.stop();
-      // Should not throw any errors
-      expect(true).toBe(true);
-    });
+    // FIFO for second (no id(...))
+    dataHandler && dataHandler(Buffer.from("ok_second\n"));
+    await expect(p2).resolves.toBe("ok_second");
   });
 });
