@@ -1,6 +1,4 @@
-import { readFile, access, constants } from "fs/promises";
-import { fileURLToPath } from "url";
-import { dirname, join, resolve } from "path";
+import { readFile } from "fs/promises";
 import { PrologInterface } from "./PrologInterface.js";
 import { resolvePackageVersion, findNearestFile } from "./meta.js";
 
@@ -150,7 +148,7 @@ export const toolHandlers = {
         explicit_blacklist: ["call/1", "assert/1", "system/1", "shell/1", "retract/1", "abolish/1"],
         user_predicates: "allowed in kb/user modules for recursion",
         safe_categories: [
-          "arithmetic", "lists", "term operations", "logic", 
+          "arithmetic", "lists", "term operations", "logic",
           "string/atom helpers", "comparisons", "type checking"
         ],
         blocked_categories: ["I/O", "OS/process", "network", "external modules", "directives"],
@@ -193,7 +191,7 @@ export const toolHandlers = {
 
   async dbLoad({ filename }: { filename: string }): Promise<ToolResponse> {
     const startTime = Date.now();
-    
+
     // Input validation
     if (!filename || typeof filename !== 'string') {
       return {
@@ -202,7 +200,7 @@ export const toolHandlers = {
         isError: true,
       };
     }
-    
+
     if (filename.length > 1000) {
       return {
         content: [{ type: "text", text: "Error: filename too long (max 1000 characters)" }],
@@ -210,7 +208,7 @@ export const toolHandlers = {
         isError: true,
       };
     }
-    
+
     try {
       await prologInterface.start();
 
@@ -221,7 +219,7 @@ export const toolHandlers = {
         const error = err as NodeJS.ErrnoException;
         let errorMessage = `Error: File '${filename}' not found or not readable`;
         let errorCode = "file_error";
-        
+
         if (error.code === "ENOENT") {
           errorMessage = `Error: File '${filename}' does not exist`;
           errorCode = "file_not_found";
@@ -232,7 +230,7 @@ export const toolHandlers = {
           errorMessage = `Error: '${filename}' is a directory, not a file`;
           errorCode = "is_directory";
         }
-        
+
         return {
           content: [{ type: "text", text: errorMessage }],
           structuredContent: { error: errorCode, filename, processing_time_ms: processingTimeMs },
@@ -265,7 +263,7 @@ export const toolHandlers = {
 
   async queryStart({ query }: { query: string }): Promise<ToolResponse> {
     const startTime = Date.now();
-    
+
     // Input validation
     if (!query || typeof query !== 'string') {
       return {
@@ -274,7 +272,7 @@ export const toolHandlers = {
         isError: true,
       };
     }
-    
+
     if (query.length > 10000) {
       return {
         content: [{ type: "text", text: "Error: query too long (max 10000 characters)" }],
@@ -282,7 +280,7 @@ export const toolHandlers = {
         isError: true,
       };
     }
-    
+
     try {
       await prologInterface.start();
       const result = await prologInterface.startQuery(query);
@@ -320,11 +318,11 @@ export const toolHandlers = {
     const startTime = Date.now();
     try {
       await prologInterface.start();
-      
+
       // Detect session type and call appropriate method
       const sessionState = (prologInterface as any).sessionState;
       let result;
-      
+
       if (sessionState === "query") {
         result = await prologInterface.nextSolution();
       } else if (sessionState === "engine") {
@@ -429,7 +427,7 @@ export const toolHandlers = {
             if (!inner) return [];
             return inner.split(",").map((p) => p.trim());
           }
-        } catch {}
+        } catch { }
         return [];
       };
       const predicates = parsePreds(result);
@@ -454,7 +452,7 @@ export const toolHandlers = {
 
   async dbAssert({ fact }: { fact: string | string[] }): Promise<ToolResponse> {
     const startTime = Date.now();
-    
+
     // Input validation
     if (!fact || (typeof fact !== 'string' && !Array.isArray(fact))) {
       return {
@@ -463,7 +461,7 @@ export const toolHandlers = {
         isError: true,
       };
     }
-    
+
     const isArrayInput = Array.isArray(fact);
     const facts = isArrayInput ? (fact as string[]) : [fact as string];
     if (facts.length === 0) {
@@ -473,7 +471,7 @@ export const toolHandlers = {
         isError: true,
       };
     }
-    
+
     // Validate each fact
     for (const f of facts) {
       if (typeof f !== 'string' || f.length > 5000) {
@@ -484,7 +482,7 @@ export const toolHandlers = {
         };
       }
     }
-    
+
     // If single input, keep error-first behavior expected by tests
     if (!isArrayInput) {
       try {
@@ -656,7 +654,7 @@ export const toolHandlers = {
 
   async queryStartEngine({ query }: { query: string }): Promise<ToolResponse> {
     const startTime = Date.now();
-    
+
     // Input validation
     if (!query || typeof query !== 'string') {
       return {
@@ -665,7 +663,7 @@ export const toolHandlers = {
         isError: true,
       };
     }
-    
+
     if (query.length > 10000) {
       return {
         content: [{ type: "text", text: "Error: query too long (max 10000 characters)" }],
@@ -673,7 +671,7 @@ export const toolHandlers = {
         isError: true,
       };
     }
-    
+
     try {
       await prologInterface.start();
       const result = await prologInterface.startEngine(query);
@@ -711,7 +709,7 @@ export const toolHandlers = {
       await prologInterface.start();
       const result = await prologInterface.query("dump_kb");
       const processingTimeMs = Date.now() - startTime;
-      
+
       return {
         content: [{ type: "text", text: `Knowledge base dump:\n\n${result}\n\nProcessing time: ${processingTimeMs}ms` }],
         structuredContent: { dump: result, processing_time_ms: processingTimeMs },

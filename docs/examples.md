@@ -451,14 +451,9 @@ Define a pure helper, then map it over a list. The server exposes `kb:maplist` w
 ```
 **Response:** "L = [2,4,6]"
 
-### String and Atom Utilities (Extended Set)
+### String and Atom Utilities
 
-For additional pure string/atom helpers (`sub_atom/5`, `atom_string/2`, `string_concat/3`) enable the extended set before starting the server:
-
-```bash
-export SWI_MCP_EXTENDED_SAFE=true
-npm run server
-```
+Pure string/atom helpers such as `sub_atom/5`, `atom_string/2`, and `string_concat/3` are available under the sandboxed safe set.
 
 Examples:
 
@@ -520,4 +515,4 @@ Use tool `query_close`.
 
 Notes:
 - All examples rely on the server’s whitelist of pure predicates and kb-restricted calls.
-- If you need more helpers, enable the extended set or ask to add specific pure predicates.
+- If you need additional helpers, open an issue to request specific pure predicates.

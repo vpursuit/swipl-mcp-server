@@ -65,7 +65,7 @@ cd swipl-mcp-server-main
 less README.md SECURITY.md src/
 
 # Build and install
-npm install --production
+npm install
 npm run build
 ```
 
@@ -78,7 +78,7 @@ npm run build
 ## Configuration
 - `MCP_LOG_LEVEL`: `debug|info|warn|error|silent` (default `warn`).
 - `DEBUG`: include `swipl-mcp-server` to enable debug logging.
-- `SWI_MCP_PROLOG_PATH`: override path to `prolog_server.pl` if not in src folder.
+- `SWI_MCP_PROLOG_PATH`: override path to the Prolog server script.
 - Security is always enabled and cannot be disabled.
 
 ## Security Testing
