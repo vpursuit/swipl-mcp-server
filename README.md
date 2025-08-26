@@ -116,9 +116,9 @@ See CONTRIBUTING.md for local setup, workflow, and the PR checklist.
 For security practices, reporting, and hardening guidance, see SECURITY.md.
 
 Further reading:
-- docs/architecture.md — components, modes, and wire protocol
-- docs/deployment.md — release, packaging, and install from source
-- docs/examples.md — copy‑paste examples
+- [docs/architecture.md](docs/architecture.md) — components, modes, and wire protocol
+- [docs/deployment.md](docs/deployment.md) — release, packaging, and install from source
+- [docs/examples.md](docs/examples.md) — copy‑paste examples
 
 ## License
 
