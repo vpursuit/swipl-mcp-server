@@ -118,7 +118,8 @@ export const toolHandlers = {
       const licenseText = await readFile(licensePath, "utf8");
       return {
         content: [{ type: "text", text: licenseText }],
-        structuredContent: { type: "license", text: licenseText, path: licensePath },
+        // Omit absolute path to avoid disclosing local filesystem information
+        structuredContent: { type: "license", text: licenseText, filename: "LICENSE" },
       };
     } catch (error) {
       return {
