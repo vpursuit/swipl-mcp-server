@@ -109,6 +109,66 @@ class NPXIntegrationTest {
             throw new Error(`db_assert did not succeed. Response: ${responseText}`);
           }
         }
+      },
+      {
+        name: 'db_load with non-existent file',
+        request: { 
+          jsonrpc: '2.0', 
+          id: 4, 
+          method: 'tools/call', 
+          params: { name: 'db_load', arguments: { filename: '/non/existent/file.pl' } } 
+        },
+        validate: (result) => {
+          const text = result.result?.content?.[0]?.text || '';
+          if (!text.includes('Error:') || !text.includes('does not exist')) {
+            throw new Error(`Expected error for non-existent file, got: ${text}`);
+          }
+        }
+      },
+      {
+        name: 'query_next without active query',
+        request: { 
+          jsonrpc: '2.0', 
+          id: 5, 
+          method: 'tools/call', 
+          params: { name: 'query_next', arguments: {} } 
+        },
+        validate: (result) => {
+          const text = result.result?.content?.[0]?.text || '';
+          if (!text.includes('No active query')) {
+            throw new Error(`Expected "No active query" error, got: ${text}`);
+          }
+        }
+      },
+      {
+        name: 'invalid query syntax',
+        request: { 
+          jsonrpc: '2.0', 
+          id: 6, 
+          method: 'tools/call', 
+          params: { name: 'query_start', arguments: { query: 'invalid_syntax(' } } 
+        },
+        validate: (result) => {
+          const text = result.result?.content?.[0]?.text || '';
+          if (!text.includes('Error:')) {
+            throw new Error(`Expected syntax error for invalid query, got: ${text}`);
+          }
+        }
+      },
+      {
+        name: 'db_retract non-existent fact',
+        request: { 
+          jsonrpc: '2.0', 
+          id: 7, 
+          method: 'tools/call', 
+          params: { name: 'db_retract', arguments: { fact: 'non_existent_fact(x)' } } 
+        },
+        validate: (result) => {
+          const text = result.result?.content?.[0]?.text || '';
+          if (!text.includes('Retracted')) {
+            throw new Error(`Expected retraction response, got: ${text}`);
+          }
+        }
       }
     ];
 

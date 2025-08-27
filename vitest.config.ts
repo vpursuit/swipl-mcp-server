@@ -8,7 +8,15 @@ export default defineConfig({
     include: ['test/**/*.test.ts'],
     coverage: {
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.d.ts']
+      exclude: ['src/**/*.d.ts'],
+      reporter: ['text', 'html'],
+      reportOnFailure: true,
+      thresholds: {
+        statements: 60,
+        branches: 60,
+        functions: 60,
+        lines: 60
+      }
     },
     globals: true // Enable Jest-compatible globals
   }
