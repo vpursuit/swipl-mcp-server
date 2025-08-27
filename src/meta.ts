@@ -1,148 +1,236 @@
 /**
- * Runtime metadata utilities for locating files relative to the running module,
- * the entry script, and the current working directory. Centralizes path
- * resolution patterns and file discovery so behaviors are consistent across
- * ESM, CommonJS/Jest, local dev, and packaged builds.
+ * Runtime metadata utilities for locating files relative to the running module.
+ * Ultra-simple approach: just try paths where files might be, in order.
  */
 
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+// Only the essential constants we need
+const PACKAGE_JSON = 'package.json';
+const LICENSE_FILE = 'LICENSE';
+const PROLOG_SCRIPT = 'prolog_server.pl';
+const DEFAULT_VERSION = '0.0.0';
+
+// Debug logging
+function debugLog(message: string): void {
+  const shouldLog = process.env.DEBUG?.includes('swipl-mcp-server') || 
+                    process.env.SWI_MCP_TRACE === '1';
+  
+  if (shouldLog) {
+    console.error(`[META DEBUG] ${message}`);
+  }
+}
+
+/**
+ * Check if a path exists safely.
+ */
+function pathExists(filePath: string): boolean {
+  try {
+    return fs.existsSync(filePath);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get our current directory (where meta.js is running from).
+ */
+function getCurrentDir(): string {
+  try {
+    // Try import.meta.url first
+    const metaUrl = Function(
+      "try { return import.meta && import.meta.url } catch (_) { return '' }",
+    )() as unknown as string;
+    
+    if (metaUrl && typeof metaUrl === "string") {
+      return path.dirname(fileURLToPath(metaUrl));
+    }
+  } catch {
+    // Fallback failed
+  }
+  
+  // Fallback: try to find where we're actually running from using process.argv[1]
+  try {
+    const scriptPath = process.argv[1];
+    if (scriptPath && scriptPath.includes('meta.js')) {
+      // We're being run directly as meta.js
+      return path.dirname(scriptPath);
+    } else if (scriptPath && scriptPath.includes('index.js')) {
+      // We're being run as part of index.js, so meta.js is in the same directory
+      return path.dirname(scriptPath);
+    }
+  } catch {
+    // This fallback failed too
+  }
+  
+  // Final fallback: use process.cwd() but only as last resort
+  return process.cwd();
+}
+
+/**
+ * Find any file by trying common locations where it might exist.
+ * No context detection - just brute force search in logical order.
+ */
+function findFile(filename: string): string | null {
+  debugLog(`=== findFile(${filename}) ===`);
+  
+  const currentDir = getCurrentDir();
+  debugLog(`Current dir: ${currentDir}`);
+  
+  // Try paths in order of likelihood:
+  const candidates = [
+    // Same directory (rare but possible)
+    path.join(currentDir, filename),
+    
+    // Parent directory (most common - package root)
+    path.join(currentDir, '..', filename),
+    
+    // Local development: src directory
+    path.join(currentDir, '..', 'src', filename),
+    
+    // NPM package: prolog directory  
+    path.join(currentDir, '..', 'prolog', filename),
+    
+    // Grandparent directory (fallback)
+    path.join(currentDir, '..', '..', filename),
+    
+    // Local dev from build dir: go to root
+    path.join(currentDir, '..', '..', filename),
+    
+    // Working directory fallback
+    path.join(process.cwd(), filename),
+    path.join(process.cwd(), 'src', filename),
+  ];
+  
+  // Remove duplicates while preserving order
+  const uniqueCandidates = [...new Set(candidates)];
+  
+  for (const candidate of uniqueCandidates) {
+    debugLog(`Trying: ${candidate}`);
+    if (pathExists(candidate)) {
+      debugLog(`Found: ${candidate}`);
+      return candidate;
+    }
+  }
+  
+  debugLog(`Not found: ${filename}`);
+  return null;
+}
+
 /** Get the process current working directory (safe). */
 export function getCwd(): string {
-  try { return process.cwd(); } catch { return ""; }
+  try { 
+    const cwd = process.cwd();
+    debugLog(`getCwd() = ${cwd}`);
+    return cwd;
+  } catch { 
+    debugLog(`getCwd() failed, returning empty string`);
+    return ""; 
+  }
 }
 
 /**
  * Get the directory of the current module file.
- * Uses a guarded access to import.meta.url to avoid parse-time errors under Jest/CJS.
  */
 export function getModuleDir(): string {
-  try {
-    const metaUrl = Function(
-      "try { return import.meta && import.meta.url } catch (_) { return '' }",
-    )() as unknown as string;
-    if (metaUrl && typeof metaUrl === "string") {
-      return path.dirname(fileURLToPath(metaUrl));
-    }
-  } catch { }
-  return "";
+  const currentDir = getCurrentDir();
+  debugLog(`getModuleDir() = ${currentDir}`);
+  return currentDir;
 }
 
 /** Get the directory of the Node entry script (process.argv[1]). */
 export function getEntryDir(): string {
-  try { return path.dirname(process.argv?.[1] || ""); } catch { return ""; }
-}
-
-/** Expand relative path patterns from a base directory. */
-export function* candidatePathsFor(base: string, patterns: ReadonlyArray<ReadonlyArray<string>>): Generator<string> {
-  for (const parts of patterns) {
-    yield path.resolve(base, ...parts);
+  try { 
+    const entryPath = process.argv?.[1] || "";
+    const entryDir = path.dirname(entryPath);
+    debugLog(`getEntryDir() = ${entryDir}`);
+    return entryDir;
+  } catch (error) { 
+    debugLog(`getEntryDir() error: ${error}`);
+    return ""; 
   }
 }
 
 /**
- * Generate candidates across multiple bases with deduplication, preserving order.
+ * Find a file using the simple "try everywhere" approach.
  */
-export function* generateCandidates(bases: string[], patterns: ReadonlyArray<ReadonlyArray<string>>): Generator<string> {
-  const seen = new Set<string>();
-  for (const base of bases) {
-    if (!base) continue;
-    for (const p of candidatePathsFor(base, patterns)) {
-      if (!seen.has(p)) { seen.add(p); yield p; }
-    }
-  }
-}
-
-/** Return the first path that exists from an iterable of candidate paths. */
-export function findFirstExisting(paths: Iterable<string>): string | null {
-  for (const p of paths) {
-    try {
-      fs.accessSync(p, fs.constants.F_OK);
-      return p;
-    } catch { }
-  }
-  return null;
+export function findNearestFile(filename: string): string | null {
+  return findFile(filename);
 }
 
 /**
- * Find a file (e.g., package.json, LICENSE) by searching cwd, moduleDir, and
- * entryDir, and their parent directories up to two levels.
- * Also searches relative to the current module for npx/installed package scenarios.
+ * Get the path to the Prolog server script.
  */
-export function findNearestFile(filename: string, bases?: string[]): string | null {
-  const roots = (bases && bases.length ? bases : [getCwd(), getModuleDir(), getEntryDir()]).filter(Boolean) as string[];
+export function getPrologScriptPath(): string | null {
+  debugLog(`=== getPrologScriptPath() ===`);
+  return findFile(PROLOG_SCRIPT);
+}
+
+/**
+ * Prolog script candidate generation (simplified).
+ * Just returns the paths we would try in order.
+ */
+export function* prologScriptCandidates(): Generator<string> {
+  debugLog(`=== prologScriptCandidates() ===`);
   
-  // For installed packages, also check relative to the current module directory
-  const moduleDir = getModuleDir();
-  if (moduleDir) {
-    // Check if we're running from node_modules (npx scenario)
-    if (moduleDir.includes('node_modules')) {
-      // Look for files in the package root (parent of lib/ directory)
-      const packageRoot = path.dirname(moduleDir);
-      roots.push(packageRoot);
-      roots.push(moduleDir);
-    }
-  }
+  const currentDir = getCurrentDir();
   
-  const levels: string[][] = [[], [".."], ["..", ".."]];
-  const seen = new Set<string>();
-  const candidates: string[] = [];
-  for (const base of roots) {
-    for (const lvl of levels) {
-      const p = path.resolve(base, ...lvl, filename);
-      if (!seen.has(p)) { seen.add(p); candidates.push(p); }
-    }
-  }
-  return findFirstExisting(candidates);
-}
-
-/**
- * Prolog script candidate generation (no fs checks). Produces the prioritized
- * search order used by the server to locate prolog_server.pl or server.pl.
- * Also searches relative to the current module for npx/installed package scenarios.
- */
-export function* prologScriptCandidates(moduleDir: string, entryDir: string, mainName: string, altName: string): Generator<string> {
-  const cwd = getCwd();
-  const seen = new Set<string>();
-  const push = function*(p: string) { if (!seen.has(p)) { seen.add(p); yield p; } };
-
-  // For installed packages, check if we're running from node_modules
-  if (moduleDir && moduleDir.includes('node_modules')) {
-    // Look for prolog/server.pl in the package root (parent of lib/ directory)
-    const packageRoot = path.dirname(moduleDir);
-    yield* push(path.resolve(packageRoot, "prolog", altName));
-    yield* push(path.resolve(packageRoot, altName));
-    yield* push(path.resolve(moduleDir, "..", "prolog", altName));
-  }
-
-  // cwd-based first
-  yield* push(path.resolve(cwd, "src", mainName));
-  yield* push(path.resolve(cwd, "..", "src", mainName));
-
-  const patterns: ReadonlyArray<ReadonlyArray<string>> = [
-    ["..", "src", mainName],
-    [mainName],
-    ["..", "..", "src", mainName],
-    ["..", "prolog", altName],
-    ["prolog", altName], // for npm packages
+  const candidates = [
+    path.join(currentDir, PROLOG_SCRIPT),
+    path.join(currentDir, '..', PROLOG_SCRIPT),
+    path.join(currentDir, '..', 'src', PROLOG_SCRIPT),
+    path.join(currentDir, '..', 'prolog', PROLOG_SCRIPT),
+    path.join(currentDir, '..', '..', PROLOG_SCRIPT),
+    path.join(process.cwd(), PROLOG_SCRIPT),
+    path.join(process.cwd(), 'src', PROLOG_SCRIPT),
   ];
-
-  for (const p of generateCandidates([moduleDir, entryDir], patterns)) {
-    yield* push(p);
+  
+  // Remove duplicates while preserving order
+  const uniqueCandidates = [...new Set(candidates)];
+  
+  for (const candidate of uniqueCandidates) {
+    debugLog(`Candidate: ${candidate}`);
+    yield candidate;
   }
 }
 
-/** Resolve the application version from the nearest package.json. */
+/** Resolve the application version from package.json. */
 export function resolvePackageVersion(): string {
-  const pkgPath = findNearestFile("package.json");
+  const pkgPath = findFile(PACKAGE_JSON);
+  
   if (pkgPath) {
     try {
       const raw = fs.readFileSync(pkgPath, "utf8");
       const pkg = JSON.parse(raw);
-      if (pkg && typeof pkg.version === "string") return pkg.version;
-    } catch { }
+      
+      if (pkg && typeof pkg.version === "string") {
+        debugLog(`Resolved version: ${pkg.version} from ${pkgPath}`);
+        return pkg.version;
+      }
+    } catch (error) {
+      debugLog(`Error reading package.json: ${error}`);
+    }
   }
-  return "0.0.0";
+  
+  debugLog(`Version fallback: ${DEFAULT_VERSION}`);
+  return DEFAULT_VERSION;
+}
+
+// Legacy exports for backward compatibility
+export function resolvePath(fileType: 'package' | 'license' | 'prolog'): string | null {
+  debugLog(`=== resolvePath(${fileType}) ===`);
+  
+  switch (fileType) {
+    case 'package':
+      return findFile(PACKAGE_JSON);
+    case 'license':
+      return findFile(LICENSE_FILE);
+    case 'prolog':
+      return findFile(PROLOG_SCRIPT);
+    default:
+      debugLog(`Unknown file type: ${fileType}`);
+      return null;
+  }
 }

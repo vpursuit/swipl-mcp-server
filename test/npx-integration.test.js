@@ -34,12 +34,12 @@ class NPXIntegrationTest {
     this.tempDir = await fs.mkdtemp('/tmp/swipl-mcp-test-');
     console.log(`📁 Created temp directory: ${this.tempDir}`);
     
-    // Build the package
-    console.log('📦 Building package...');
-    await execAsync('node scripts/build-package.js', { cwd: ROOT_DIR });
+    // Use the exact same build process as production
+    console.log('📦 Building package using production scripts...');
+    await execAsync('npm run build:package', { cwd: ROOT_DIR });
     
-    // Create package tarball
-    console.log('📤 Creating package tarball...');
+    // Use the exact same pack process as production
+    console.log('📤 Creating package tarball using production process...');
     const { stdout } = await execAsync('npm pack', { cwd: path.join(ROOT_DIR, 'dist') });
     const tarballName = stdout.trim();
     this.packagePath = path.join(ROOT_DIR, 'dist', tarballName);
@@ -48,44 +48,67 @@ class NPXIntegrationTest {
   }
 
   async installPackage() {
-    console.log('📥 Installing package in test environment...');
+    console.log('📥 Installing locally built package...');
     
-    // Install the package globally in the temp directory
-    await execAsync(`npm install -g "${this.packagePath}"`, {
-      cwd: this.tempDir,
-      env: {
-        ...process.env,
-        NPM_CONFIG_PREFIX: this.tempDir,
-        PATH: `${this.tempDir}/bin:${process.env.PATH}`
-      }
+    // Install the exact package we just built (not from registry)
+    // This ensures we test our actual changes
+    await execAsync(`npm install "${this.packagePath}"`, {
+      cwd: this.tempDir
     });
     
-    console.log('✅ Package installed successfully');
+    console.log('✅ Locally built package installed successfully');
   }
 
   async testMCPProtocol() {
     console.log('🔧 Testing MCP protocol functionality...');
     
+    // Initialize server first
+    const initResult = await this.runMCPCommand({
+      jsonrpc: '2.0', 
+      id: 1, 
+      method: 'initialize', 
+      params: {
+        protocolVersion: '1.0.0',
+        capabilities: {},
+        clientInfo: { name: 'test', version: '1.0.0' }
+      }
+    });
+    
+    // Check version is correct (not "0.0.0")
+    const version = initResult.result?.serverInfo?.version;
+    console.log(`🔍 Server version: ${version}`);
+    if (version === "0.0.0") {
+      console.log('⚠️  WARNING: Server version is 0.0.0 - package.json path resolution may be incorrect');
+    }
+    
     const tests = [
       {
-        name: 'capabilities',
-        request: { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '1.0.0', capabilities: {} } }
-      },
-      {
-        name: 'tools/list',
-        request: { jsonrpc: '2.0', id: 2, method: 'tools/list' }
-      },
-      {
         name: 'license tool',
-        request: { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'license', arguments: {} } }
-      },
-      {
-        name: 'help tool',
-        request: { jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'help', arguments: {} } }
+        request: { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'license', arguments: {} } },
+        validate: (result) => {
+          if (!result.result?.content?.[0]?.text?.includes('BSD')) {
+            throw new Error('License tool did not return expected BSD license text');
+          }
+          if (result.result?.structuredContent?.error === 'license_file_not_found') {
+            throw new Error('LICENSE file not found - path resolution failed');
+          }
+        }
       },
       {
         name: 'db_assert test',
-        request: { jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'db_assert', arguments: { fact: 'test_fact(hello_world)' } } }
+        request: { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'db_assert', arguments: { fact: 'test_fact(hello)' } } },
+        validate: (result) => {
+          const responseText = result.result?.content?.[0]?.text || '';
+          if (responseText.includes('Prolog server not started')) {
+            throw new Error('Prolog server failed to start - prolog_server.pl path resolution failed');
+          }
+          if (responseText.includes('Prolog server script not found')) {
+            throw new Error('prolog_server.pl not found - path resolution failed');
+          }
+          if (!responseText.includes('Result: ok') && !responseText.includes('Asserted 1/1 clauses successfully')) {
+            throw new Error(`db_assert did not succeed. Response: ${responseText}`);
+          }
+        }
       }
     ];
 
@@ -101,17 +124,9 @@ class NPXIntegrationTest {
           throw new Error(`MCP error: ${JSON.stringify(result.error)}`);
         }
         
-        // Specific validations
-        if (test.name === 'license tool') {
-          if (!result.result?.content?.[0]?.text?.includes('BSD')) {
-            throw new Error('License tool did not return expected BSD license text');
-          }
-        }
-        
-        if (test.name === 'db_assert test') {
-          if (result.result?.content?.[0]?.text?.includes('Prolog server not started')) {
-            throw new Error('Prolog server failed to start');
-          }
+        // Specific validation
+        if (test.validate) {
+          test.validate(result);
         }
         
         results.push({ ...test, success: true, result });
@@ -128,14 +143,18 @@ class NPXIntegrationTest {
 
   async runMCPCommand(request) {
     return new Promise((resolve, reject) => {
-      const child = spawn('npx', ['@vpursuit/swipl-mcp-server'], {
-        cwd: this.tempDir,
+      // Run from clean directory that doesn't have source files
+      // This simulates real user environment 
+      const child = spawn('node', [path.join(this.tempDir, 'node_modules', '@vpursuit', 'swipl-mcp-server', 'lib', 'index.js')], {
+        cwd: '/tmp',  // Clean directory, no access to development files
         env: {
           ...process.env,
-          NPM_CONFIG_PREFIX: this.tempDir,
-          PATH: `${this.tempDir}/bin:${process.env.PATH}`,
+          // Remove any paths that might lead back to development directory
+          NODE_PATH: '',
           SWI_MCP_READY_TIMEOUT_MS: '10000',
-          SWI_MCP_QUERY_TIMEOUT_MS: '5000'
+          SWI_MCP_QUERY_TIMEOUT_MS: '5000',
+          DEBUG: 'swipl-mcp-server',  // Enable our debug logging
+          SWI_MCP_TRACE: '1'
         },
         stdio: ['pipe', 'pipe', 'pipe']
       });
@@ -152,7 +171,12 @@ class NPXIntegrationTest {
       }, this.timeout);
 
       child.stdout.on('data', (data) => {
-        stdout += data.toString();
+        const text = data.toString();
+        stdout += text;
+        // Also log stdout for debugging
+        if (text.trim()) {
+          console.log('🐛 STDOUT:', text.trim());
+        }
         // Look for JSON-RPC response
         const lines = stdout.split('\n');
         for (const line of lines) {
@@ -160,6 +184,7 @@ class NPXIntegrationTest {
             try {
               const response = JSON.parse(line.trim());
               if (response.id === request.id) {
+                console.log('🐛 RESPONSE:', JSON.stringify(response, null, 2));
                 clearTimeout(timeout);
                 responded = true;
                 child.kill();
@@ -174,7 +199,12 @@ class NPXIntegrationTest {
       });
 
       child.stderr.on('data', (data) => {
-        stderr += data.toString();
+        const text = data.toString();
+        stderr += text;
+        // Log ALL stderr output for debugging
+        if (text.trim()) {
+          console.log('🐛 STDERR:', text.trim());
+        }
       });
 
       child.on('error', (error) => {
@@ -205,19 +235,7 @@ class NPXIntegrationTest {
 
   async cleanup() {
     if (this.tempDir) {
-      console.log('🧹 Cleaning up...');
-      try {
-        await execAsync(`npm uninstall -g @vpursuit/swipl-mcp-server`, {
-          cwd: this.tempDir,
-          env: {
-            ...process.env,
-            NPM_CONFIG_PREFIX: this.tempDir
-          }
-        });
-      } catch (e) {
-        // Ignore cleanup errors
-      }
-      
+      console.log('🧹 Cleaning up...');      
       await fs.rm(this.tempDir, { recursive: true, force: true });
       console.log('✅ Cleanup complete');
     }

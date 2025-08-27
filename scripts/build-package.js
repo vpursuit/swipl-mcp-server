@@ -68,9 +68,9 @@ const prologDir = path.join(DIST_DIR, "prolog");
 fs.mkdirSync(prologDir, { recursive: true });
 
 const prologServerSrc = path.join(SRC_DIR, "prolog_server.pl");
-const prologServerDest = path.join(prologDir, "server.pl");
+const prologServerDest = path.join(prologDir, "prolog_server.pl");
 fs.copyFileSync(prologServerSrc, prologServerDest);
-console.log("✅ Copied prolog_server.pl → prolog/server.pl");
+console.log("✅ Copied prolog_server.pl → prolog/prolog_server.pl");
 
 // Step 4: Create production package.json
 const originalPkg = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, "package.json"), "utf8"));

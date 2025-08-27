@@ -2,13 +2,11 @@ import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import fs from "fs";
 import { logger } from "./logger.js";
-import { getEntryDir, getModuleDir, prologScriptCandidates } from "./meta.js";
+import { getPrologScriptPath, prologScriptCandidates } from "./meta.js";
 
 // Constants for configuration
 const DEFAULT_READY_TIMEOUT_MS = 5000;
 const STOP_KILL_DELAY_MS = 50;
-const PROLOG_SCRIPT_NAME = "prolog_server.pl";
-const ALT_PROLOG_SCRIPT_NAME = "server.pl";
 const READY_MARK = "@@READY@@";
 const TERM_SOLUTION = "solution(";
 const TERM_ERROR = "error(";
@@ -17,27 +15,42 @@ const NO_MORE_SOLUTIONS = "no_more_solutions";
 // Helper to parse boolean-like env flags
 const isOn = (v?: string) => /^(1|true|yes)$/i.test(String(v || ""));
 
-function findPrologServerScript(envPath: string | undefined, moduleDir: string, entryDir: string, traceEnabled: boolean): string {
-  const names = [PROLOG_SCRIPT_NAME, ALT_PROLOG_SCRIPT_NAME];
-  const candidates: string[] = [];
-  if (envPath) candidates.push(path.resolve(envPath));
-  for (const p of prologScriptCandidates(moduleDir, entryDir, names[0], names[1])) candidates.push(p);
-  for (const scriptPath of candidates) {
-    if (traceEnabled) {
-      logger.debug(`Trying: ${logger.redactPath(scriptPath)}`);
-    }
+function findPrologServerScript(envPath: string | undefined, traceEnabled: boolean): string {
+  // Check environment override first
+  if (envPath) {
+    const resolved = path.resolve(envPath);
     try {
-      fs.accessSync(scriptPath, fs.constants.F_OK);
-      logger.info(`Found Prolog server script at: ${logger.redactPath(scriptPath)}`);
-      return scriptPath;
+      fs.accessSync(resolved, fs.constants.F_OK);
+      logger.info(`Using Prolog server script from env: ${logger.redactPath(resolved)}`);
+      return resolved;
     } catch {
-      if (traceEnabled) logger.debug(`Not found at: ${logger.redactPath(scriptPath)}`);
+      logger.warn(`Environment path not found: ${logger.redactPath(resolved)}`);
     }
   }
 
-  const hint = `cwd=${process.cwd()} moduleDir=${moduleDir || "n/a"} entryDir=${entryDir || "n/a"}`;
+  // Use simplified path resolution
+  const scriptPath = getPrologScriptPath();
+  if (scriptPath && fs.existsSync(scriptPath)) {
+    logger.info(`Found Prolog server script at: ${logger.redactPath(scriptPath)}`);
+    return scriptPath;
+  }
+
+  // Fallback to candidate generation for compatibility
+  for (const candidate of prologScriptCandidates()) {
+    if (traceEnabled) {
+      logger.debug(`Trying: ${logger.redactPath(candidate)}`);
+    }
+    try {
+      fs.accessSync(candidate, fs.constants.F_OK);
+      logger.info(`Found Prolog server script at: ${logger.redactPath(candidate)}`);
+      return candidate;
+    } catch {
+      if (traceEnabled) logger.debug(`Not found at: ${logger.redactPath(candidate)}`);
+    }
+  }
+
   throw new Error(
-    `Prolog server script not found. Tried all candidate paths (${hint}). Set SWI_MCP_PROLOG_PATH to override.`,
+    `Prolog server script not found. Set SWI_MCP_PROLOG_PATH to override.`,
   );
 }
 
@@ -73,10 +86,7 @@ export class PrologInterface {
 
     // Resolve Prolog server script: env override, cwd, and paths relative to module/entry
     const envPath = process.env.SWI_MCP_PROLOG_PATH;
-    const moduleDir = getModuleDir();
-    const entryDir = getEntryDir();
-
-    const serverScript = findPrologServerScript(envPath, moduleDir, entryDir, traceOn);
+    const serverScript = findPrologServerScript(envPath, traceOn);
 
     // Reset readiness before starting
     this.isReady = false;
