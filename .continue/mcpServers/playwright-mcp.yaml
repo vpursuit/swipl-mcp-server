@@ -1,0 +1,8 @@
+name: Playwright mcpServer
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: Browser search
+    command: /Users/keeper/.nvm/versions/node/v22.18.0/bin/npx
+    args:
+      - "@playwright/mcp@latest"

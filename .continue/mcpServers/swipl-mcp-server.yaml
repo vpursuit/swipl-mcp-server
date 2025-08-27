@@ -1,0 +1,8 @@
+name: Swipl MCP Server
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: swipl-mcp-server
+    command: /Users/keeper/.nvm/versions/node/v22.18.0/bin/npx
+    args:
+      - "@vpursuit/swipl-mcp-server:latest"

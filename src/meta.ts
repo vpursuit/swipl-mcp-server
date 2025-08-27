@@ -84,14 +84,10 @@ function getCurrentDir(): string {
 }
 
 /**
- * Find any file by trying common locations where it might exist.
- * No context detection - just brute force search in logical order.
+ * Generate candidate paths for a filename in order of likelihood.
  */
-function findFile(filename: string): string | null {
-  debugLog(`=== findFile(${filename}) ===`);
-  
+function getFileCandidates(filename: string): string[] {
   const currentDir = getCurrentDir();
-  debugLog(`Current dir: ${currentDir}`);
   
   // Try paths in order of likelihood:
   const candidates = [
@@ -119,7 +115,20 @@ function findFile(filename: string): string | null {
   ];
   
   // Remove duplicates while preserving order
-  const uniqueCandidates = [...new Set(candidates)];
+  return [...new Set(candidates)];
+}
+
+/**
+ * Find any file by trying common locations where it might exist.
+ * No context detection - just brute force search in logical order.
+ */
+function findFile(filename: string): string | null {
+  debugLog(`=== findFile(${filename}) ===`);
+  
+  const currentDir = getCurrentDir();
+  debugLog(`Current dir: ${currentDir}`);
+  
+  const uniqueCandidates = getFileCandidates(filename);
   
   for (const candidate of uniqueCandidates) {
     debugLog(`Trying: ${candidate}`);
@@ -178,7 +187,6 @@ export function findNearestFile(filename: string): string | null {
  * Get the path to the Prolog server script.
  */
 export function getPrologScriptPath(): string | null {
-  debugLog(`=== getPrologScriptPath() ===`);
   return findFile(PROLOG_SCRIPT);
 }
 
@@ -189,22 +197,7 @@ export function getPrologScriptPath(): string | null {
 export function* prologScriptCandidates(): Generator<string> {
   debugLog(`=== prologScriptCandidates() ===`);
   
-  const currentDir = getCurrentDir();
-  
-  const candidates = [
-    path.join(currentDir, PROLOG_SCRIPT),
-    path.join(currentDir, '..', PROLOG_SCRIPT),
-    path.join(currentDir, '..', 'src', PROLOG_SCRIPT),
-    path.join(currentDir, '..', 'prolog', PROLOG_SCRIPT),
-    path.join(currentDir, '..', '..', PROLOG_SCRIPT),
-    path.join(process.cwd(), PROLOG_SCRIPT),
-    path.join(process.cwd(), 'src', PROLOG_SCRIPT),
-  ];
-  
-  // Remove duplicates while preserving order
-  const uniqueCandidates = [...new Set(candidates)];
-  
-  for (const candidate of uniqueCandidates) {
+  for (const candidate of getFileCandidates(PROLOG_SCRIPT)) {
     debugLog(`Candidate: ${candidate}`);
     yield candidate;
   }
@@ -232,19 +225,12 @@ export function resolvePackageVersion(): string {
   return DEFAULT_VERSION;
 }
 
-// Legacy exports for backward compatibility
+// Legacy exports for backward compatibility (UNUSED - can be removed)
 export function resolvePath(fileType: 'package' | 'license' | 'prolog'): string | null {
-  debugLog(`=== resolvePath(${fileType}) ===`);
-  
-  switch (fileType) {
-    case 'package':
-      return findFile(PACKAGE_JSON);
-    case 'license':
-      return findFile(LICENSE_FILE);
-    case 'prolog':
-      return findFile(PROLOG_SCRIPT);
-    default:
-      debugLog(`Unknown file type: ${fileType}`);
-      return null;
-  }
+  const fileMap = {
+    'package': PACKAGE_JSON,
+    'license': LICENSE_FILE,
+    'prolog': PROLOG_SCRIPT,
+  };
+  return findFile(fileMap[fileType]);
 }
