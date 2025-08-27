@@ -38,7 +38,7 @@ try {
 const libDir = path.join(DIST_DIR, "lib");
 fs.mkdirSync(libDir, { recursive: true });
 
-const jsFiles = ["index.js", "PrologInterface.js", "tools.js", "logger.js", "schemas.js"];
+const jsFiles = ["index.js", "PrologInterface.js", "tools.js", "logger.js", "schemas.js", "meta.js"];
 jsFiles.forEach((file) => {
   const srcPath = path.join(BUILD_DIR, file);
   const destPath = path.join(libDir, file);
