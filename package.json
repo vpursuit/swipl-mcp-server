@@ -3,9 +3,9 @@
   "version": "1.0.8",
   "type": "module",
   "scripts": {
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:npx": "node test/npx-integration.test.js",
     "test:all": "npm run test && npm run test:npx",
     "build": "tsc && chmod 755 build/index.js",
@@ -55,15 +55,14 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
     "@types/node": "^24.2.1",
     "@typescript-eslint/eslint-plugin": "^8.7.0",
     "@typescript-eslint/parser": "^8.7.0",
+    "@vitest/ui": "^3.2.4",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^9.1.0",
-    "jest": "^30.0.5",
     "prettier": "^3.3.3",
-    "ts-jest": "^29.4.1",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }

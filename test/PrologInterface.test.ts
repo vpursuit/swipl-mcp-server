@@ -2,9 +2,10 @@ import fs from "fs";
 import { spawn } from "child_process";
 import { PrologInterface } from "../src/PrologInterface.js";
 import { logger } from "../src/logger.js";
+import { vi } from 'vitest';
 
-jest.mock("child_process");
-const mockSpawn = spawn as jest.MockedFunction<typeof spawn>;
+vi.mock("child_process");
+const mockSpawn = vi.mocked(spawn);
 
 describe("PrologInterface (unit)", () => {
   let iface: PrologInterface;
@@ -16,42 +17,55 @@ describe("PrologInterface (unit)", () => {
   const makeMockProc = () => {
     dataHandler = null;
     const stdout = {
-      on: jest.fn((event: string, cb: any) => {
-        if (event === "data") dataHandler = cb;
+      on: vi.fn((event: string, cb: any) => {
+        if (event === "data") {
+          dataHandler = cb;
+        }
+        return stdout;
       }),
     };
-    const stdin = { write: jest.fn() };
-    const on = jest.fn((event: string, cb: any) => {
+    const stdin = { write: vi.fn() };
+    const on = vi.fn((event: string, cb: any) => {
       (handlers[event] ||= []).push(cb);
       return mockProc;
     });
     const stderr = {
-      on: jest.fn((event: string, cb: any) => {
-        if (event === "data") stderrHandler = cb;
+      on: vi.fn((event: string, cb: any) => {
+        if (event === "data") {
+          stderrHandler = cb;
+        }
+        return stderr;
       }),
     };
-    mockProc = { stdout, stdin, stderr, on, kill: jest.fn() };
-    mockSpawn.mockReturnValue(mockProc as any);
+    mockProc = { stdout, stdin, stderr, on, kill: vi.fn() };
+    mockSpawn.mockImplementation(() => {
+      return mockProc as any;
+    });
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Reset handlers and state
+    dataHandler = null;
+    stderrHandler = null;
+    Object.keys(handlers).forEach(key => delete handlers[key]);
+    
     process.env.SWI_MCP_PROLOG_PATH = undefined;
     process.env.SWI_MCP_TRACE = undefined;
     process.env.SWI_MCP_READY_TIMEOUT_MS = undefined;
-    iface = new PrologInterface();
+    
     makeMockProc();
+    iface = new PrologInterface();
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("start() uses env override and resolves on READY", async () => {
     const envPath = "/fake/prolog_server.pl";
     process.env.SWI_MCP_PROLOG_PATH = envPath;
 
-    const accessSpy = jest.spyOn(fs, "accessSync").mockImplementation((p: any) => {
+    const accessSpy = vi.spyOn(fs, "accessSync").mockImplementation((p: any) => {
       if (String(p) !== envPath) throw Object.assign(new Error("not found"), { code: "ENOENT" });
     });
 
@@ -89,7 +103,7 @@ describe("PrologInterface (unit)", () => {
   it("start() rejects on process error before READY", async () => {
     const envPath = "/fake/prolog_server.pl";
     process.env.SWI_MCP_PROLOG_PATH = envPath;
-    jest.spyOn(fs, "accessSync").mockImplementation(() => {});
+    vi.spyOn(fs, "accessSync").mockImplementation(() => {});
     const p = iface.start();
     // trigger process error
     handlers["error"]?.forEach((cb) => cb(Object.assign(new Error("boom"), { code: "EFAIL" })));
@@ -99,7 +113,7 @@ describe("PrologInterface (unit)", () => {
   it("start() rejects on process exit before READY", async () => {
     const envPath = "/fake/prolog_server.pl";
     process.env.SWI_MCP_PROLOG_PATH = envPath;
-    jest.spyOn(fs, "accessSync").mockImplementation(() => {});
+    vi.spyOn(fs, "accessSync").mockImplementation(() => {});
     const p = iface.start();
     // trigger process exit
     handlers["exit"]?.forEach((cb) => cb(0, null));
@@ -110,8 +124,8 @@ describe("PrologInterface (unit)", () => {
     const envPath = "/fake/prolog_server.pl";
     process.env.SWI_MCP_PROLOG_PATH = envPath;
     process.env.SWI_MCP_TRACE = "1";
-    jest.spyOn(fs, "accessSync").mockImplementation(() => {});
-    const dbg = jest.spyOn(logger, "debug");
+    vi.spyOn(fs, "accessSync").mockImplementation(() => {});
+    const dbg = vi.spyOn(logger, "debug");
     const p = iface.start();
     // emit some stderr
     stderrHandler && stderrHandler(Buffer.from("warning: something"));
@@ -128,7 +142,7 @@ describe("PrologInterface (unit)", () => {
     // Prepare
     const envPath = "/fake/prolog_server.pl";
     process.env.SWI_MCP_PROLOG_PATH = envPath;
-    jest.spyOn(fs, "accessSync").mockImplementation(() => {});
+    vi.spyOn(fs, "accessSync").mockImplementation(() => {});
     const startPromise = iface.start();
     dataHandler && dataHandler(Buffer.from("@@READY@@\n"));
     await startPromise;

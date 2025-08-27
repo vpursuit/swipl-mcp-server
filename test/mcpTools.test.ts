@@ -7,15 +7,16 @@ import { z } from "zod";
 import path from "path";
 import { readFile } from "fs/promises";
 import { inputSchemas, toolHandlers } from "../src/tools.js";
+import { vi } from 'vitest';
 
 // Mock fs/promises and child_process
-jest.mock("fs/promises");
-jest.mock("child_process");
-const mockReadFile = readFile as jest.MockedFunction<typeof readFile>;
+vi.mock("fs/promises");
+vi.mock("child_process");
+const mockReadFile = readFile as ReturnType<typeof vi.mocked<typeof readFile>>;
 
 // Mock child_process for tools
 import { spawn } from "child_process";
-const mockSpawn = spawn as jest.MockedFunction<typeof spawn>;
+const mockSpawn = vi.mocked(spawn);
 
 describe("MCP Tools", () => {
   // Mock request structure
@@ -162,7 +163,7 @@ describe("MCP Tools", () => {
 
   describe("consult_file Tool Logic", () => {
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
     });
 
     it("should check file existence before consulting", async () => {
@@ -354,17 +355,17 @@ describe("MCP Tools", () => {
   describe("Tool Handlers", () => {
     beforeEach(() => {
       // Setup proper spawn mock for each test
-      mockSpawn.mockReturnValue({
+      mockSpawn.mockImplementation(() => ({
         stdout: {
-          on: jest.fn(),
+          on: vi.fn(),
         },
         stdin: {
-          write: jest.fn(),
+          write: vi.fn(),
         },
         stderr: null,
-        on: jest.fn(),
-        kill: jest.fn(),
-      } as any);
+        on: vi.fn(),
+        kill: vi.fn(),
+      } as any));
     });
 
     describe("consultFile", () => {

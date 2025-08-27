@@ -1,8 +1,11 @@
 /**
- * Jest test setup file (CommonJS)
- * - Keeps runtime setup in CJS so Jest can load it without ESM hassles
+ * Vitest test setup file (ESM)
  * - Configures globals, env timeouts, and graceful teardown
+ * - Using native ESM imports
  */
+
+import { spawnSync } from "child_process";
+import { prologInterface } from "../src/tools.js";
 
 // Shorten PrologInterface timeouts under test
 process.env.SWI_MCP_READY_TIMEOUT_MS = process.env.SWI_MCP_READY_TIMEOUT_MS || "2500";
@@ -10,7 +13,6 @@ process.env.SWI_MCP_QUERY_TIMEOUT_MS = process.env.SWI_MCP_QUERY_TIMEOUT_MS || "
 
 // Detect SWI-Prolog availability once
 try {
-  const { spawnSync } = require("child_process");
   const res = spawnSync("swipl", ["--version"], { stdio: "ignore" });
   global.HAS_SWIPL = res.status === 0;
 } catch {
@@ -18,17 +20,15 @@ try {
 }
 
 // Ensure the singleton prologInterface is stopped at the end of all tests
-// Importing ESM from CJS: use dynamic import()
-import("../src/tools.js").then((mod) => {
-  const prologInterface = mod?.prologInterface;
-  if (prologInterface) {
-    afterAll(() => {
-      try { prologInterface.stop(); } catch {}
-    });
-  }
-}).catch(() => {});
+if (prologInterface) {
+  afterAll(() => {
+    try { 
+      prologInterface.stop(); 
+    } catch {}
+  });
+}
 
-// Custom Jest matcher for Prolog responses
+// Custom Vitest matcher for Prolog responses
 expect.extend({
   toBeValidPrologResponse(received) {
     const isValid = typeof received === 'string' && received.length > 0;

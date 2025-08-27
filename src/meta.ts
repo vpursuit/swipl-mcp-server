@@ -38,35 +38,49 @@ function pathExists(filePath: string): boolean {
  * Get our current directory (where meta.js is running from).
  */
 function getCurrentDir(): string {
+  // For ES modules, use import.meta.url directly
   try {
-    // Try import.meta.url first
-    const metaUrl = Function(
-      "try { return import.meta && import.meta.url } catch (_) { return '' }",
-    )() as unknown as string;
+    if (import.meta && import.meta.url) {
+      const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+      debugLog(`getCurrentDir() from import.meta.url: ${moduleDir}`);
+      return moduleDir;
+    }
+  } catch (error) {
+    debugLog(`import.meta.url failed: ${error}`);
+  }
+
+  // For CommonJS/Jest/npm (testing and some execution contexts)
+  const scriptPath = process.argv[1];
+  debugLog(`Process argv[1]: ${scriptPath}`);
+  
+  if (scriptPath) {
+    // Check if we're in an npm package
+    if (scriptPath.includes('node_modules/@vpursuit/swipl-mcp-server')) {
+      // Extract the package lib directory from the full path
+      const match = scriptPath.match(/(.*node_modules\/@vpursuit\/swipl-mcp-server)\/lib/);
+      if (match) {
+        const packageRoot = match[1];
+        const libDir = path.join(packageRoot, 'lib');
+        debugLog(`getCurrentDir() from npm package: ${libDir}`);
+        return libDir;
+      } else if (scriptPath.includes('/lib/')) {
+        // Already in lib directory
+        const libDir = path.dirname(scriptPath);
+        debugLog(`getCurrentDir() from lib path: ${libDir}`);
+        return libDir;
+      }
+    }
     
-    if (metaUrl && typeof metaUrl === "string") {
-      return path.dirname(fileURLToPath(metaUrl));
-    }
-  } catch {
-    // Fallback failed
+    // For local development and other cases
+    const scriptDir = path.dirname(scriptPath);
+    debugLog(`getCurrentDir() from script path: ${scriptDir}`);
+    return scriptDir;
   }
   
-  // Fallback: try to find where we're actually running from using process.argv[1]
-  try {
-    const scriptPath = process.argv[1];
-    if (scriptPath && scriptPath.includes('meta.js')) {
-      // We're being run directly as meta.js
-      return path.dirname(scriptPath);
-    } else if (scriptPath && scriptPath.includes('index.js')) {
-      // We're being run as part of index.js, so meta.js is in the same directory
-      return path.dirname(scriptPath);
-    }
-  } catch {
-    // This fallback failed too
-  }
-  
-  // Final fallback: use process.cwd() but only as last resort
-  return process.cwd();
+  // Last resort fallback to current working directory
+  const cwd = process.cwd();
+  debugLog(`getCurrentDir() fallback to cwd: ${cwd}`);
+  return cwd;
 }
 
 /**

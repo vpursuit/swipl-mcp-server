@@ -1,8 +1,9 @@
 import { spawn } from "child_process";
 import { PrologInterface } from "../src/PrologInterface.js";
+import { vi } from 'vitest';
 
-jest.mock("child_process");
-const mockSpawn = spawn as jest.MockedFunction<typeof spawn>;
+vi.mock("child_process");
+const mockSpawn = vi.mocked(spawn);
 
 describe("PrologInterface command queue", () => {
   let mockProcess: any;
@@ -11,23 +12,23 @@ describe("PrologInterface command queue", () => {
   let dataHandler: ((buf: Buffer | string) => void) | null = null;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     dataHandler = null;
 
-    mockStdin = { write: jest.fn() };
+    mockStdin = { write: vi.fn() };
     mockStdout = {
-      on: jest.fn((event: string, cb: any) => {
+      on: vi.fn((event: string, cb: any) => {
         if (event === "data") dataHandler = cb;
       }),
     };
     mockProcess = {
       stdin: mockStdin,
       stdout: mockStdout,
-      stderr: { on: jest.fn() },
-      on: jest.fn(),
-      kill: jest.fn(),
+      stderr: { on: vi.fn() },
+      on: vi.fn(),
+      kill: vi.fn(),
     };
-    mockSpawn.mockReturnValue(mockProcess as any);
+    mockSpawn.mockImplementation(() => mockProcess as any);
   });
 
   test("serializes concurrent sendCommand calls", async () => {
@@ -48,7 +49,7 @@ describe("PrologInterface command queue", () => {
 
     // Only the first write should have been performed until first resolves
     expect(mockStdin.write).toHaveBeenCalledTimes(1);
-    const firstCallArg = (mockStdin.write as jest.Mock).mock.calls[0][0] as string;
+    const firstCallArg = (mockStdin.write as any).mock.calls[0][0] as string;
     expect(firstCallArg.startsWith("cmd(")).toBe(true);
     expect(firstCallArg).toContain("first");
 
@@ -60,7 +61,7 @@ describe("PrologInterface command queue", () => {
     // Now the second should be written
     await Promise.resolve();
     expect(mockStdin.write).toHaveBeenCalledTimes(2);
-    const secondCallArg = (mockStdin.write as jest.Mock).mock.calls[1][0] as string;
+    const secondCallArg = (mockStdin.write as any).mock.calls[1][0] as string;
     expect(secondCallArg.startsWith("cmd(")).toBe(true);
     expect(secondCallArg).toContain("second");
 

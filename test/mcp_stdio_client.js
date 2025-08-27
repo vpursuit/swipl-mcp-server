@@ -1,6 +1,6 @@
-// test/mcp_stdio_client_debug.cjs
-const { spawn } = require('child_process');
-const readline = require('readline');
+// test/mcp_stdio_client_debug.js
+import { spawn } from 'child_process';
+import readline from 'readline';
 
 const cmd = '/Users/keeper/.nvm/versions/node/v22.17.1/bin/node';
 const args = ['build/index.js'];
@@ -48,19 +48,23 @@ function send(method, params = {}) {
 // Wait a bit for server to print ready; if no ready within 3s, still send get_capabilities
 setTimeout(() => {
   console.log('Sending get_capabilities request');
-  send('get_capabilities', {});
-}, 1000);
+  send('get_capabilities');
 
-// After 2s, send a simple assert + query to provoke response
-setTimeout(() => {
-  send('assert_clause', { fact: 'testfact(debug,1).' });
-  send('start_query', { query: 'testfact(debug,1)' });
-  setTimeout(() => send('next_solution', {}), 300);
-}, 2000);
+  setTimeout(() => {
+    console.log('Sending LICENSE tool request');
+    send('tools/call', { name: 'LICENSE' });
 
-// stop after 8s
-setTimeout(() => {
-  console.log('Closing client');
-  try { proc.kill(); } catch(e) {}
-  process.exit(0);
-}, 8000);
+    setTimeout(() => {
+      console.log('Sending db_assert test');
+      send('tools/call', { 
+        name: 'db_assert', 
+        arguments: { facts: ['parent(john, mary).'] }
+      });
+
+      setTimeout(() => {
+        console.log('Shutting down');
+        proc.kill('SIGTERM');
+      }, 1000);
+    }, 1000);
+  }, 1000);
+}, 3000);
