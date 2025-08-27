@@ -1,6 +1,6 @@
 {
   "name": "@vpursuit/swipl-mcp-server",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "type": "module",
   "scripts": {
     "test": "vitest run",
