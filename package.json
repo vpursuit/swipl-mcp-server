@@ -37,7 +37,13 @@
     "swi-prolog",
     "swipl",
     "model-context-protocol",
-    "logic-programming"
+    "logic-programming",
+    "ai",
+    "llm",
+    "server",
+    "tools",
+    "knowledge-base",
+    "reasoning"
   ],
   "author": "Peter Trebing",
   "license": "BSD-3-Clause",
