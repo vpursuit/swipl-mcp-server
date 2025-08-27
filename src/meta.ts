@@ -69,9 +69,23 @@ export function findFirstExisting(paths: Iterable<string>): string | null {
 /**
  * Find a file (e.g., package.json, LICENSE) by searching cwd, moduleDir, and
  * entryDir, and their parent directories up to two levels.
+ * Also searches relative to the current module for npx/installed package scenarios.
  */
 export function findNearestFile(filename: string, bases?: string[]): string | null {
   const roots = (bases && bases.length ? bases : [getCwd(), getModuleDir(), getEntryDir()]).filter(Boolean) as string[];
+  
+  // For installed packages, also check relative to the current module directory
+  const moduleDir = getModuleDir();
+  if (moduleDir) {
+    // Check if we're running from node_modules (npx scenario)
+    if (moduleDir.includes('node_modules')) {
+      // Look for files in the package root (parent of lib/ directory)
+      const packageRoot = path.dirname(moduleDir);
+      roots.push(packageRoot);
+      roots.push(moduleDir);
+    }
+  }
+  
   const levels: string[][] = [[], [".."], ["..", ".."]];
   const seen = new Set<string>();
   const candidates: string[] = [];
@@ -87,11 +101,21 @@ export function findNearestFile(filename: string, bases?: string[]): string | nu
 /**
  * Prolog script candidate generation (no fs checks). Produces the prioritized
  * search order used by the server to locate prolog_server.pl or server.pl.
+ * Also searches relative to the current module for npx/installed package scenarios.
  */
 export function* prologScriptCandidates(moduleDir: string, entryDir: string, mainName: string, altName: string): Generator<string> {
   const cwd = getCwd();
   const seen = new Set<string>();
   const push = function*(p: string) { if (!seen.has(p)) { seen.add(p); yield p; } };
+
+  // For installed packages, check if we're running from node_modules
+  if (moduleDir && moduleDir.includes('node_modules')) {
+    // Look for prolog/server.pl in the package root (parent of lib/ directory)
+    const packageRoot = path.dirname(moduleDir);
+    yield* push(path.resolve(packageRoot, "prolog", altName));
+    yield* push(path.resolve(packageRoot, altName));
+    yield* push(path.resolve(moduleDir, "..", "prolog", altName));
+  }
 
   // cwd-based first
   yield* push(path.resolve(cwd, "src", mainName));
@@ -102,6 +126,7 @@ export function* prologScriptCandidates(moduleDir: string, entryDir: string, mai
     [mainName],
     ["..", "..", "src", mainName],
     ["..", "prolog", altName],
+    ["prolog", altName], // for npm packages
   ];
 
   for (const p of generateCandidates([moduleDir, entryDir], patterns)) {
