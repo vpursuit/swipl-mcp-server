@@ -95,7 +95,6 @@ export class PrologInterface {
       "-q",
       "-s",
       serverScript,
-      ...(isOn(process.env.SWI_MCP_EXTENDED_SAFE) ? ["-g", "assert(safe_extended_enabled)"] : []),
       ...(traceOn ? ["-g", "assert(swi_mcp_trace_enabled)"] : []),
       "-g",
       "server_loop",

@@ -1,4 +1,5 @@
-import { toolHandlers } from "../src/tools.js";
+import { describe, afterEach, test, expect } from "vitest";
+import { toolHandlers } from "../../src/tools.js";
 
 describe("Agent vs Developer Help/Diagnostics", () => {
   const origEnv = { ...process.env };

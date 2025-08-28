@@ -4,6 +4,9 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration", 
+    "test:integration:npx": "vitest run test/integration/npx.test.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:npx": "node test/npx-integration.test.js",

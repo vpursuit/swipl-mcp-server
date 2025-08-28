@@ -1,4 +1,5 @@
-import { toolHandlers, prologInterface } from "../src/tools.js";
+import { describe, beforeEach, afterEach, expect } from "vitest";
+import { toolHandlers, prologInterface } from "../../src/tools.js";
 
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
@@ -22,7 +23,7 @@ maybeDescribe("Ancestor Rules Test", () => {
     await toolHandlers.dbAssert({ fact: "parent(tom, bob)" });
     await toolHandlers.dbAssert({ fact: "parent(bob, alice)" });
     await toolHandlers.dbAssert({ fact: "parent(alice, charlie)" });
-    
+
     // Add the complete ancestor rules (base case + recursive case)
     await toolHandlers.dbAssert({ fact: "ancestor(X, Y) :- parent(X, Y)" });
     await toolHandlers.dbAssert({ fact: "ancestor(X, Z) :- parent(X, Y), ancestor(Y, Z)" });
@@ -54,7 +55,7 @@ maybeDescribe("Ancestor Rules Test", () => {
     // Test finding all ancestors of charlie
     result = await toolHandlers.queryStart({ query: "ancestor(X, charlie)" });
     expect(result.isError).toBeFalsy();
-    
+
     // Collect all solutions
     const ancestors = [];
     let currentResult = await toolHandlers.queryNext();
@@ -78,7 +79,7 @@ maybeDescribe("Ancestor Rules Test", () => {
     expect(ancestors).toContain("tom");
 
     const elapsed = Date.now() - startTime;
-    
+
     // Should complete quickly without timeout
     expect(elapsed).toBeLessThan(5000);
   });
@@ -89,7 +90,7 @@ maybeDescribe("Ancestor Rules Test", () => {
     // Add parent facts
     await toolHandlers.dbAssert({ fact: "parent(john, mary)" });
     await toolHandlers.dbAssert({ fact: "parent(mary, susan)" });
-    
+
     // Add the complete ancestor rules
     await toolHandlers.dbAssert({ fact: "ancestor(X, Y) :- parent(X, Y)" });
     await toolHandlers.dbAssert({ fact: "ancestor(X, Z) :- parent(X, Y), ancestor(Y, Z)" });
@@ -110,7 +111,7 @@ maybeDescribe("Ancestor Rules Test", () => {
     await toolHandlers.queryClose();
 
     const elapsed = Date.now() - startTime;
-    
+
     // Should complete quickly
     expect(elapsed).toBeLessThan(2000);
   });

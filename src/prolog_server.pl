@@ -64,7 +64,21 @@ parse_term(Line, Term, VarNames) :-
         S = Line
     ; string_concat(Line, ".", S)
     ),
-    read_term_from_atom(S, Term, [variable_names(VarNames), syntax_errors(error)]).
+    catch(
+        read_term_from_atom(S, Term, [variable_names(VarNames), syntax_errors(error)]),
+        ParseError,
+        (debug_trace(parse_error(ParseError, Line)),
+         % Try with added parentheses for complex expressions containing commas
+         ( (sub_string(Line, _, _, _, ','), \+ sub_string(Line, 0, 1, _, '(')) ->
+           (string_concat("(", Line, Temp),
+            string_concat(Temp, ").", S2),
+            debug_trace(trying_parenthesized_parse(S2)),
+            catch(read_term_from_atom(S2, Term, [variable_names(VarNames), syntax_errors(error)]),
+                  _,
+                  throw(ParseError)))
+         ; throw(ParseError))
+        )
+    ).
 
 % Unified reply printer (wrap with id/2 when a request id is present)
 reply(Term) :-
@@ -142,6 +156,15 @@ dispatch(retractall(Fact), _) :- !,
 % ========== STANDARD QUERY MODE (call_nth/2) ==========
 
 dispatch(start_query(Query), VarNamesAll) :- !,
+    % Basic validation of complex queries
+    ( catch(validate_complex_query(Query), ValidationError, (
+        debug_trace(query_validation_failed(ValidationError, Query)),
+        % Only fail on serious validation errors, not minor issues
+        ( ValidationError = error(type_error(_, _), _) ->
+            (reply(error(invalid_query_structure(ValidationError))), !, fail)
+        ; true  % Allow other validation "errors" to proceed
+        )
+    )) -> true ; true ),  % Don't fail if validation fails
     % Filter var names to only those that appear in Query
     term_variables(Query, QVars),
     include_varnames_for(QVars, VarNamesAll, QVarNames),
@@ -161,17 +184,27 @@ dispatch(start_query(Query), VarNamesAll) :- !,
 dispatch(next_solution, _) :- !,
     ( get_active_session(query, (Query, VarNames, N)) ->
         copy_term(Query-VarNames, Q2-V2),
-        ( catch(call_nth(kb:Q2, N), E, (reply(error(E)), cleanup_query_session, !, fail)) ->
+        ( catch(call_nth(kb:Q2, N), E, (
+            debug_trace(query_execution_error(E, N)),
+            reply(error(E)), 
+            cleanup_query_session, 
+            !, fail)) ->
             % Build bindings from the fresh VarName pairs
             var_bindings(V2, Bindings),
             reply(solution(Bindings)),
             N1 is N + 1,
-            % Update session state
-            retract(active_session(query, (Query, VarNames, N))),
-            assertz(active_session(query, (Query, VarNames, N1))),
-            % Update legacy state
-            retract(solution_index(N)),
-            assertz(solution_index(N1))
+            % Update session state atomically - if any step fails, cleanup
+            ( catch((
+                retract(active_session(query, (Query, VarNames, N))),
+                assertz(active_session(query, (Query, VarNames, N1))),
+                retract(solution_index(N)),
+                assertz(solution_index(N1))
+            ), StateError, (
+                debug_trace(state_update_error(StateError, N, N1)),
+                cleanup_query_session,
+                reply(error(state_inconsistency)),
+                fail
+            )) -> true ; (cleanup_query_session, fail) )
         ; reply(no_more_solutions),
           cleanup_query_session
         )
@@ -179,9 +212,11 @@ dispatch(next_solution, _) :- !,
     ).
 
 cleanup_query_session :-
-    end_session,
-    retractall(current_query(_, _)),
-    retractall(solution_index(_)).
+    % Robust cleanup - don't fail on individual cleanup steps
+    catch(end_session, _, true),
+    catch(retractall(current_query(_, _)), _, true),
+    catch(retractall(solution_index(_)), _, true),
+    debug_trace(query_session_cleaned_up).
 
 dispatch(close_query, _) :- !,
     ( get_active_session(query, _) ->
@@ -195,6 +230,15 @@ dispatch(close_query, _) :- !,
 % ========== ENGINE QUERY MODE ==========
 
 dispatch(start_engine(Query), VarNamesAll) :- !,
+    % Basic validation of complex queries
+    ( catch(validate_complex_query(Query), ValidationError, (
+        debug_trace(engine_query_validation_failed(ValidationError, Query)),
+        % Only fail on serious validation errors, not minor issues  
+        ( ValidationError = error(type_error(_, _), _) ->
+            (reply(error(invalid_query_structure(ValidationError))), !, fail)
+        ; true  % Allow other validation "errors" to proceed
+        )
+    )) -> true ; true ),  % Don't fail if validation fails
     % Filter var names to those actually in Query
     term_variables(Query, QVars),
     include_varnames_for(QVars, VarNamesAll, QVarNames),
@@ -209,15 +253,27 @@ dispatch(start_engine(Query), VarNamesAll) :- !,
     ; true
     ),
     
-    % Ensure any legacy query state is cleared (defensive)
-    retractall(current_query(_, _)),
-    retractall(solution_index(_)),
+    % Defensive cleanup of any existing state  
+    catch(retractall(current_query(_, _)), _, true),
+    catch(retractall(solution_index(_)), _, true),
+    catch(retractall(current_engine(_)), _, true),
     
-    % Create new engine
+    % Create new engine with enhanced error handling
     % Answer template = QVarNames (list of Name=Var pairs for variable bindings)
     % Goal = Query (the goal to execute)
     % Engine = resulting engine ID
-    ( catch(engine_create(QVarNames, kb:Query, Engine), E, (reply(error(E)), fail)) ->
+    ( catch(engine_create(QVarNames, kb:Query, Engine), EngineError, (
+        debug_trace(engine_creation_error(EngineError, Query)),
+        ( EngineError = error(existence_error(procedure, Pred), _) ->
+            reply(error(undefined_predicate_in_query(Pred, Query)))
+        ; EngineError = error(evaluation_error(Kind, Culprit), _) ->
+            reply(error(arithmetic_error_in_query(Kind, Culprit, Query)))
+        ; EngineError = error(syntax_error(Desc), _) ->
+            reply(error(syntax_error_in_query(Desc, Query)))
+        ; reply(error(engine_creation_failed(EngineError)))
+        ),
+        fail
+    )) ->
         % Start new engine session
         assertz(active_session(engine, Engine)),
         assertz(current_engine(Engine)),
@@ -227,14 +283,26 @@ dispatch(start_engine(Query), VarNamesAll) :- !,
 
 dispatch(next_engine, _) :- !,
     ( get_active_session(engine, Engine) ->
-        ( engine_next(Engine, Bindings) ->
+        catch(engine_next(Engine, Bindings), EngineError, (
+            debug_trace(engine_next_error(EngineError)),
+            % Clean up failed engine
+            catch(engine_destroy(Engine), _, true),
+            end_session,
+            retractall(current_engine(_)),
+            ( EngineError = error(evaluation_error(Kind, Culprit), _) ->
+                reply(error(arithmetic_evaluation_failed(Kind, Culprit)))
+            ; EngineError = error(existence_error(procedure, Pred), _) ->
+                reply(error(undefined_predicate_during_execution(Pred)))
+            ; reply(error(engine_execution_failed(EngineError)))
+            ),
+            fail
+        )) ->
             reply(solution(Bindings))
-        ; % No more answers - cleanup engine
+        ; % No more answers - cleanup engine  
           reply(no_more_solutions),
           catch(engine_destroy(Engine), _, true),
           end_session,
           retractall(current_engine(_))
-        )
     ; reply(error(no_active_engine))
     ).
 
@@ -420,6 +488,44 @@ is_builtin_predicate(Term) :-
     catch(predicate_property(Term, built_in), _, fail), !.
 is_builtin_predicate(Term) :-
     catch(predicate_property(Term, imported_from(_)), _, fail), !.
+
+% ========== COMPLEX QUERY VALIDATION ==========
+
+% Validate complex queries before execution (basic validation only)
+validate_complex_query(Query) :-
+    debug_trace(validating_complex_query(Query)),
+    % Basic validation - just check it's callable
+    callable(Query),
+    % If it's a compound term, do some basic checks
+    ( compound(Query) -> validate_compound_structure(Query) ; true ),
+    debug_trace(complex_query_validation_passed(Query)).
+
+% Basic compound structure validation
+validate_compound_structure(Query) :-
+    % Convert to atom for string-based checks
+    catch(
+        (term_to_atom(Query, QueryAtom),
+         \+ malformed_compound(QueryAtom)),
+        _,
+        true  % If conversion fails, just allow it
+    ).
+
+% Check balanced parentheses in character list
+check_balanced_parens([], 0) :- !.
+check_balanced_parens(['('|Rest], N) :- !, 
+    N1 is N + 1,
+    check_balanced_parens(Rest, N1).
+check_balanced_parens([')'|Rest], N) :- 
+    N > 0, !,
+    N1 is N - 1, 
+    check_balanced_parens(Rest, N1).
+check_balanced_parens([_|Rest], N) :- 
+    check_balanced_parens(Rest, N).
+
+% Detect malformed compound terms (only check for obvious errors)
+malformed_compound(QueryAtom) :-
+    % Check for patterns like "term1, , term2" (double commas)
+    sub_atom(QueryAtom, _, 2, _, ',,'), !.
 
 
 % Determine if a goal is safe under sandbox rules, but permit undefined

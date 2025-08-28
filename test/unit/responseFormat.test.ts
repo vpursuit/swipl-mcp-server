@@ -4,7 +4,8 @@
  * terms returned by the unified Prolog server.
  */
 
-import { PrologInterface } from "../src/PrologInterface.js";
+import { describe, beforeEach, afterEach, test, expect } from "vitest";
+import { PrologInterface } from "../../src/PrologInterface.js";
 
 describe("Response Format Parsing", () => {
   let mockPrologInterface: PrologInterface;

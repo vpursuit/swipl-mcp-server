@@ -4,7 +4,7 @@ import { resolvePackageVersion, findNearestFile } from "./meta.js";
 
 type ToolResponse = {
   content: any[];
-  structuredContent?: Record<string, unknown>;
+  structuredContent: Record<string, unknown>;
   isError?: boolean;
 };
 
@@ -124,6 +124,7 @@ export const toolHandlers = {
     } catch (error) {
       return {
         content: [{ type: "text", text: `Error reading license file: ${error instanceof Error ? error.message : String(error)}` }],
+        structuredContent: { error: error instanceof Error ? error.message : String(error) },
         isError: true,
       };
     }

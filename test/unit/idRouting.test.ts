@@ -1,14 +1,15 @@
-import { PrologInterface } from "../src/PrologInterface.js";
+import { describe, test, expect } from "vitest";
+import { PrologInterface } from "../../src/PrologInterface.js";
 
 describe("Correlation ID routing", () => {
   test("routes tagged responses by id even if not FIFO", async () => {
     const iface = new PrologInterface();
     // Monkeypatch internal pending map with two promises
     const p1 = new Promise<string>((resolve) => {
-      (iface as any).queryPromises.set("1", { resolve, reject: () => {} });
+      (iface as any).queryPromises.set("1", { resolve, reject: () => { } });
     });
     const p2 = new Promise<string>((resolve) => {
-      (iface as any).queryPromises.set("2", { resolve, reject: () => {} });
+      (iface as any).queryPromises.set("2", { resolve, reject: () => { } });
     });
 
     // Deliver responses out of order

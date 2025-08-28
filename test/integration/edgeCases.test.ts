@@ -1,4 +1,5 @@
-import { PrologInterface } from "../src/PrologInterface.js";
+import { describe, beforeEach, afterEach, test, expect } from "vitest";
+import { PrologInterface } from "../../src/PrologInterface.js";
 
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
