@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-import { inputSchemas } from "../src/tools.js";
+import { inputSchemas } from "../../src/tools.js";
 
 describe("MCP Tools", () => {
   describe("Input Validation Schemas", () => {

@@ -2,7 +2,7 @@
  * Unit tests for Error Handling and Edge Cases
  * Tests various error conditions and boundary cases
  */
-
+import { describe, expect } from "vitest";
 import { z } from "zod";
 
 describe("Error Handling and Edge Cases", () => {
@@ -62,7 +62,7 @@ describe("Error Handling and Edge Cases", () => {
     });
 
     it("should handle timeout cleanup properly", () => {
-      const timeoutId = setTimeout(() => {}, 1000);
+      const timeoutId = setTimeout(() => { }, 1000);
       clearTimeout(timeoutId);
 
       // Verify cleanup doesn't throw

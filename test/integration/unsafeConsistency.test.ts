@@ -1,4 +1,5 @@
-import { toolHandlers, prologInterface } from "../src/tools.js";
+import { describe, beforeEach, afterEach, test, expect } from "vitest";
+import { toolHandlers, prologInterface } from "../../src/tools.js";
 
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 

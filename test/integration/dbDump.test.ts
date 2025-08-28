@@ -3,7 +3,8 @@
  * Tests the database dump functionality with proper Prolog formatting
  */
 
-import { toolHandlers, prologInterface } from "../src/tools.js";
+import { describe, beforeEach, afterEach, test, expect } from "vitest";
+import { toolHandlers, prologInterface } from "../../src/tools.js";
 
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
@@ -39,7 +40,7 @@ maybeDescribe("Database Dump Tool", () => {
       expect(result.content[0].text).toContain("parent(john,mary)");
       expect(result.content[0].text).toContain("parent(mary,alice)");
       expect(result.content[0].text).toContain("age(john,45)");
-      
+
       // Check that facts are properly formatted with periods
       expect(result.structuredContent.dump).toMatch(/parent\(john,mary\)\./);
       expect(result.structuredContent.dump).toMatch(/parent\(mary,alice\)\./);
@@ -63,10 +64,10 @@ maybeDescribe("Database Dump Tool", () => {
 
     test("should handle mixed facts and rules", async () => {
       // Add both facts and rules
-      await toolHandlers.dbAssert({ 
+      await toolHandlers.dbAssert({
         fact: [
           "likes(mary, food)",
-          "likes(mary, wine)", 
+          "likes(mary, wine)",
           "likes(john, wine)",
           "happy(X) :- likes(X, wine)"
         ]
@@ -76,10 +77,10 @@ maybeDescribe("Database Dump Tool", () => {
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Knowledge base dump:");
-      
+
       const dump = result.structuredContent.dump;
       expect(dump).toContain("likes(mary,food).");
-      expect(dump).toContain("likes(mary,wine).");  
+      expect(dump).toContain("likes(mary,wine).");
       expect(dump).toContain("likes(john,wine).");
       expect(dump).toMatch(/happy\(.*:-.*likes\(/);
     });
@@ -96,15 +97,15 @@ maybeDescribe("Database Dump Tool", () => {
       // Add some facts
       await toolHandlers.dbAssert({ fact: "test_fact(a)" });
       await toolHandlers.dbAssert({ fact: "test_fact(b)" });
-      
+
       // Check initial dump
       let result = await toolHandlers.dbDump();
       expect(result.structuredContent.dump).toContain("test_fact(a).");
       expect(result.structuredContent.dump).toContain("test_fact(b).");
-      
+
       // Retract one fact
       await toolHandlers.dbRetract({ fact: "test_fact(a)" });
-      
+
       // Check updated dump
       result = await toolHandlers.dbDump();
       expect(result.structuredContent.dump).not.toContain("test_fact(a).");

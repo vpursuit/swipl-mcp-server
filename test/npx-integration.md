@@ -2,7 +2,11 @@
 
 ## Overview
 
-The `npx-integration.test.js` provides comprehensive testing for real-world npx usage scenarios. This test catches issues that unit tests miss by simulating the actual npm package installation and execution flow.
+The NPX integration testing provides comprehensive testing for real-world npx usage scenarios. This test catches issues that unit tests miss by simulating the actual npm package installation and execution flow.
+
+**Two ways to run NPX integration tests:**
+1. **Standalone script**: `test/npx-integration.test.js` - Used by CI and publishing
+2. **Vitest integration**: `test/integration/npx.test.ts` - Part of the unified test suite
 
 ## What it Tests
 
@@ -41,15 +45,42 @@ const tests = [
 
 ## Running the Tests
 
+### Standalone NPX Test (CI/Publishing)
 ```bash
-# Run npx integration test only
+# Run standalone npx integration test only (used by CI)
 npm run test:npx
 
-# Run all tests (unit + integration)
+# Run all tests including standalone npx (used by CI)
 npm run test:all
 
-# Integration test runs automatically before publish
+# Standalone test runs automatically before publish
 npm run prepublishOnly
+```
+
+### Unified Test Suite
+```bash
+# Run all unit tests (fast, no SWI-Prolog required)
+npm run test:unit
+
+# Run all integration tests including NPX (requires SWI-Prolog)
+npm run test:integration
+
+# Run NPX tests only within Vitest framework
+npm run test:integration:npx
+
+# Run everything (unit + integration tests)
+npm test
+```
+
+### Test Structure
+```
+test/
+├── unit/                          # Unit tests (no SWI-Prolog)
+├── integration/                   # Integration tests (requires SWI-Prolog)
+│   ├── npx.test.ts               # ⭐ NPX tests in Vitest framework
+│   └── [...other integration...]
+├── npx-integration.test.js        # 🔧 Standalone script for CI
+└── setup.js                      # Test configuration
 ```
 
 ## Why This Matters

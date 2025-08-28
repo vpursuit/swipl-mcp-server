@@ -1,4 +1,5 @@
-import { jsonSchemas } from "../src/tools.js";
+import { describe, expect } from "vitest";
+import { jsonSchemas } from "../../src/tools.js";
 
 describe("JSON Schemas (MCP registration)", () => {
   it("should be plain serializable JSON objects", () => {
