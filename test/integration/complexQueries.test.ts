@@ -250,7 +250,7 @@ maybeDescribe("Complex Query Fixes", () => {
     test("should handle undefined predicates gracefully", async () => {
 
       const query = "undefined_predicate(X)";
-      // Engine creation may succeed, but execution should fail
+      // Engine creation may succeed, but execution should just return no solutions
       const startResult = await toolHandlers.queryStartEngine({ query });
 
       if (startResult.isError) {
@@ -258,9 +258,10 @@ maybeDescribe("Complex Query Fixes", () => {
         const errorText = startResult.content?.[0]?.text || "";
         expect(errorText).toBeTruthy();
       } else {
-        // If engine creation succeeds, execution should fail
+        // If engine creation succeeds, execution should return no solutions (not an error)
         const nextResult = await toolHandlers.queryNext();
-        expect(nextResult.isError).toBeTruthy();
+        expect(nextResult.isError).toBeFalsy(); // Should not be an error
+        expect(nextResult.structuredContent?.more_solutions).toBe(false); // Should have no more solutions
         await toolHandlers.queryClose();
       }
     });

@@ -66,6 +66,7 @@ export class PrologInterface {
   private currentQuery: string | null = null;
   private queryActive: boolean = false;
   private engineActive: boolean = false;
+  private engineReachedEOF: boolean = false;
   // Ensure only one command is in flight at a time
   private commandQueue: Promise<void> = Promise.resolve();
   // Session state guard to avoid races across transitions
@@ -351,8 +352,9 @@ export class PrologInterface {
     this.queryActive = true;
     this.sessionState = "query";
 
-    // Send start_query command to server
-    const result = await this.sendCommand(`start_query(${query})`);
+    // Send start_query_string command to server using proper string escaping
+    const escapedQuery = this.escapeQueryString(query);
+    const result = await this.sendCommand(`start_query_string("${escapedQuery}")`);
     // If Prolog responded with an error(...) term, reject
     if (typeof result === "string" && result.startsWith(TERM_ERROR)) {
       this.queryActive = false;
@@ -551,10 +553,12 @@ export class PrologInterface {
     this.assertRunning();
 
     this.engineActive = true;
+    this.engineReachedEOF = false;
     this.sessionState = "engine";
     // Commands are serialized; prior closes complete before this runs
-    // Send start_engine command to server
-    const result = await this.sendCommand(`start_engine(${query})`);
+    // Send start_engine_string command to server using proper string escaping
+    const escapedQuery = this.escapeQueryString(query);
+    const result = await this.sendCommand(`start_engine_string("${escapedQuery}")`);
     // Reject on any non-ok response from server
     if (result !== "ok") {
       this.engineActive = false;
@@ -575,6 +579,11 @@ export class PrologInterface {
       return { error: "No active engine. Start an engine first.", more_solutions: false };
     }
 
+    // Check if engine has already reached EOF
+    if (this.engineReachedEOF) {
+      return { error: "Engine has no more solutions. The engine has already reached end-of-file.", more_solutions: false };
+    }
+
     this.assertRunning();
 
     try {
@@ -582,11 +591,13 @@ export class PrologInterface {
       const parsed = this.parseServerResult(result);
       if (parsed.kind === "eof") {
         this.engineActive = false;
+        this.engineReachedEOF = true;
         this.sessionState = "idle";
         return { more_solutions: false };
       }
       if (parsed.kind === "error") {
         this.engineActive = false;
+        this.engineReachedEOF = true;
         this.sessionState = "idle";
         return { error: parsed.error, more_solutions: false };
       }
@@ -596,6 +607,7 @@ export class PrologInterface {
       return { solution: parsed.value, more_solutions: true };
     } catch (error) {
       this.engineActive = false;
+      this.engineReachedEOF = true;
       this.sessionState = "idle";
       return {
         error: error instanceof Error ? error.message : String(error),
@@ -622,6 +634,7 @@ export class PrologInterface {
     }
 
     this.engineActive = false;
+    this.engineReachedEOF = false;
     this.sessionState = "idle";
 
     return { status: "closed" };
@@ -675,9 +688,20 @@ export class PrologInterface {
     this.queryPromises.clear();
     this.queryActive = false;
     this.engineActive = false;
+    this.engineReachedEOF = false;
     this.currentQuery = null;
     this.readyPromise = null;
     this.readyResolver = null;
     this.sessionState = "idle";
+  }
+
+  /**
+   * Escape a query string for safe passage to Prolog as a quoted string
+   * Handles quotes and backslashes that could interfere with string parsing
+   */
+  private escapeQueryString(query: string): string {
+    return query
+      .replace(/\\/g, '\\\\')  // Escape backslashes first
+      .replace(/"/g, '\\"');   // Escape double quotes
   }
 }
