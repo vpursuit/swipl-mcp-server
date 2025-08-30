@@ -39,13 +39,17 @@ server_loop_ :-
         halt(0)
     ; Line == "" ->
         server_loop_   % ignore empty lines
+    ; string_length(Line, Len), Len > 100000 ->  % 100KB limit
+        reply(error(line_too_long(Len))),
+        server_loop_
     ; process_line(Line),
       server_loop_
     ).
 
 % Process a single input line: parse + optional cmd(ID,Term) wrapping + dispatch
 process_line(Line) :-
-    ( catch(parse_term(Line, Term0, VarNames), E, (reply(error(parse(E))), fail)) ->
+    ( catch(parse_term(Line, Term0, VarNames), ParseError, (reply(error(syntax_error(ParseError, Line))), fail)) ->
+        % Process successfully parsed term
         ( Term0 = cmd(Id, Term) ->
             setup_call_cleanup(
                 assertz(current_request_id(Id)),
@@ -55,30 +59,17 @@ process_line(Line) :-
         ;
             catch(dispatch(Term0, VarNames), E2, reply(error(E2)))
         )
-    ; true
+    ; % Parse error was already handled and reported
+        true
     ).
 
-% Parse term with or without trailing '.'
+% Parse term with or without trailing '.' - STRICT parsing only
 parse_term(Line, Term, VarNames) :-
     ( sub_string(Line, _, 1, 0, '.') ->
         S = Line
     ; string_concat(Line, ".", S)
     ),
-    catch(
-        read_term_from_atom(S, Term, [variable_names(VarNames), syntax_errors(error)]),
-        ParseError,
-        (debug_trace(parse_error(ParseError, Line)),
-         % Try with added parentheses for complex expressions containing commas
-         ( (sub_string(Line, _, _, _, ','), \+ sub_string(Line, 0, 1, _, '(')) ->
-           (string_concat("(", Line, Temp),
-            string_concat(Temp, ").", S2),
-            debug_trace(trying_parenthesized_parse(S2)),
-            catch(read_term_from_atom(S2, Term, [variable_names(VarNames), syntax_errors(error)]),
-                  _,
-                  throw(ParseError)))
-         ; throw(ParseError))
-        )
-    ).
+    read_term_from_atom(S, Term, [variable_names(VarNames), syntax_errors(error)]).
 
 % Unified reply printer (wrap with id/2 when a request id is present)
 reply(Term) :-
@@ -155,7 +146,22 @@ dispatch(retractall(Fact), _) :- !,
 
 % ========== STANDARD QUERY MODE (call_nth/2) ==========
 
-dispatch(start_query(Query), VarNamesAll) :- !,
+% String-based query start (new preferred approach)
+dispatch(start_query_string(QueryString), _) :- !,
+    debug_trace(parsing_query_string(QueryString)),
+    ( catch(read_term_from_atom(QueryString, Query, [variable_names(VarNames)]), ParseError, (
+        debug_trace(query_parse_error(ParseError, QueryString)),
+        reply(error(invalid_query_syntax(ParseError))),
+        !, fail
+    )) ->
+        debug_trace(parsed_query(Query, VarNames)),
+        % Call the start_query logic directly with parsed Query and VarNames
+        start_query_impl(Query, VarNames)
+    ; true
+    ).
+
+% Common implementation for both string-based and direct query starts
+start_query_impl(Query, VarNamesAll) :-
     % Basic validation of complex queries
     ( catch(validate_complex_query(Query), ValidationError, (
         debug_trace(query_validation_failed(ValidationError, Query)),
@@ -180,6 +186,9 @@ dispatch(start_query(Query), VarNamesAll) :- !,
         reply(ok)
     ; true  % Error already reported by start_session
     ).
+
+dispatch(start_query(Query), VarNamesAll) :- !,
+    start_query_impl(Query, VarNamesAll).
 
 dispatch(next_solution, _) :- !,
     ( get_active_session(query, (Query, VarNames, N)) ->
@@ -229,7 +238,22 @@ dispatch(close_query, _) :- !,
 
 % ========== ENGINE QUERY MODE ==========
 
-dispatch(start_engine(Query), VarNamesAll) :- !,
+% String-based engine start (new preferred approach)
+dispatch(start_engine_string(QueryString), _) :- !,
+    debug_trace(parsing_engine_query_string(QueryString)),
+    ( catch(read_term_from_atom(QueryString, Query, [variable_names(VarNames)]), ParseError, (
+        debug_trace(engine_query_parse_error(ParseError, QueryString)),
+        reply(error(invalid_query_syntax(ParseError))),
+        !, fail
+    )) ->
+        debug_trace(parsed_engine_query(Query, VarNames)),
+        % Call the start_engine logic directly with parsed Query and VarNames
+        start_engine_impl(Query, VarNames)
+    ; true
+    ).
+
+% Common implementation for both string-based and direct engine starts
+start_engine_impl(Query, VarNamesAll) :-
     % Basic validation of complex queries
     ( catch(validate_complex_query(Query), ValidationError, (
         debug_trace(engine_query_validation_failed(ValidationError, Query)),
@@ -281,29 +305,45 @@ dispatch(start_engine(Query), VarNamesAll) :- !,
     ; reply(error(engine_creation_failed))
     ).
 
+dispatch(start_engine(Query), VarNamesAll) :- !,
+    start_engine_impl(Query, VarNamesAll).
+
 dispatch(next_engine, _) :- !,
+    debug_trace(next_engine_called),
     ( get_active_session(engine, Engine) ->
-        catch(engine_next(Engine, Bindings), EngineError, (
-            debug_trace(engine_next_error(EngineError)),
-            % Clean up failed engine
-            catch(engine_destroy(Engine), _, true),
-            end_session,
-            retractall(current_engine(_)),
-            ( EngineError = error(evaluation_error(Kind, Culprit), _) ->
-                reply(error(arithmetic_evaluation_failed(Kind, Culprit)))
-            ; EngineError = error(existence_error(procedure, Pred), _) ->
-                reply(error(undefined_predicate_during_execution(Pred)))
-            ; reply(error(engine_execution_failed(EngineError)))
+        debug_trace(found_active_engine(Engine)),
+        catch(
+            ( engine_next(Engine, Bindings) ->
+                debug_trace(engine_next_success(Bindings)),
+                reply(solution(Bindings))
+            ; debug_trace(engine_next_failed_no_more_solutions),
+              % No more answers - cleanup engine gracefully
+              catch(engine_destroy(Engine), DestroyError, (
+                  debug_trace(engine_destroy_error(DestroyError))
+              )),
+              end_session,
+              retractall(current_engine(_)),
+              reply(no_more_solutions)
             ),
-            fail
-        )) ->
-            reply(solution(Bindings))
-        ; % No more answers - cleanup engine  
-          reply(no_more_solutions),
-          catch(engine_destroy(Engine), _, true),
-          end_session,
-          retractall(current_engine(_))
-    ; reply(error(no_active_engine))
+            EngineError,
+            (
+                debug_trace(engine_next_exception(EngineError)),
+                % Clean up failed engine gracefully
+                catch(engine_destroy(Engine), DestroyError, (
+                    debug_trace(engine_destroy_error(DestroyError))
+                )),
+                end_session,
+                retractall(current_engine(_)),
+                ( EngineError = error(evaluation_error(Kind, Culprit), _) ->
+                    reply(error(arithmetic_evaluation_failed(Kind, Culprit)))
+                ; EngineError = error(existence_error(procedure, Pred), _) ->
+                    reply(error(undefined_predicate_during_execution(Pred)))
+                ; reply(error(engine_execution_failed(EngineError)))
+                )
+            )
+        )
+    ; debug_trace(no_active_engine),
+      reply(error(no_active_engine))
     ).
 
 dispatch(close_engine, _) :- !,
@@ -494,42 +534,22 @@ is_builtin_predicate(Term) :-
 % Validate complex queries before execution (basic validation only)
 validate_complex_query(Query) :-
     debug_trace(validating_complex_query(Query)),
-    % Basic validation - just check it's callable
     callable(Query),
-    % If it's a compound term, do some basic checks
-    ( compound(Query) -> validate_compound_structure(Query) ; true ),
+    % Only do term-structure validation here
+    % All syntax checking is done by read_term_from_atom
     debug_trace(complex_query_validation_passed(Query)).
 
-% Basic compound structure validation
-validate_compound_structure(Query) :-
-    % Convert to atom for string-based checks
-    catch(
-        (term_to_atom(Query, QueryAtom),
-         \+ malformed_compound(QueryAtom)),
-        _,
-        true  % If conversion fails, just allow it
-    ).
-
-% Check balanced parentheses in character list
-check_balanced_parens([], 0) :- !.
-check_balanced_parens(['('|Rest], N) :- !, 
-    N1 is N + 1,
-    check_balanced_parens(Rest, N1).
-check_balanced_parens([')'|Rest], N) :- 
-    N > 0, !,
-    N1 is N - 1, 
-    check_balanced_parens(Rest, N1).
-check_balanced_parens([_|Rest], N) :- 
-    check_balanced_parens(Rest, N).
-
-% Detect malformed compound terms (only check for obvious errors)
-malformed_compound(QueryAtom) :-
-    % Check for patterns like "term1, , term2" (double commas)
-    sub_atom(QueryAtom, _, 2, _, ',,'), !.
 
 
 % Determine if a goal is safe under sandbox rules, but permit undefined
 % user predicates (they will simply fail at runtime due to unknown=fail).
+
+% First, always block explicitly dangerous predicates
+safe_goal_ok(Goal) :-
+    strip_module(Goal, _, Plain),
+    explicitly_dangerous(Plain),
+    !, fail.
+
 % Treat a goal in kb: as safe if its structure is safe per body_safe/1.
 safe_goal_ok(Goal) :-
     strip_module(Goal, M, Plain),
@@ -538,10 +558,13 @@ safe_goal_ok(Goal) :-
     debug_trace(kb_goal_ok(Plain)),
     !.
 % As a fallback for kb goals: allow if not imported (unknown user preds fail harmlessly)
+% Only allow if we can verify the predicate is truly user-defined
 safe_goal_ok(Goal) :-
     strip_module(Goal, M, Plain),
     M == kb, callable(Plain),
-    \+ predicate_property(kb:Plain, imported_from(_)),
+    % Only allow if we can successfully verify it's not imported AND not built-in
+    catch(\+ predicate_property(kb:Plain, imported_from(_)), _, fail),
+    catch(\+ predicate_property(kb:Plain, built_in), _, fail),
     debug_trace(kb_goal_default(Plain)),
     !.
 
@@ -552,6 +575,7 @@ safe_goal_ok(Goal) :-
         ( E = error(existence_error(procedure,_), sandbox(_, _))
         -> debug_trace(sandbox_undefined_allowed(Goal)), true
         ; throw(E)
-        )),
+        ))),
     debug_trace(sandbox_ok(Goal)),
     !.
+
