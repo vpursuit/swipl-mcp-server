@@ -1,27 +1,21 @@
 import { describe, beforeEach, afterEach, test, expect } from "vitest";
-import { PrologInterface } from "../../src/PrologInterface.js";
-import { toolHandlers } from "../../src/tools.js";
+import { toolHandlers, prologInterface } from "../../src/tools.js";
 
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
 maybeDescribe("Complex Query Fixes", () => {
-  let prologInterface: PrologInterface;
-
-  beforeEach(async () => {
-    prologInterface = new PrologInterface();
-    await prologInterface.start();
+  beforeEach(() => {
+    // Reset any existing state
+    prologInterface.stop();
   });
 
-  afterEach(async () => {
-    // Clean up any active sessions before stopping
-    try {
-      await toolHandlers.queryClose();
-    } catch { }
+  afterEach(() => {
     prologInterface.stop();
   });
 
   describe("Complex Arithmetic Queries", () => {
     test("should handle complex arithmetic with commas in standard mode", async () => {
+      await prologInterface.start();
 
       // Test the specific pattern mentioned: queries with commas and arithmetic
       const query = "findall(X, (between(1,10,X), 0 is X mod 2), L)";
@@ -36,6 +30,7 @@ maybeDescribe("Complex Query Fixes", () => {
     });
 
     test("should handle complex arithmetic with commas in engine mode", async () => {
+      await prologInterface.start();
 
       // Test the specific pattern in engine mode
       const query = "(between(1,6,X), 0 is X mod 2)";
@@ -65,6 +60,7 @@ maybeDescribe("Complex Query Fixes", () => {
     });
 
     test("should handle nested arithmetic expressions", async () => {
+      await prologInterface.start();
 
       // Complex nested arithmetic
       const query = "findall(X, (between(1,5,X), Y is X * 2, Z is Y + 1, Z > 5), L)";
@@ -80,6 +76,7 @@ maybeDescribe("Complex Query Fixes", () => {
     });
 
     test("should handle compound terms with multiple conjunctions", async () => {
+      await prologInterface.start();
 
       // Complex compound query
       const query = "(between(1,3,X), between(1,2,Y), Z is X + Y, Z =< 4)";
@@ -108,6 +105,7 @@ maybeDescribe("Complex Query Fixes", () => {
 
   describe("Session State Recovery", () => {
     test("should recover from query execution errors", async () => {
+      await prologInterface.start();
 
       // Start a query that will fail
       const badQuery = "(between(1,3,X), 0 is 1/0)"; // Division by zero
@@ -134,6 +132,7 @@ maybeDescribe("Complex Query Fixes", () => {
     // The core functionality is tested by other tests that are passing.
 
     test("should handle rapid session switching after errors", async () => {
+      await prologInterface.start();
 
       for (let i = 0; i < 3; i++) {
         // Trigger an error in query mode
@@ -165,6 +164,7 @@ maybeDescribe("Complex Query Fixes", () => {
 
   describe("Query Validation", () => {
     test("should validate malformed queries", async () => {
+      await prologInterface.start();
 
       // Test various malformed patterns that should trigger parse errors
       const malformedQueries = [
@@ -181,6 +181,7 @@ maybeDescribe("Complex Query Fixes", () => {
     });
 
     test("should handle unbalanced parentheses gracefully", async () => {
+      await prologInterface.start();
 
       const unbalancedQueries = [
         "((between(1,3,X)", // Missing closing paren
@@ -195,27 +196,16 @@ maybeDescribe("Complex Query Fixes", () => {
     });
 
     test("should handle complex conjunctive queries", async () => {
+      await prologInterface.start();
 
       // Query with multiple conjuncts - should work when properly formed
       const query = "(between(1,3,X), X > 1)";
       const startResult = await toolHandlers.queryStart({ query });
+      expect(startResult.isError).toBeFalsy();
 
-      // If there's a session conflict, clean up and retry
-      if (startResult.isError && startResult.content?.[0]?.text?.includes("already active")) {
-        try { await toolHandlers.queryClose(); } catch { }
-        const retryResult = await toolHandlers.queryStart({ query });
-        expect(retryResult.isError).toBeFalsy();
-
-        const nextResult = await toolHandlers.queryNext();
-        expect(nextResult.isError).toBeFalsy();
-        expect(nextResult.structuredContent?.solution).toContain("X=2");
-      } else {
-        expect(startResult.isError).toBeFalsy();
-
-        const nextResult = await toolHandlers.queryNext();
-        expect(nextResult.isError).toBeFalsy();
-        expect(nextResult.structuredContent?.solution).toContain("X=2");
-      }
+      const nextResult = await toolHandlers.queryNext();
+      expect(nextResult.isError).toBeFalsy();
+      expect(nextResult.structuredContent?.solution).toContain("X=2");
 
       await toolHandlers.queryClose();
     });
@@ -223,21 +213,11 @@ maybeDescribe("Complex Query Fixes", () => {
 
   describe("Error Message Quality", () => {
     test("should provide specific error messages for arithmetic failures", async () => {
-
-      // Clean up any existing sessions first
-      try { await toolHandlers.queryClose(); } catch { }
+      await prologInterface.start();
 
       const query = "(X = 1, Y is 1/0)";
       const startResult = await toolHandlers.queryStartEngine({ query });
-
-      // If session conflict, clean up and retry
-      if (startResult.isError && startResult.content?.[0]?.text?.includes("already active")) {
-        try { await toolHandlers.queryClose(); } catch { }
-        const retryStart = await toolHandlers.queryStartEngine({ query });
-        expect(retryStart.isError).toBeFalsy();
-      } else {
-        expect(startResult.isError).toBeFalsy();
-      }
+      expect(startResult.isError).toBeFalsy();
 
       const result = await toolHandlers.queryNext();
       expect(result.isError).toBeTruthy();
@@ -248,6 +228,7 @@ maybeDescribe("Complex Query Fixes", () => {
     });
 
     test("should handle undefined predicates gracefully", async () => {
+      await prologInterface.start();
 
       const query = "undefined_predicate(X)";
       // Engine creation may succeed, but execution should just return no solutions
@@ -267,6 +248,7 @@ maybeDescribe("Complex Query Fixes", () => {
     });
 
     test("should provide helpful messages for syntax errors", async () => {
+      await prologInterface.start();
 
       const query = "X is [unclosed list";
       const result = await toolHandlers.queryStart({ query });
@@ -279,6 +261,7 @@ maybeDescribe("Complex Query Fixes", () => {
 
   describe("Performance and Resource Management", () => {
     test("should handle many complex queries without resource leaks", async () => {
+      await prologInterface.start();
 
       // Run many complex queries to test resource management
       for (let i = 0; i < 10; i++) {
@@ -292,6 +275,7 @@ maybeDescribe("Complex Query Fixes", () => {
     });
 
     test("should handle engine mode with complex arithmetic efficiently", async () => {
+      await prologInterface.start();
 
       const startTime = Date.now();
 
