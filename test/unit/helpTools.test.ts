@@ -23,8 +23,13 @@ describe("Agent vs Developer Help/Diagnostics", () => {
     expect(obj.security?.module).toBe("kb");
     // Legacy env list should not exist in agent-facing capabilities
     expect(obj.env).toBeUndefined();
-    // Capabilities should only return structured data, no text content
-    expect(res.content).toEqual([]);
+    // Capabilities should return JSON in content for backwards compatibility (MCP best practice)
+    expect(res.content).toHaveLength(1);
+    expect(res.content[0].type).toBe("text");
+    // Verify the content contains valid JSON
+    expect(() => JSON.parse(res.content[0].text)).not.toThrow();
+    const parsedContent = JSON.parse(res.content[0].text);
+    expect(parsedContent.server?.name).toBe("swipl-mcp-server");
   });
 
   test("help (agent) returns usage guidance and excludes developer env section", async () => {
