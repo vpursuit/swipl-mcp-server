@@ -13,8 +13,11 @@ import { resolvePackageVersion } from "./meta.js";
  * - query_next: Get next solution from current query (unified for both modes)
  * - query_close: Close current query session (unified for both modes)
  * - symbols_list: List available predicates
- * - db_assert: Add new clauses (facts/rules)
- * - db_retract: Remove clauses (facts/rules)
+ * - db_assert: Add a single clause (fact/rule)
+ * - db_assert_many: Add multiple clauses (facts/rules)
+ * - db_retract: Remove a single clause (fact/rule)  
+ * - db_retract_many: Remove multiple clauses (facts/rules)
+ * - db_retract_all: Remove all user-defined facts and rules
  * - db_dump: Export current knowledge base
  */
 
@@ -98,20 +101,50 @@ server.registerTool(
 server.registerTool(
   "db_assert",
   {
-    description: "Add a new clause (fact or rule) to the knowledge base",
+    description: "Add a single clause (fact or rule) to the knowledge base",
     inputSchema: inputSchemas.dbAssert,
   },
   toolHandlers.dbAssert as any,
+);
+
+// Register db_assert_many tool
+server.registerTool(
+  "db_assert_many",
+  {
+    description: "Add multiple clauses (facts or rules) to the knowledge base",
+    inputSchema: inputSchemas.dbAssertMany,
+  },
+  toolHandlers.dbAssertMany as any,
 );
 
 // Register db_retract tool
 server.registerTool(
   "db_retract",
   {
-    description: "Remove a clause (fact or rule) from the knowledge base",
+    description: "Remove a single clause (fact or rule) from the knowledge base",
     inputSchema: inputSchemas.dbRetract,
   },
   toolHandlers.dbRetract as any,
+);
+
+// Register db_retract_many tool
+server.registerTool(
+  "db_retract_many",
+  {
+    description: "Remove multiple clauses (facts or rules) from the knowledge base",
+    inputSchema: inputSchemas.dbRetractMany,
+  },
+  toolHandlers.dbRetractMany as any,
+);
+
+// Register db_retract_all tool
+server.registerTool(
+  "db_retract_all",
+  {
+    description: "Remove ALL user-defined facts and rules from the knowledge base",
+    inputSchema: inputSchemas.dbRetractAll,
+  },
+  toolHandlers.dbRetractAll as any,
 );
 
 // Register query_startEngine tool

@@ -107,6 +107,10 @@ start_session(Type, Details) :-
 end_session :-
     retractall(active_session(_, _)).
 
+retract_all_clauses(Name/Arity) :-
+    functor(Head, Name, Arity),
+    retractall(kb:Head).
+
 % Clean up all sessions and resources
 cleanup_all_sessions :-
     ( retract(current_engine(E)) -> 
@@ -396,6 +400,16 @@ dispatch(halt, _) :- !,
 dispatch(exit, _) :- !, 
     cleanup_all_sessions,
     halt(0).
+
+dispatch(retract_all_kb, _) :- !,
+    findall(Name/Arity, 
+        (predicate_property(kb:Head, dynamic),
+         predicate_property(kb:Head, number_of_clauses(C)), C > 0,
+         functor(Head, Name, Arity)
+        ), Predicates),
+    length(Predicates, Count),
+    maplist(retract_all_clauses, Predicates),
+    reply(removed(Count)).
 
 % Fallback: treat the term itself as a goal; return one solution
 dispatch(Goal, VarNamesAll) :-

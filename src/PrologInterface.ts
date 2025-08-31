@@ -70,7 +70,7 @@ export class PrologInterface {
   // Ensure only one command is in flight at a time
   private commandQueue: Promise<void> = Promise.resolve();
   // Session state guard to avoid races across transitions
-  private sessionState: "idle" | "query" | "engine" | "closing_query" | "closing_engine" = "idle";
+  private sessionState: "idle" | "query" | "query_completed" | "engine" | "engine_completed" | "closing_query" | "closing_engine" = "idle";
 
   /**
    * Start SWI-Prolog process
@@ -373,8 +373,13 @@ export class PrologInterface {
    * Get the next solution from current query
    */
   async nextSolution(): Promise<{ solution?: string; more_solutions: boolean; error?: string }> {
-    if (!this.queryActive || this.sessionState !== "query") {
+    if (!this.queryActive && this.sessionState !== "query_completed") {
       return { error: "No active query. Start a query first.", more_solutions: false };
+    }
+
+    // If query is already completed, return consistent "no more solutions" message
+    if (this.sessionState === "query_completed") {
+      return { more_solutions: false };
     }
 
     this.assertRunning();
@@ -383,9 +388,9 @@ export class PrologInterface {
       const result = await this.sendCommand("next_solution");
       const parsed = this.parseServerResult(result);
       if (parsed.kind === "eof") {
+        // Keep query info but mark as completed instead of clearing everything
         this.queryActive = false;
-        this.currentQuery = null;
-        this.sessionState = "idle";
+        this.sessionState = "query_completed";
         return { more_solutions: false };
       }
       if (parsed.kind === "error") {
@@ -413,7 +418,7 @@ export class PrologInterface {
    * Close the current query session
    */
   async closeQuery(): Promise<{ status: string }> {
-    if (!this.queryActive || this.sessionState !== "query") {
+    if (!this.queryActive && this.sessionState !== "query_completed") {
       return { status: "no_active_query" };
     }
 
@@ -575,13 +580,13 @@ export class PrologInterface {
    * Get the next solution from current engine
    */
   async nextEngine(): Promise<{ solution?: string; more_solutions: boolean; error?: string }> {
-    if (!this.engineActive || this.sessionState !== "engine") {
+    if (!this.engineActive && this.sessionState !== "engine_completed") {
       return { error: "No active engine. Start an engine first.", more_solutions: false };
     }
 
-    // Check if engine has already reached EOF
-    if (this.engineReachedEOF) {
-      return { error: "Engine has no more solutions. The engine has already reached end-of-file.", more_solutions: false };
+    // If engine is already completed, return consistent "no more solutions" message
+    if (this.sessionState === "engine_completed" || this.engineReachedEOF) {
+      return { more_solutions: false };
     }
 
     this.assertRunning();
@@ -590,9 +595,10 @@ export class PrologInterface {
       const result = await this.sendCommand("next_engine");
       const parsed = this.parseServerResult(result);
       if (parsed.kind === "eof") {
+        // Keep engine info but mark as completed instead of clearing everything
         this.engineActive = false;
         this.engineReachedEOF = true;
-        this.sessionState = "idle";
+        this.sessionState = "engine_completed";
         return { more_solutions: false };
       }
       if (parsed.kind === "error") {
@@ -620,7 +626,7 @@ export class PrologInterface {
    * Close the current engine session
    */
   async closeEngine(): Promise<{ status: string }> {
-    if (!this.engineActive || this.sessionState !== "engine") {
+    if (!this.engineActive && this.sessionState !== "engine_completed") {
       return { status: "no_active_engine" };
     }
 

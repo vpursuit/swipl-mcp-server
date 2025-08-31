@@ -29,12 +29,14 @@ export const toolHandlers = {
         "- Tools: query_start → query_next → query_close",
         "- Deterministic pagination of solutions, memory‑efficient",
         "- Example: query_start {query: 'member(X, [1,2,3])'} then call query_next until 'No more solutions'",
+        "- After exhaustion, query_next returns 'No more solutions available' until explicitly closed",
       ],
       engine_mode: [
         "Engine mode (SWI engines):",
         "- Tools: query_startEngine → query_next → query_close",
         "- True backtracking iterator with no recomputation",
         "- Unified query_next and query_close work for both modes",
+        "- After exhaustion, query_next returns 'No more solutions available' until explicitly closed",
       ],
       safety: [
         "Hybrid Security Model:",
@@ -138,7 +140,7 @@ export const toolHandlers = {
       modes: ["standard", "engine"],
       tools: {
         core: ["help", "license", "capabilities"],
-        database: ["db_load", "db_assert", "db_retract", "db_dump"],
+        database: ["db_load", "db_assert", "db_assert_many", "db_retract", "db_retract_many", "db_retract_all", "db_dump"],
         query: ["query_start", "query_startEngine", "query_next", "query_close"],
         symbols: ["symbols_list"],
       },
@@ -157,36 +159,8 @@ export const toolHandlers = {
       },
     } as const;
 
-    // Human-readable plain text description
-    const plainText = [
-      `SWI-Prolog MCP Server v${version}`,
-      "",
-      "Query Modes:",
-      "- Standard: call_nth/2 pagination (query_start → query_next → query_close)",
-      "- Engine: SWI engines with backtracking (query_startEngine → query_next → query_close)",
-      "",
-      "Available Tools:",
-      "- Core: help, license, capabilities",
-      "- Database: db_load, db_assert, db_retract, db_dump",
-      "- Query: query_start, query_startEngine, query_next, query_close (unified)",
-      "- Symbols: symbols_list",
-      "",
-      "Safety Features:",
-      "- Queries execute in 'kb' module with unknown=fail",
-      "- File consultation restricted to facts/rules (no directives)",
-      "- Hybrid security: library(sandbox) + blacklist for critical operations",
-      "- User-defined predicates in 'kb' module allowed for recursive definitions",
-      "- Dangerous operations blocked: call/1, assert/1, system/1, shell/1, etc.",
-      "",
-      "Security Architecture:",
-      "- library(sandbox) validates most built-in predicates",
-      "- Explicit blacklist prevents dangerous operations sandbox allows",
-      "- User predicates in kb/user modules permitted for recursion",
-      "- Safe built-ins: arithmetic, lists, term operations, logic",
-    ].join("\n");
-
     return {
-      content: [{ type: "text", text: plainText }],
+      content: [],
       structuredContent: caps as any,
     };
   },
@@ -325,9 +299,9 @@ export const toolHandlers = {
       const sessionState = (prologInterface as any).sessionState;
       let result;
 
-      if (sessionState === "query") {
+      if (sessionState === "query" || sessionState === "query_completed") {
         result = await prologInterface.nextSolution();
-      } else if (sessionState === "engine") {
+      } else if (sessionState === "engine" || sessionState === "engine_completed") {
         result = await prologInterface.nextEngine();
       } else {
         return {
@@ -386,7 +360,8 @@ export const toolHandlers = {
     const startTime = Date.now();
     // Detect session type without forcing a start; if none, exit gracefully
     const sessionState = (prologInterface as any).sessionState;
-    if (sessionState !== "query" && sessionState !== "engine") {
+    if (sessionState !== "query" && sessionState !== "query_completed" && 
+        sessionState !== "engine" && sessionState !== "engine_completed") {
       const processingTimeMs = Date.now() - startTime;
       return {
         content: [{ type: "text", text: `No active session to close\nProcessing time: ${processingTimeMs}ms` }],
@@ -396,7 +371,8 @@ export const toolHandlers = {
 
     try {
       // If there is an active session, the interface is already started
-      const result = sessionState === "query" ? await prologInterface.closeQuery() : await prologInterface.closeEngine();
+      const result = (sessionState === "query" || sessionState === "query_completed") ? 
+        await prologInterface.closeQuery() : await prologInterface.closeEngine();
       const processingTimeMs = Date.now() - startTime;
       const statusText = result.status === "no_active_query" || result.status === "no_active_engine" ? "closed" : result.status;
       return {
@@ -452,20 +428,67 @@ export const toolHandlers = {
     }
   },
 
-  async dbAssert({ fact }: { fact: string | string[] }): Promise<ToolResponse> {
+  async dbAssert({ fact }: { fact: string }): Promise<ToolResponse> {
     const startTime = Date.now();
 
     // Input validation
-    if (!fact || (typeof fact !== 'string' && !Array.isArray(fact))) {
+    if (!fact || typeof fact !== 'string') {
       return {
-        content: [{ type: "text", text: "Error: fact parameter is required and must be a string or array of strings" }],
+        content: [{ type: "text", text: "Error: fact parameter is required and must be a string" }],
         structuredContent: { error: "invalid_input", processing_time_ms: Date.now() - startTime },
         isError: true,
       };
     }
 
-    const isArrayInput = Array.isArray(fact);
-    const facts = isArrayInput ? (fact as string[]) : [fact as string];
+    if (fact.length > 5000) {
+      return {
+        content: [{ type: "text", text: "Error: fact must be a string with max 5000 characters" }],
+        structuredContent: { error: "fact_too_long", processing_time_ms: Date.now() - startTime },
+        isError: true,
+      };
+    }
+
+    try {
+      await prologInterface.start();
+      const normalizeSingle = (cl: string) => {
+        const trimmed = cl.trim().replace(/\.$/, "");
+        if (/:-/.test(trimmed) && !/^\s*\(/.test(trimmed)) return `(${trimmed})`;
+        return trimmed;
+      };
+      const single = normalizeSingle(fact);
+      const result = await prologInterface.query(`assert(${single})`);
+      const processingTimeMs = Date.now() - startTime;
+      return {
+        content: [{ type: "text", text: `Asserted fact: ${single}\nResult: ${result}\nProcessing time: ${processingTimeMs}ms` }],
+        structuredContent: { fact: single, result, processing_time_ms: processingTimeMs },
+        isError: result !== "ok",
+      };
+    } catch (error) {
+      const processingTimeMs = Date.now() - startTime;
+      const errMsg = error instanceof Error ? error.message : String(error);
+      const details = `✗ ${fact}: ${errMsg}`;
+      const summary = `Asserted 0/1 clauses successfully`;
+      const text = `Error: ${errMsg}\n\nDetails:\n${details}\n${summary}\nProcessing time: ${processingTimeMs}ms`;
+      return {
+        content: [{ type: "text", text }],
+        structuredContent: { error: errMsg, success: 0, total: 1, details: [details], processing_time_ms: processingTimeMs },
+        isError: true,
+      };
+    }
+  },
+
+  async dbAssertMany({ facts }: { facts: string[] }): Promise<ToolResponse> {
+    const startTime = Date.now();
+
+    // Input validation
+    if (!Array.isArray(facts)) {
+      return {
+        content: [{ type: "text", text: "Error: facts parameter is required and must be an array of strings" }],
+        structuredContent: { error: "invalid_input", processing_time_ms: Date.now() - startTime },
+        isError: true,
+      };
+    }
+
     if (facts.length === 0) {
       return {
         content: [{ type: "text", text: "Error: at least one fact is required" }],
@@ -485,38 +508,7 @@ export const toolHandlers = {
       }
     }
 
-    // If single input, keep error-first behavior expected by tests
-    if (!isArrayInput) {
-      try {
-        await prologInterface.start();
-        const normalizeSingle = (cl: string) => {
-          const trimmed = cl.trim().replace(/\.$/, "");
-          if (/:-/.test(trimmed) && !/^\s*\(/.test(trimmed)) return `(${trimmed})`;
-          return trimmed;
-        };
-        const single = normalizeSingle(facts[0]);
-        const result = await prologInterface.query(`assert(${single})`);
-        const processingTimeMs = Date.now() - startTime;
-        return {
-          content: [{ type: "text", text: `Asserted fact: ${single}\nResult: ${result}\nProcessing time: ${processingTimeMs}ms` }],
-          structuredContent: { fact: single, result, processing_time_ms: processingTimeMs },
-          isError: result !== "ok",
-        };
-      } catch (error) {
-        const processingTimeMs = Date.now() - startTime;
-        const errMsg = error instanceof Error ? error.message : String(error);
-        const details = `✗ ${facts[0]}: ${errMsg}`;
-        const summary = `Asserted 0/1 clauses successfully`;
-        const text = `Error: ${errMsg}\n\nDetails:\n${details}\n${summary}\nProcessing time: ${processingTimeMs}ms`;
-        return {
-          content: [{ type: "text", text }],
-          structuredContent: { error: errMsg, success: 0, total: 1, details: [details], processing_time_ms: processingTimeMs },
-          isError: true,
-        };
-      }
-    }
-
-    // Array input: try to start; if it fails (tests/mocks), continue to collect per-clause errors and produce summary
+    // Try to start; if it fails (tests/mocks), continue to collect per-clause errors and produce summary
     try { await prologInterface.start(); } catch { /* proceed anyway for summary */ }
 
     try {
@@ -576,36 +568,85 @@ export const toolHandlers = {
     }
   },
 
-  async dbRetract({ fact }: { fact: string | string[] }): Promise<ToolResponse> {
+  async dbRetract({ fact }: { fact: string }): Promise<ToolResponse> {
     const startTime = Date.now();
-    const isArrayInput = Array.isArray(fact);
 
-    if (!isArrayInput) {
-      try {
-        await prologInterface.start();
-        const single = (fact as string).trim().replace(/\.$/, "");
-        const result = await prologInterface.query(`retract(${single})`);
-        const processingTimeMs = Date.now() - startTime;
+    // Input validation
+    if (!fact || typeof fact !== 'string') {
+      return {
+        content: [{ type: "text", text: "Error: fact parameter is required and must be a string" }],
+        structuredContent: { error: "invalid_input", processing_time_ms: Date.now() - startTime },
+        isError: true,
+      };
+    }
+
+    if (fact.length > 5000) {
+      return {
+        content: [{ type: "text", text: "Error: fact must be a string with max 5000 characters" }],
+        structuredContent: { error: "fact_too_long", processing_time_ms: Date.now() - startTime },
+        isError: true,
+      };
+    }
+
+    try {
+      await prologInterface.start();
+      const single = fact.trim().replace(/\.$/, "");
+      const result = await prologInterface.query(`retract(${single})`);
+      const processingTimeMs = Date.now() - startTime;
+      return {
+        content: [{ type: "text", text: `Retracted fact: ${single}\nResult: ${result}\nProcessing time: ${processingTimeMs}ms` }],
+        structuredContent: { fact: single, result, processing_time_ms: processingTimeMs },
+        isError: result !== "ok",
+      };
+    } catch (error) {
+      const processingTimeMs = Date.now() - startTime;
+      const errMsg = error instanceof Error ? error.message : String(error);
+      const details = `✗ ${fact}: ${errMsg}`;
+      const summary = `Retracted 0/1 clauses successfully`;
+      const text = `Error: ${errMsg}\n\nDetails:\n${details}\n${summary}\nProcessing time: ${processingTimeMs}ms`;
+      return {
+        content: [{ type: "text", text }],
+        structuredContent: { error: errMsg, success: 0, total: 1, details: [details], processing_time_ms: processingTimeMs },
+        isError: true,
+      };
+    }
+  },
+
+  async dbRetractMany({ facts }: { facts: string[] }): Promise<ToolResponse> {
+    const startTime = Date.now();
+
+    // Input validation
+    if (!Array.isArray(facts)) {
+      return {
+        content: [{ type: "text", text: "Error: facts parameter is required and must be an array of strings" }],
+        structuredContent: { error: "invalid_input", processing_time_ms: Date.now() - startTime },
+        isError: true,
+      };
+    }
+
+    if (facts.length === 0) {
+      return {
+        content: [{ type: "text", text: "Error: at least one fact is required" }],
+        structuredContent: { error: "no_facts_provided", processing_time_ms: Date.now() - startTime },
+        isError: true,
+      };
+    }
+
+    // Validate each fact
+    for (const f of facts) {
+      if (typeof f !== 'string' || f.length > 5000) {
         return {
-          content: [{ type: "text", text: `Retracted fact: ${single}\nResult: ${result}\nProcessing time: ${processingTimeMs}ms` }],
-          structuredContent: { fact: single, result, processing_time_ms: processingTimeMs },
-          isError: result !== "ok",
-        };
-      } catch (error) {
-        const processingTimeMs = Date.now() - startTime;
-        return {
-          content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}\nProcessing time: ${processingTimeMs}ms` }],
-          structuredContent: { error: error instanceof Error ? error.message : String(error), processing_time_ms: processingTimeMs },
+          content: [{ type: "text", text: `Error: each fact must be a string with max 5000 characters` }],
+          structuredContent: { error: "fact_too_long", processing_time_ms: Date.now() - startTime },
           isError: true,
         };
       }
     }
 
-    // Array input: try to start; if it fails, proceed with summary aggregation
+    // Try to start; if it fails, proceed with summary aggregation
     try { await prologInterface.start(); } catch { /* proceed anyway for summary */ }
 
     try {
-      const facts = fact as string[];
       const results: string[] = [];
       let successCount = 0;
       let errorCount = 0;
@@ -650,6 +691,45 @@ export const toolHandlers = {
         ],
         structuredContent: { error: error instanceof Error ? error.message : String(error), processing_time_ms: processingTimeMs },
         isError: true,
+      };
+    }
+  },
+
+  async dbRetractAll(): Promise<ToolResponse> {
+    const startTime = Date.now();
+    try {
+      await prologInterface.start();
+      const result = await prologInterface.query("retract_all_kb");
+      const processingTimeMs = Date.now() - startTime;
+      
+      // Parse result to extract count
+      const match = result.match(/removed\((\d+)\)/);
+      const count = match ? parseInt(match[1]) : 0;
+      
+      return {
+        content: [{ 
+          type: "text", 
+          text: `Removed all facts and rules from knowledge base\nPredicates cleared: ${count}\nProcessing time: ${processingTimeMs}ms` 
+        }],
+        structuredContent: { 
+          predicates_removed: count, 
+          processing_time_ms: processingTimeMs 
+        },
+        isError: false
+      };
+    } catch (error) {
+      const processingTimeMs = Date.now() - startTime;
+      const errMsg = error instanceof Error ? error.message : String(error);
+      return {
+        content: [{ 
+          type: "text", 
+          text: `Error clearing knowledge base: ${errMsg}\nProcessing time: ${processingTimeMs}ms` 
+        }],
+        structuredContent: { 
+          error: errMsg, 
+          processing_time_ms: processingTimeMs 
+        },
+        isError: true
       };
     }
   },

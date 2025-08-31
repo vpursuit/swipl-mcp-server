@@ -32,25 +32,26 @@ export const zodSchemas = {
   dbDump: {},
   symbolsList: {},
   dbAssert: {
-    fact: z.union([
-      z
-        .string()
-        .describe(
-          "Single Prolog clause to assert (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
-        ),
-      z.array(z.string()).describe("List of Prolog clauses to assert"),
-    ]),
+    fact: z
+      .string()
+      .describe(
+        "Single Prolog clause to assert (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
+      ),
   },
   dbRetract: {
-    fact: z.union([
-      z
-        .string()
-        .describe(
-          "Single Prolog clause to retract (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
-        ),
-      z.array(z.string()).describe("List of Prolog clauses to retract"),
-    ]),
+    fact: z
+      .string()
+      .describe(
+        "Single Prolog clause to retract (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
+      ),
   },
+  dbAssertMany: {
+    facts: z.array(z.string()).describe("List of Prolog clauses to assert"),
+  },
+  dbRetractMany: {
+    facts: z.array(z.string()).describe("List of Prolog clauses to retract"),
+  },
+  dbRetractAll: {},
 } as const;
 
 // JSON Schemas for MCP tool registration (must be plain, serializable objects)
@@ -132,18 +133,9 @@ export const jsonSchemas = {
     required: ["fact"],
     properties: {
       fact: {
-        anyOf: [
-          {
-            type: "string",
-            description:
-              "Single Prolog clause to assert (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
-          },
-          {
-            type: "array",
-            items: { type: "string" },
-            description: "List of Prolog clauses to assert",
-          },
-        ],
+        type: "string",
+        description:
+          "Single Prolog clause to assert (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
       },
     },
   },
@@ -153,19 +145,39 @@ export const jsonSchemas = {
     required: ["fact"],
     properties: {
       fact: {
-        anyOf: [
-          {
-            type: "string",
-            description:
-              "Single Prolog clause to retract (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
-          },
-          {
-            type: "array",
-            items: { type: "string" },
-            description: "List of Prolog clauses to retract",
-          },
-        ],
+        type: "string",
+        description:
+          "Single Prolog clause to retract (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
       },
     },
+  },
+  dbAssertMany: {
+    type: "object",
+    additionalProperties: false,
+    required: ["facts"],
+    properties: {
+      facts: {
+        type: "array",
+        items: { type: "string" },
+        description: "List of Prolog clauses to assert",
+      },
+    },
+  },
+  dbRetractMany: {
+    type: "object",
+    additionalProperties: false,
+    required: ["facts"],
+    properties: {
+      facts: {
+        type: "array",
+        items: { type: "string" },
+        description: "List of Prolog clauses to retract",
+      },
+    },
+  },
+  dbRetractAll: {
+    type: "object",
+    additionalProperties: false,
+    properties: {},
   },
 } as const;
