@@ -2,6 +2,35 @@
 
 An MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It supports loading Prolog files, adding/removing facts and rules, listing symbols, and running queries with two modes: deterministic pagination and true engine backtracking.
 
+## Table of Contents
+
+- [🤖 How Claude Desktop™ Uses swipl-mcp-server to Solve the 4-Queens Problem](#-how-claude-desktop-uses-swipl-mcp-server-to-solve-the-4-queens-problem)
+- [Requirements](#requirements)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [Tools](#tools)
+- [Examples](#examples)
+- [Architecture](#architecture)
+- [Troubleshooting](#troubleshooting)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
+
+## 🤖 How Claude Desktop™ Uses swipl-mcp-server to Solve the 4-Queens Problem
+
+🎯 **Watch Claude go from curious newcomer to chess puzzle master!** ✨ 
+
+These screenshots capture an *exciting* Claude Code session where our AI friend discovers the swipl-mcp-server, gets acquainted with its tools, and then tackles the **legendary 4-queens problem** like a digital detective—*no hints, no help*, just ***pure logical reasoning*** in action! 🚀
+
+<div style="display: flex; flex-direction: column; gap: 10px;">
+  <img src="images/make-yourself-familiar.png" alt="Claude exploring swipl-mcp-server capabilities" width="600">
+  <img src="images/make-yourself-familiar-2.png" alt="Claude loading Prolog predicates for 4-queens" width="600">
+  <img src="images/make-yourself-familiar-3.png" alt="Claude implementing the 4-queens solution" width="600">
+  <img src="images/make-yourself-familiar-4.png" alt="Claude finding all 4-queens solutions" width="600">
+</div>
+
+
+
 ## Requirements
 
 - Node.js ≥ 18.0.0
