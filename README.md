@@ -38,11 +38,6 @@ These screenshots capture an *exciting* Claude Code session where our AI friend 
 
 ## Quick Start
 
-```bash
-# Run directly with npx (no installation required)
-npx @vpursuit/swipl-mcp-server
-```
-
 ### Claude Desktop (basic)
 ```json
 {
