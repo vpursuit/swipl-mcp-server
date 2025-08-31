@@ -160,7 +160,7 @@ export const toolHandlers = {
     } as const;
 
     return {
-      content: [],
+      content: [{ type: "text", text: JSON.stringify(caps, null, 2) }],
       structuredContent: caps as any,
     };
   },
