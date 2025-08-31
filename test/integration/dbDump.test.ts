@@ -64,8 +64,8 @@ maybeDescribe("Database Dump Tool", () => {
 
     test("should handle mixed facts and rules", async () => {
       // Add both facts and rules
-      await toolHandlers.dbAssert({
-        fact: [
+      await toolHandlers.dbAssertMany({
+        facts: [
           "likes(mary, food)",
           "likes(mary, wine)",
           "likes(john, wine)",

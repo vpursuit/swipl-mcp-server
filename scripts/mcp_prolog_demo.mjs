@@ -46,8 +46,8 @@ async function main() {
   }
 
   // 1) Assert some facts and a simple rule
-  await callTool("db_assert", {
-    fact: [
+  await callTool("db_assert_many", {
+    facts: [
       "parent(john, mary)",
       "parent(mary, alice)",
       "parent(john, bob)",

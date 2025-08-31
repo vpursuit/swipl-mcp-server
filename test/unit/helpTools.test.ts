@@ -9,7 +9,7 @@ describe("Agent vs Developer Help/Diagnostics", () => {
     process.env = { ...origEnv } as any;
   });
 
-  test("capabilities returns machine-readable agent summary without env list", async () => {
+  test("capabilities returns machine-readable structured data only", async () => {
     const res = await toolHandlers.capabilities();
     expect(res.isError).toBeFalsy();
     // Use structured content for machine-readable data
@@ -18,13 +18,13 @@ describe("Agent vs Developer Help/Diagnostics", () => {
     expect(typeof obj.tools).toBe("object");
     expect(obj.tools?.core).toContain("help");
     expect(obj.tools?.database).toContain("db_assert");
+    expect(obj.tools?.database).toContain("db_assert_many");
+    expect(obj.tools?.database).toContain("db_retract_all");
     expect(obj.security?.module).toBe("kb");
     // Legacy env list should not exist in agent-facing capabilities
     expect(obj.env).toBeUndefined();
-    // Verify plain text content is human-readable
-    const text = (res.content[0] as any).text;
-    expect(text).toMatch(/SWI-Prolog MCP Server/);
-    expect(text).toMatch(/Query Modes:/);
+    // Capabilities should only return structured data, no text content
+    expect(res.content).toEqual([]);
   });
 
   test("help (agent) returns usage guidance and excludes developer env section", async () => {

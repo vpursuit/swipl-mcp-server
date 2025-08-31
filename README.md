@@ -69,7 +69,7 @@ Configure timeouts, logging, and behavior via environment variables:
 ## Tools
 
 - Core: `help`, `license`, `capabilities`
-- Database: `db_load`, `db_assert`, `db_retract`, `db_dump`
+- Database: `db_load`, `db_assert`, `db_assert_many`, `db_retract`, `db_retract_many`, `db_retract_all`, `db_dump`
 - Query: `query_start`, `query_startEngine`, `query_next`, `query_close`
 - Symbols: `symbols_list`
 
@@ -80,6 +80,12 @@ Configure timeouts, logging, and behavior via environment variables:
   - `query_start { query: "parent(X, mary)" }` → `query_next()` until no more solutions → `query_close()`
 - Engine mode:
   - `query_startEngine { query: "member(X, [1,2,3])" }` → `query_next()` repeatedly → `query_close()`
+- Database operations:
+  - Single: `db_assert { fact: "parent(john, mary)" }`
+  - Multiple: `db_assert_many { facts: ["parent(john, mary)", "parent(mary, alice)"] }`
+  - Remove single: `db_retract { fact: "parent(john, mary)" }`
+  - Remove multiple: `db_retract_many { facts: ["parent(john, mary)", "parent(mary, alice)"] }`
+  - Clear all: `db_retract_all {}`
 
 See docs/examples.md for many more, including arithmetic, list ops, collections, and string/atom helpers.
 
@@ -93,12 +99,13 @@ Details: see docs/architecture.md.
 
 ## Troubleshooting
 
-- “Prolog not found”: ensure `swipl --version` works; SWI‑Prolog must be in PATH
+- "Prolog not found": ensure `swipl --version` works; SWI‑Prolog must be in PATH
 - Startup timeout: increase `SWI_MCP_READY_TIMEOUT_MS`
 - Query timeout: increase `SWI_MCP_QUERY_TIMEOUT_MS`
 - Session conflicts: close current session before starting a different mode
 - `error(unsafe_goal(...))`: your query uses blocked predicates; see Security
 - Custom script path: set `SWI_MCP_PROLOG_PATH`
+- Query sessions: after exhausting solutions, `query_next` returns "No more solutions available" until explicitly closed
 
 ## Development
 

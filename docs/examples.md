@@ -96,7 +96,7 @@ npx @modelcontextprotocol/inspector --transport stdio node build/index.js
 
 ## Advanced Examples
 
-### 5. Add New Family Relations
+### 5. Add New Family Relations (Single Facts)
 
 **Tool:** `db_assert`
 ```json
@@ -111,6 +111,23 @@ npx @modelcontextprotocol/inspector --transport stdio node build/index.js
   "fact": "parent(bob, charlie)"
 }
 ```
+
+### 5b. Add Multiple Family Relations at Once
+
+**Tool:** `db_assert_many`
+```json
+{
+  "facts": [
+    "parent(alice, bob)",
+    "parent(bob, charlie)", 
+    "parent(charlie, david)",
+    "male(bob)",
+    "male(charlie)",
+    "female(alice)"
+  ]
+}
+```
+**Expected Response:** Success count and details for each fact
 
 ### 6. Query with Rules
 
@@ -279,9 +296,39 @@ This finds all combinations of colors and vehicles:
 ```
 **Response:** "true" (X is uninstantiated)
 
+### 16. Remove Facts (Single and Multiple)
+
+**Tool:** `db_retract`
+```json
+{
+  "fact": "parent(alice, bob)"
+}
+```
+**Expected Response:** Confirmation that the fact was removed
+
+**Tool:** `db_retract_many`
+```json
+{
+  "facts": [
+    "parent(bob, charlie)",
+    "male(bob)",
+    "female(alice)"
+  ]
+}
+```
+**Expected Response:** Success count and details for each retraction
+
+### 17. Clear All User-Defined Facts and Rules
+
+**Tool:** `db_retract_all`
+```json
+{}
+```
+**Expected Response:** Count of predicates removed from knowledge base
+
 ## Error Handling Examples
 
-### 16. Invalid Syntax
+### 18. Invalid Syntax
 
 **Tool:** `query_start`
 ```json
