@@ -4,31 +4,36 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"  # Changed from weekly to monthly
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 3  # Reduced from 10 to 3
     reviewers:
       - "@vpursuit"
     commit-message:
       prefix: "chore(deps):"
       include: "scope"
-    # Security updates get priority
+    # Only allow security updates and direct dependencies
     allow:
-      - dependency-type: "all"
-    # Group non-security updates
+      - dependency-type: "security"
+      - dependency-type: "direct"
+    # Group ALL updates to minimize PRs
     groups:
-      production-dependencies:
+      all-dependencies:
         patterns:
-          - "@modelcontextprotocol/*"
-          - "zod"
-      development-dependencies:
-        patterns:
-          - "@types/*"
-          - "@typescript-eslint/*"
-          - "typescript"
-          - "vitest"
-          - "eslint*"
+          - "*"
         update-types:
           - "minor"
           - "patch"
+        exclude-patterns:
+          - "@modelcontextprotocol/sdk"  # Keep MCP SDK separate for security
+    # Ignore minor updates for dev tools
+    ignore:
+      - dependency-name: "@types/*"
+        update-types: ["version-update:semver-patch"]
+      - dependency-name: "@typescript-eslint/*"
+        update-types: ["version-update:semver-patch"]
+      - dependency-name: "eslint*"
+        update-types: ["version-update:semver-patch"]
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-patch"]
