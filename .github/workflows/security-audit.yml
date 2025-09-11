@@ -1,0 +1,63 @@
+name: Security Audit
+
+on:
+  # Run weekly on Mondays
+  schedule:
+    - cron: '0 9 * * 1'
+  # Allow manual trigger
+  workflow_dispatch:
+  # Run on dependency changes
+  push:
+    paths:
+      - 'package*.json'
+  pull_request:
+    paths:
+      - 'package*.json'
+
+jobs:
+  security-audit:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run security audit
+      run: npm run security:audit
+      
+    - name: Check for high/critical vulnerabilities
+      run: npm run security:check
+      
+    - name: Upload audit results
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: npm-audit-results
+        path: |
+          npm-audit.json
+        retention-days: 30
+
+  dependency-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Dependency Review
+      uses: actions/dependency-review-action@v4
+      with:
+        # Fail on high or critical vulnerabilities
+        fail-on-severity: high
+        # Allow security updates
+        allow-licenses: BSD-3-Clause, MIT, Apache-2.0, ISC

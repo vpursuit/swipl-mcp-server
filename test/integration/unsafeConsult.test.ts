@@ -15,19 +15,14 @@ maybeDescribe("Unsafe File Consultation", () => {
   test("should detect and reject unsafe directives during file consultation", async () => {
     await prologInterface.start();
 
-    // Try to consult the unsafe file that contains directives
+    // Try to consult the unsafe file that contains directives - should be blocked by security
     const result = await toolHandlers.dbLoad({ filename: "test/unsafe_test.pl" });
 
-    // The consult "succeeds" at tool level but returns an error from Prolog
-    expect(result.isError).toBeFalsy();
-    expect(result.content[0].text).toMatch(/Successfully consulted file/);
-
-    // But the Prolog result should show permission error for directives
-    expect(result.content[0].text).toMatch(/permission_error.*directive/i);
-    expect(result.content[0].text).toMatch(/Directives are not allowed/i);
-
-    // Verify the structured content also shows the error
-    expect(result.structuredContent.result).toMatch(/error.*permission_error.*directive/i);
+    // The consult should now be blocked by security validation
+    expect(result.isError).toBeTruthy();
+    expect(result.content[0].text).toContain("Security Error");
+    expect(result.content[0].text).toContain("Files can only be loaded from");
+    expect(result.structuredContent.error).toBe("file_path_violation");
   });
 
   test("should block critical blacklisted dangerous predicates", async () => {

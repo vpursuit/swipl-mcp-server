@@ -1,6 +1,7 @@
 import { readFile } from "fs/promises";
 import { PrologInterface } from "./PrologInterface.js";
 import { resolvePackageVersion, findNearestFile } from "./meta.js";
+import { validateFilePath, detectDangerousOperation, validateFactSafety } from "./security.js";
 
 type ToolResponse = {
   content: any[];
@@ -39,19 +40,24 @@ export const toolHandlers = {
         "- After exhaustion, query_next returns 'No more solutions available' until explicitly closed",
       ],
       safety: [
-        "Hybrid Security Model:",
+        "Enhanced Security Model:",
+        "- File Path Restrictions: Only ~/.swipl-mcp-server/ directory allowed for file operations",
+        "- Dangerous Predicate Blocking: Pre-execution detection of shell(), system(), call(), etc.",
         "- User code asserted into module 'kb' with unknown=fail",
         "- Files loaded via guarded consult (facts/rules only; directives rejected)",
         "- library(sandbox) validates most built-in predicates as safe/unsafe",
-        "- Explicit blacklist blocks dangerous operations: call/1, assert/1, system/1, shell/1",
+        "- Explicit blacklist blocks dangerous operations even if sandbox allows them",
         "- User-defined predicates in 'kb' module allowed for recursive definitions",
-        "- Security is always enabled to ensure safe operation",
+        "- Security is always enabled and cannot be disabled",
       ],
       security: [
         "Security Architecture:",
+        "- File Path Restrictions: System directories (/etc, /usr, /bin, /var, etc.) blocked",
+        "- Only ~/.swipl-mcp-server/ directory allowed for file loading",
+        "- Pre-execution validation catches dangerous predicates before execution",
         "- Most built-ins validated by library(sandbox)",
         "- Safe built-ins: arithmetic, lists, term operations, logic, string/atom helpers",
-        "- Dangerous operations explicitly blocked even if sandbox allows them",
+        "- Dangerous operations explicitly blocked: shell(), system(), call(), assert(), halt()",
         "- User predicates in kb/user modules permitted for recursion",
         "- All queries executed in sandboxed environment",
       ],
@@ -146,16 +152,25 @@ export const toolHandlers = {
       },
       security: {
         module: "kb",
+        file_restrictions: {
+          allowed_directory: "~/.swipl-mcp-server/",
+          blocked_directories: ["/etc", "/usr", "/bin", "/var", "/sys", "/proc", "/boot", "/dev", "/root"],
+          validation: "pre-execution path checking"
+        },
         consult: "facts/rules only; directives rejected",
-        model: "hybrid",
+        model: "enhanced_hybrid",
+        dangerous_predicate_blocking: {
+          detection: "pre-execution",
+          blocked_predicates: ["call/1", "assert/1", "system/1", "shell/1", "retract/1", "abolish/1", "halt/1"],
+          error_format: "Security Error: Operation blocked - contains dangerous predicate 'X'"
+        },
         sandbox_validation: "library(sandbox) validates most built-ins",
-        explicit_blacklist: ["call/1", "assert/1", "system/1", "shell/1", "retract/1", "abolish/1"],
         user_predicates: "allowed in kb/user modules for recursion",
         safe_categories: [
           "arithmetic", "lists", "term operations", "logic",
           "string/atom helpers", "comparisons", "type checking"
         ],
-        blocked_categories: ["I/O", "OS/process", "network", "external modules", "directives"],
+        blocked_categories: ["I/O", "OS/process", "network", "external modules", "directives", "system files"],
       },
     } as const;
 
@@ -181,6 +196,20 @@ export const toolHandlers = {
       return {
         content: [{ type: "text", text: "Error: filename too long (max 1000 characters)" }],
         structuredContent: { error: "filename_too_long", processing_time_ms: Date.now() - startTime },
+        isError: true,
+      };
+    }
+
+    // Security validation - check file path
+    const pathValidation = validateFilePath(filename);
+    if (!pathValidation.allowed && pathValidation.error) {
+      return {
+        content: [{ type: "text", text: pathValidation.error.message }],
+        structuredContent: { 
+          error: pathValidation.error.type, 
+          blocked_path: pathValidation.error.blockedPath,
+          processing_time_ms: Date.now() - startTime 
+        },
         isError: true,
       };
     }
@@ -448,6 +477,26 @@ export const toolHandlers = {
       };
     }
 
+    // Security validation - check fact for dangerous predicates
+    const factValidation = validateFactSafety(fact);
+    if (!factValidation.safe && factValidation.error) {
+      const details = `✗ ${fact}: ${factValidation.error.message}`;
+      const summary = `Asserted 0/1 clauses successfully`;
+      const text = `${factValidation.error.message}\n\nDetails:\n${details}\n${summary}\nProcessing time: ${Date.now() - startTime}ms`;
+      return {
+        content: [{ type: "text", text }],
+        structuredContent: { 
+          error: factValidation.error.type, 
+          dangerous_predicate: factValidation.error.dangerousPredicate,
+          success: 0, 
+          total: 1, 
+          details: [details], 
+          processing_time_ms: Date.now() - startTime 
+        },
+        isError: true,
+      };
+    }
+
     try {
       await prologInterface.start();
       const normalizeSingle = (cl: string) => {
@@ -466,6 +515,27 @@ export const toolHandlers = {
     } catch (error) {
       const processingTimeMs = Date.now() - startTime;
       const errMsg = error instanceof Error ? error.message : String(error);
+      
+      // Check if this is a security violation
+      const securityError = detectDangerousOperation(errMsg);
+      if (securityError) {
+        const details = `✗ ${fact}: ${securityError.message}`;
+        const summary = `Asserted 0/1 clauses successfully`;
+        const text = `${securityError.message}\n\nDetails:\n${details}\n${summary}\nProcessing time: ${processingTimeMs}ms`;
+        return {
+          content: [{ type: "text", text }],
+          structuredContent: { 
+            error: securityError.type, 
+            dangerous_predicate: securityError.dangerousPredicate,
+            success: 0, 
+            total: 1, 
+            details: [details], 
+            processing_time_ms: processingTimeMs 
+          },
+          isError: true,
+        };
+      }
+      
       const details = `✗ ${fact}: ${errMsg}`;
       const summary = `Asserted 0/1 clauses successfully`;
       const text = `Error: ${errMsg}\n\nDetails:\n${details}\n${summary}\nProcessing time: ${processingTimeMs}ms`;
@@ -526,6 +596,15 @@ export const toolHandlers = {
 
       for (const raw of facts) {
         const singleFact = normalize(raw);
+        
+        // Check for dangerous predicates before attempting assertion
+        const factValidation = validateFactSafety(singleFact);
+        if (!factValidation.safe && factValidation.error) {
+          results.push(`✗ ${singleFact}: ${factValidation.error.message}`);
+          errorCount++;
+          continue;
+        }
+        
         try {
           const result = await prologInterface.query(`assert(${singleFact})`);
           const isOk = result === "ok";
@@ -537,9 +616,10 @@ export const toolHandlers = {
             errorCount++;
           }
         } catch (error) {
-          results.push(
-            `✗ ${singleFact}: ${error instanceof Error ? error.message : String(error)}`,
-          );
+          const errMsg = error instanceof Error ? error.message : String(error);
+          const securityError = detectDangerousOperation(errMsg);
+          const displayMessage = securityError ? securityError.message : errMsg;
+          results.push(`✗ ${singleFact}: ${displayMessage}`);
           errorCount++;
         }
       }
@@ -664,9 +744,10 @@ export const toolHandlers = {
             errorCount++;
           }
         } catch (error) {
-          results.push(
-            `✗ ${singleFact}: ${error instanceof Error ? error.message : String(error)}`,
-          );
+          const errMsg = error instanceof Error ? error.message : String(error);
+          const securityError = detectDangerousOperation(errMsg);
+          const displayMessage = securityError ? securityError.message : errMsg;
+          results.push(`✗ ${singleFact}: ${displayMessage}`);
           errorCount++;
         }
       }

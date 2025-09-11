@@ -60,7 +60,7 @@ Configure timeouts and logging via environment variables:
 
 ## Usage Examples
 
-1. Load knowledge: `db_load({"filename":"family.pl"})`
+1. Load knowledge: `db_load({"filename":"~/.swipl-mcp-server/family.pl"})`
 2. Start query: `query_start({"query":"parent(X, mary)"})`
 3. Get solutions: `query_next()` … then `query_close()`
 4. Try engine mode: `query_startEngine({"query":"member(X,[1,2,3])"})`
@@ -69,9 +69,10 @@ More examples in docs/examples.md.
 
 ## Safety & Security
 
-- Hybrid security: library(sandbox) validation plus explicit blacklist
-- Guarded consultation: accepts facts/rules; directives are rejected
-- Session management: mutual exclusion between modes; timeouts for protection
+- **File Path Restrictions**: Only `~/.swipl-mcp-server/` directory allowed for file operations
+- **Dangerous Predicate Blocking**: Pre-execution detection of `shell()`, `system()`, `call()`, etc.
+- **Hybrid Validation**: library(sandbox) validation plus explicit security checks
+- **Session Management**: Mutual exclusion between modes; timeouts for protection
 
 ## Troubleshooting
 

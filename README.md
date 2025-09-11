@@ -99,8 +99,8 @@ Configure timeouts, logging, and behavior via environment variables:
 
 ## Examples
 
-- Load and query:
-  - `db_load { filename: "family.pl" }`
+- Load and query (files must be in `~/.swipl-mcp-server/`):
+  - `db_load { filename: "~/.swipl-mcp-server/family.pl" }`
   - `query_start { query: "parent(X, mary)" }` → `query_next()` until no more solutions → `query_close()`
 - Engine mode:
   - `query_startEngine { query: "member(X, [1,2,3])" }` → `query_next()` repeatedly → `query_close()`
@@ -117,9 +117,30 @@ See docs/examples.md for many more, including arithmetic, list ops, collections,
 
 - Single persistent SWI‑Prolog process with two query modes (standard via `call_nth/2`, engine via SWI engines)
 - Term-based wire protocol: Node wraps requests as `cmd(ID, Term)`, replies as `id(ID, Reply)`; back‑compatible with bare terms
-- Hybrid security model with library(sandbox) validation and explicit blacklist; guarded consultation of files
+- Enhanced security model with file path restrictions, library(sandbox) validation, and dangerous predicate blocking
 
 Details: see docs/architecture.md.
+
+## Security
+
+The server implements multiple security layers to protect your system:
+
+### File Path Restrictions
+- **Allowed Directory**: Files can only be loaded from `~/.swipl-mcp-server/`
+- **Blocked Directories**: System directories (`/etc`, `/usr`, `/bin`, `/var`, etc.) are automatically blocked
+- **Example**: `db_load { filename: "/etc/passwd" }` → `Security Error: Access to system directories is blocked`
+
+### Dangerous Predicate Detection
+- **Pre-execution Blocking**: Dangerous operations are caught before execution
+- **Blocked Predicates**: `shell()`, `system()`, `call()`, `assert()`, `halt()`, etc.
+- **Example**: `db_assert { fact: "malware :- shell('rm -rf /')" }` → `Security Error: Operation blocked - contains dangerous predicate 'shell'`
+
+### Additional Protections
+- Library(sandbox) validation for built-in predicates
+- Timeout protection against infinite loops
+- Module isolation in dedicated `kb` namespace
+
+See [SECURITY.md](SECURITY.md) for complete security documentation.
 
 ## Troubleshooting
 
@@ -127,7 +148,7 @@ Details: see docs/architecture.md.
 - Startup timeout: increase `SWI_MCP_READY_TIMEOUT_MS`
 - Query timeout: increase `SWI_MCP_QUERY_TIMEOUT_MS`
 - Session conflicts: close current session before starting a different mode
-- `error(unsafe_goal(...))`: your query uses blocked predicates; see Security
+- `Security Error: ...`: file access blocked or dangerous predicates detected; see Security
 - Custom script path: set `SWI_MCP_PROLOG_PATH`
 - Query sessions: after exhausting solutions, `query_next` returns "No more solutions available" until explicitly closed
 

@@ -120,8 +120,8 @@ class NPXIntegrationTest {
         },
         validate: (result) => {
           const text = result.result?.content?.[0]?.text || '';
-          if (!text.includes('Error:') || !text.includes('does not exist')) {
-            throw new Error(`Expected error for non-existent file, got: ${text}`);
+          if (!text.includes('Security Error:') || !text.includes('Files can only be loaded from')) {
+            throw new Error(`Expected security error for file outside allowed directory, got: ${text}`);
           }
         }
       },

@@ -32,7 +32,10 @@
     "release:patch": "npm run version:patch && git push origin main && git push --tags && npm run publish:npm && npm run github:release",
     "release:minor": "npm run version:minor && git push origin main && git push --tags && npm run publish:npm && npm run github:release",
     "release:major": "npm run version:major && git push origin main && git push --tags && npm run publish:npm && npm run github:release",
-    "release:prerelease": "npm run version:prerelease && git push origin main && git push --tags && npm run publish:npm && npm run github:release"
+    "release:prerelease": "npm run version:prerelease && git push origin main && git push --tags && npm run publish:npm && npm run github:release",
+    "security:audit": "npm audit --audit-level=moderate",
+    "security:check": "npm audit --audit-level=high --json | jq -r '.vulnerabilities | length' | xargs -I {} test {} -eq 0",
+    "security:update": "npm update && npm audit fix"
   },
   "keywords": [
     "mcp",

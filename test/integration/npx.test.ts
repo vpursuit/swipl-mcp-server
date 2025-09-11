@@ -116,8 +116,8 @@ maybeDescribe("NPX Integration Tests", () => {
       },
       validate: (result: any) => {
         const text = result.result?.content?.[0]?.text || '';
-        if (!text.includes('Error:') || !text.includes('does not exist')) {
-          throw new Error(`Expected error for non-existent file, got: ${text}`);
+        if (!text.includes('Security Error:') || !text.includes('Files can only be loaded from')) {
+          throw new Error(`Expected security error for file outside allowed directory, got: ${text}`);
         }
       }
     };
@@ -126,6 +126,6 @@ maybeDescribe("NPX Integration Tests", () => {
     errorTest.validate(response);
     
     expect(response.result?.isError).toBe(true);
-    expect(response.result?.content?.[0]?.text).toContain('does not exist');
+    expect(response.result?.content?.[0]?.text).toContain('Security Error');
   }, 90000); // 90 second timeout
 });

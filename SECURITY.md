@@ -4,7 +4,9 @@
 
 **Use this tool at your own risk.** This SWI-Prolog MCP Server provides controlled access to a Prolog environment and executes user-provided queries and code. While comprehensive security measures have been implemented including sandboxing and blacklisting, **no security system is perfect**. 
 
-**Security Layer:** This server includes a hybrid security framework that:
+**Security Layer:** This server includes an enhanced security framework that:
+- **File Path Restrictions**: Only allows file access within `~/.swipl-mcp-server/` directory
+- **Dangerous Predicate Blocking**: Pre-execution detection and blocking of dangerous operations
 - Validates predicates using SWI-Prolog's `library(sandbox)`
 - Maintains an explicit blacklist of dangerous operations
 - Isolates user code in a dedicated `kb` module
@@ -26,14 +28,28 @@
 - Potential risks: arbitrary file/OS access, network calls, long‑running or looping queries, information leakage through logs.
 
 ## Built‑in Protections
-- **Hybrid Security**: Combines `library(sandbox)` validation with explicit blacklist for critical operations.
+
+### File Path Security
+- **Allowed Directory**: Only `~/.swipl-mcp-server/` directory permitted for file operations
+- **System Directory Blocking**: Automatically blocks access to `/etc`, `/usr`, `/bin`, `/var`, `/sys`, `/proc`, `/boot`, `/dev`, `/root`
+- **Pre-validation**: File paths are checked before any Prolog interaction
+- **Clear Error Messages**: `Security Error: Files can only be loaded from ~/.swipl-mcp-server/`
+
+### Dangerous Predicate Detection
+- **Pre-execution Blocking**: Dangerous operations caught before execution, not during timeout
+- **Blocked Predicates**: `shell()`, `system()`, `call()`, `assert()`, `halt()`, `retract()`, `abolish()`
+- **Pattern Detection**: Scans fact/query content for dangerous predicate calls
+- **Clear Error Messages**: `Security Error: Operation blocked - contains dangerous predicate 'X'`
+
+### Additional Protections
+- **Enhanced Security Model**: Combines `library(sandbox)` validation with explicit blacklist and path restrictions
   - `library(sandbox)` validates most built-ins as safe/unsafe
-  - Additional blacklist prevents dangerous operations: `call/1`, `assert/1`, `system/1`, `shell/1`, etc.
+  - Additional blacklist prevents dangerous operations even if sandbox allows them
   - User-defined predicates in `kb` module are allowed for recursive definitions
-- **Safe consult**: Only facts/rules are accepted; directives and module‑altering terms are rejected.
-- **Isolation**: User data lives in `kb`; `unknown=fail` to avoid accidental calls.
-- **Timeouts**: Node side enforces query timeouts to prevent hangs.
-- **Logging hygiene**: Logs go to `stderr`, default to `warn`, and redact absolute paths/PIDs.
+- **Safe consult**: Only facts/rules are accepted; directives and module‑altering terms are rejected
+- **Isolation**: User data lives in `kb`; `unknown=fail` to avoid accidental calls
+- **Timeouts**: Node side enforces query timeouts to prevent hangs
+- **Logging hygiene**: Logs go to `stderr`, default to `warn`, and redact absolute paths/PIDs
 
 ## Hardening Checklist
 - Run as a non‑privileged user; avoid filesystem write access beyond the working directory.
@@ -82,14 +98,27 @@ npm run build
 - Security is always enabled and cannot be disabled.
 
 ## Security Testing
-- Verify hybrid security rejects dangerous goals:
-  - Example: `call(true)` should return `error(unsafe_goal(...))`
-  - Example: `assert(malicious)` should return `error(unsafe_goal(...))`
-  - Example: `system('rm -rf /')` should return `error(unsafe_goal(...))`
+
+### File Path Security Testing
+- Verify system directory blocking:
+  - Example: `db_load({ filename: "/etc/passwd" })` → `Security Error: Access to system directories is blocked`
+  - Example: `db_load({ filename: "/usr/bin/ls" })` → `Security Error: Access to system directories is blocked`
+- Verify allowed directory works:
+  - Example: `db_load({ filename: "~/.swipl-mcp-server/test.pl" })` → should work (if file exists)
+
+### Dangerous Predicate Testing
+- Verify pre-execution blocking:
+  - Example: `db_assert({ fact: "malware :- shell('rm -rf /')" })` → `Security Error: Operation blocked - contains dangerous predicate 'shell'`
+  - Example: `db_assert({ fact: "bad :- system('cat /etc/passwd')" })` → `Security Error: Operation blocked - contains dangerous predicate 'system'`
 - Verify safe operations work:
   - Example: `X is 2 + 3` should succeed
   - Example: `append([1,2], [3], L)` should succeed
 - Verify recursive user predicates work:
-  - Example: `assert((ancestor(X,Y) :- parent(X,Y)))` should succeed
+  - Example: `db_assert({ fact: "ancestor(X,Y) :- parent(X,Y)" })` should succeed
+
+### Legacy Security Testing
+- Verify sandbox rejects remaining dangerous goals during execution:
+  - Example: `call(true)` should return `error(unsafe_goal(...))`
+  - Example: Direct `assert(malicious)` in query should return `error(unsafe_goal(...))`
 - Confirm consult rejects directives (e.g., `:- initialization(...)`).
 - Run comprehensive test suite: `npm test` (includes end-to-end integration testing).
