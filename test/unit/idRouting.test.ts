@@ -19,4 +19,18 @@ describe("Correlation ID routing", () => {
     await expect(p1).resolves.toBe("respA");
     await expect(p2).resolves.toBe("respB");
   });
+
+  test("drops late or unknown id responses without FIFO fallback", async () => {
+    const iface = new PrologInterface();
+    // Seed a different pending id
+    let resolved = false;
+    (iface as any).queryPromises.set("1", { resolve: () => { resolved = true; }, reject: () => { } });
+
+    // Deliver a response for an unknown id - should be dropped
+    (iface as any).processResponseLine("id(999, stray)");
+
+    // Ensure the pending entry is still present and not resolved
+    expect((iface as any).queryPromises.has("1")).toBe(true);
+    expect(resolved).toBe(false);
+  });
 });

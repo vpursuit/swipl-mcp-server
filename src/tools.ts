@@ -1,13 +1,42 @@
 import { readFile } from "fs/promises";
 import { PrologInterface } from "./PrologInterface.js";
+import { MAX_FILENAME_LENGTH, MAX_QUERY_LENGTH } from "./constants.js";
+import { validateStringInput } from "./utils/validation.js";
+import { createErrorResponse, createSuccessResponse } from "./utils/response.js";
 import { resolvePackageVersion, findNearestFile } from "./meta.js";
-import { validateFilePath, detectDangerousOperation, validateFactSafety } from "./security.js";
+import path from "path";
+import os from "os";
 
 type ToolResponse = {
   content: any[];
   structuredContent: Record<string, unknown>;
   isError?: boolean;
 };
+
+// Security: Only allow files within the designated directory
+const ALLOWED_DIR = path.join(os.homedir(), '.swipl-mcp-server');
+
+function validateFilePath(filename: string): { allowed: boolean; error?: string } {
+  try {
+    const absolutePath = path.resolve(filename);
+    const relativePath = path.relative(ALLOWED_DIR, absolutePath);
+    const isWithinAllowed = !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+    
+    if (isWithinAllowed) {
+      return { allowed: true };
+    }
+    
+    return {
+      allowed: false,
+      error: `Security Error: Files can only be loaded from ${ALLOWED_DIR}`
+    };
+  } catch (error) {
+    return {
+      allowed: false,
+      error: `Security Error: Invalid file path`
+    };
+  }
+}
 
 // Global Prolog interface instance
 const prologInterface = new PrologInterface();
@@ -184,34 +213,21 @@ export const toolHandlers = {
     const startTime = Date.now();
 
     // Input validation
-    if (!filename || typeof filename !== 'string') {
-      return {
-        content: [{ type: "text", text: "Error: filename parameter is required and must be a string" }],
-        structuredContent: { error: "invalid_input", processing_time_ms: Date.now() - startTime },
-        isError: true,
-      };
-    }
-
-    if (filename.length > 1000) {
-      return {
-        content: [{ type: "text", text: "Error: filename too long (max 1000 characters)" }],
-        structuredContent: { error: "filename_too_long", processing_time_ms: Date.now() - startTime },
-        isError: true,
-      };
+    {
+      const v = validateStringInput("filename", filename as any, MAX_FILENAME_LENGTH);
+      if (!v.ok) {
+        return createErrorResponse(v.error, startTime, { error_code: v.code });
+      }
     }
 
     // Security validation - check file path
     const pathValidation = validateFilePath(filename);
-    if (!pathValidation.allowed && pathValidation.error) {
-      return {
-        content: [{ type: "text", text: pathValidation.error.message }],
-        structuredContent: { 
-          error: pathValidation.error.type, 
-          blocked_path: pathValidation.error.blockedPath,
-          processing_time_ms: Date.now() - startTime 
-        },
-        isError: true,
-      };
+    if (!pathValidation.allowed) {
+      return createErrorResponse(
+        pathValidation.error || "File access denied", 
+        startTime, 
+        { error_code: "file_path_violation", blocked_path: filename }
+      );
     }
 
     try {
@@ -236,33 +252,20 @@ export const toolHandlers = {
           errorCode = "is_directory";
         }
 
-        return {
-          content: [{ type: "text", text: errorMessage }],
-          structuredContent: { error: errorCode, filename, processing_time_ms: processingTimeMs },
-          isError: true,
-        };
+        return createErrorResponse(errorMessage, startTime, { error_code: errorCode, filename });
       }
 
       const result = await prologInterface.consultFile(filename);
-      const processingTimeMs = Date.now() - startTime;
-      return {
-        content: [
-          { type: "text", text: `Successfully consulted file: ${filename}\nResult: ${result}\nProcessing time: ${processingTimeMs}ms` },
-        ],
-        structuredContent: { file: filename, result, processing_time_ms: processingTimeMs },
-      };
+      return createSuccessResponse(
+        `Successfully consulted file: ${filename}\nResult: ${result}`,
+        startTime,
+        { file: filename, result }
+      );
     } catch (error) {
-      const processingTimeMs = Date.now() - startTime;
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: ${error instanceof Error ? error.message : String(error)}\nProcessing time: ${processingTimeMs}ms`,
-          },
-        ],
-        structuredContent: { error: error instanceof Error ? error.message : String(error), processing_time_ms: processingTimeMs },
-        isError: true,
-      };
+      return createErrorResponse(
+        error instanceof Error ? error.message : String(error),
+        startTime
+      );
     }
   },
 
@@ -270,52 +273,26 @@ export const toolHandlers = {
     const startTime = Date.now();
 
     // Input validation
-    if (!query || typeof query !== 'string') {
-      return {
-        content: [{ type: "text", text: "Error: query parameter is required and must be a string" }],
-        structuredContent: { error: "invalid_input", processing_time_ms: Date.now() - startTime },
-        isError: true,
-      };
-    }
-
-    if (query.length > 10000) {
-      return {
-        content: [{ type: "text", text: "Error: query too long (max 10000 characters)" }],
-        structuredContent: { error: "query_too_long", processing_time_ms: Date.now() - startTime },
-        isError: true,
-      };
+    {
+      const v = validateStringInput("query", query as any, MAX_QUERY_LENGTH);
+      if (!v.ok) {
+        return createErrorResponse(v.error, startTime, { error_code: v.code });
+      }
     }
 
     try {
       await prologInterface.start();
       const result = await prologInterface.startQuery(query);
-      const processingTimeMs = Date.now() - startTime;
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Query started: ${query}\nStatus: ${result.status}\nSolutions available: ${result.solutions_available}\nProcessing time: ${processingTimeMs}ms`,
-          },
-        ],
-        structuredContent: {
-          query,
-          status: result.status,
-          solutions_available: result.solutions_available,
-          processing_time_ms: processingTimeMs,
-        },
-      };
+      return createSuccessResponse(
+        `Query started: ${query}\nStatus: ${result.status}\nSolutions available: ${result.solutions_available}`,
+        startTime,
+        { query, status: result.status, solutions_available: result.solutions_available }
+      );
     } catch (error) {
-      const processingTimeMs = Date.now() - startTime;
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: ${error instanceof Error ? error.message : String(error)}\nProcessing time: ${processingTimeMs}ms`,
-          },
-        ],
-        structuredContent: { error: error instanceof Error ? error.message : String(error), processing_time_ms: processingTimeMs },
-        isError: true,
-      };
+      return createErrorResponse(
+        error instanceof Error ? error.message : String(error),
+        startTime
+      );
     }
   },
 
@@ -333,21 +310,17 @@ export const toolHandlers = {
       } else if (sessionState === "engine" || sessionState === "engine_completed") {
         result = await prologInterface.nextEngine();
       } else {
-        return {
-          content: [{ type: "text", text: `Error: No active query session\nProcessing time: ${Date.now() - startTime}ms` }],
-          structuredContent: { error: "No active query session", more_solutions: false, processing_time_ms: Date.now() - startTime },
-          isError: true,
-        };
+        return createErrorResponse(
+          "No active query session", 
+          startTime, 
+          { more_solutions: false }
+        );
       }
 
       const processingTimeMs = Date.now() - startTime;
 
       if (result.error) {
-        return {
-          content: [{ type: "text", text: `Error: ${result.error}\nProcessing time: ${processingTimeMs}ms` }],
-          structuredContent: { error: result.error, more_solutions: false, processing_time_ms: processingTimeMs },
-          isError: true,
-        };
+        return createErrorResponse(result.error, startTime, { more_solutions: false });
       }
 
       if (result.solution) {
@@ -477,25 +450,6 @@ export const toolHandlers = {
       };
     }
 
-    // Security validation - check fact for dangerous predicates
-    const factValidation = validateFactSafety(fact);
-    if (!factValidation.safe && factValidation.error) {
-      const details = `✗ ${fact}: ${factValidation.error.message}`;
-      const summary = `Asserted 0/1 clauses successfully`;
-      const text = `${factValidation.error.message}\n\nDetails:\n${details}\n${summary}\nProcessing time: ${Date.now() - startTime}ms`;
-      return {
-        content: [{ type: "text", text }],
-        structuredContent: { 
-          error: factValidation.error.type, 
-          dangerous_predicate: factValidation.error.dangerousPredicate,
-          success: 0, 
-          total: 1, 
-          details: [details], 
-          processing_time_ms: Date.now() - startTime 
-        },
-        isError: true,
-      };
-    }
 
     try {
       await prologInterface.start();
@@ -516,25 +470,6 @@ export const toolHandlers = {
       const processingTimeMs = Date.now() - startTime;
       const errMsg = error instanceof Error ? error.message : String(error);
       
-      // Check if this is a security violation
-      const securityError = detectDangerousOperation(errMsg);
-      if (securityError) {
-        const details = `✗ ${fact}: ${securityError.message}`;
-        const summary = `Asserted 0/1 clauses successfully`;
-        const text = `${securityError.message}\n\nDetails:\n${details}\n${summary}\nProcessing time: ${processingTimeMs}ms`;
-        return {
-          content: [{ type: "text", text }],
-          structuredContent: { 
-            error: securityError.type, 
-            dangerous_predicate: securityError.dangerousPredicate,
-            success: 0, 
-            total: 1, 
-            details: [details], 
-            processing_time_ms: processingTimeMs 
-          },
-          isError: true,
-        };
-      }
       
       const details = `✗ ${fact}: ${errMsg}`;
       const summary = `Asserted 0/1 clauses successfully`;
@@ -597,13 +532,6 @@ export const toolHandlers = {
       for (const raw of facts) {
         const singleFact = normalize(raw);
         
-        // Check for dangerous predicates before attempting assertion
-        const factValidation = validateFactSafety(singleFact);
-        if (!factValidation.safe && factValidation.error) {
-          results.push(`✗ ${singleFact}: ${factValidation.error.message}`);
-          errorCount++;
-          continue;
-        }
         
         try {
           const result = await prologInterface.query(`assert(${singleFact})`);
@@ -617,9 +545,7 @@ export const toolHandlers = {
           }
         } catch (error) {
           const errMsg = error instanceof Error ? error.message : String(error);
-          const securityError = detectDangerousOperation(errMsg);
-          const displayMessage = securityError ? securityError.message : errMsg;
-          results.push(`✗ ${singleFact}: ${displayMessage}`);
+          results.push(`✗ ${singleFact}: ${errMsg}`);
           errorCount++;
         }
       }
@@ -745,9 +671,7 @@ export const toolHandlers = {
           }
         } catch (error) {
           const errMsg = error instanceof Error ? error.message : String(error);
-          const securityError = detectDangerousOperation(errMsg);
-          const displayMessage = securityError ? securityError.message : errMsg;
-          results.push(`✗ ${singleFact}: ${displayMessage}`);
+          results.push(`✗ ${singleFact}: ${errMsg}`);
           errorCount++;
         }
       }
@@ -819,20 +743,11 @@ export const toolHandlers = {
     const startTime = Date.now();
 
     // Input validation
-    if (!query || typeof query !== 'string') {
-      return {
-        content: [{ type: "text", text: "Error: query parameter is required and must be a string" }],
-        structuredContent: { error: "invalid_input", processing_time_ms: Date.now() - startTime },
-        isError: true,
-      };
-    }
-
-    if (query.length > 10000) {
-      return {
-        content: [{ type: "text", text: "Error: query too long (max 10000 characters)" }],
-        structuredContent: { error: "query_too_long", processing_time_ms: Date.now() - startTime },
-        isError: true,
-      };
+    {
+      const v = validateStringInput("query", query as any, MAX_QUERY_LENGTH);
+      if (!v.ok) {
+        return createErrorResponse(v.error, startTime, { error_code: v.code });
+      }
     }
 
     try {

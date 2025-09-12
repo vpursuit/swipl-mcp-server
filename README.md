@@ -121,6 +121,27 @@ See docs/examples.md for many more, including arithmetic, list ops, collections,
 
 Details: see docs/architecture.md.
 
+### Session State Machine
+
+```
+        startQuery                   nextSolution (eof)
+ idle  ─────────────▶  query  ─────────────────────────▶  query_completed
+   ▲                         │                 closeQuery │
+   │       error             │                           ▼
+   └─────────────────────────┘                    closing_query ──▶ idle
+
+        startEngine                   nextEngine (eof)
+ idle  ─────────────▶  engine ─────────────────────────▶  engine_completed
+   ▲                         │                 closeEngine │
+   │       error             │                           ▼
+   └─────────────────────────┘                    closing_engine ─▶ idle
+```
+
+- Exactly one session type can be active at a time (query or engine).
+- The `*_completed` states keep context so that subsequent `next` calls respond with "no more solutions" until explicitly closed.
+- Transient `closing_*` states serialize shutdown before new sessions begin.
+- Invalid transitions are logged when `SWI_MCP_TRACE=1`.
+
 ## Security
 
 The server implements multiple security layers to protect your system:

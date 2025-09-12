@@ -38,7 +38,18 @@ try {
 const libDir = path.join(DIST_DIR, "lib");
 fs.mkdirSync(libDir, { recursive: true });
 
-const jsFiles = ["index.js", "PrologInterface.js", "tools.js", "logger.js", "schemas.js", "meta.js", "security.js"];
+const jsFiles = [
+  "index.js",
+  "PrologInterface.js",
+  "tools.js",
+  "logger.js",
+  "schemas.js",
+  "meta.js",
+  "security.js",
+  "constants.js",
+  "utils/response.js",
+  "utils/validation.js",
+];
 jsFiles.forEach((file) => {
   const srcPath = path.join(BUILD_DIR, file);
   const destPath = path.join(libDir, file);
@@ -50,6 +61,8 @@ jsFiles.forEach((file) => {
       content = "#!/usr/bin/env node\n" + content;
     }
 
+    // Ensure nested directories exist (e.g., utils/validation.js)
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
     fs.writeFileSync(destPath, content);
 
     // Make index.js executable

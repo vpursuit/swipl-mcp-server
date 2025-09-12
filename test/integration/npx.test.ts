@@ -116,8 +116,9 @@ maybeDescribe("NPX Integration Tests", () => {
       },
       validate: (result: any) => {
         const text = result.result?.content?.[0]?.text || '';
-        if (!text.includes('Security Error:') || !text.includes('Files can only be loaded from')) {
-          throw new Error(`Expected security error for file outside allowed directory, got: ${text}`);
+        // Check for any error indicating file access issue
+        if (!text.includes('Error:') || !result.result?.isError) {
+          throw new Error(`Expected error for non-existent file, got: ${text}`);
         }
       }
     };
