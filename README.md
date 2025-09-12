@@ -8,6 +8,7 @@ An MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It s
 - [Requirements](#requirements)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+ - [State & Lifecycle](#state--lifecycle)
 - [Tools](#tools)
 - [Examples](#examples)
 - [Architecture](#architecture)
@@ -89,6 +90,14 @@ Configure timeouts, logging, and behavior via environment variables:
 - `DEBUG`: enable debug logs, set to `swipl-mcp-server`
 - `SWI_MCP_TRACE`: optional low-level trace of child I/O and protocol
 - `SWI_MCP_PROLOG_PATH`: override Prolog server script path
+
+## State & Lifecycle
+
+- Transport: `stdio`. The MCP client owns the connection lifecycle.
+- Shutdown: the server exits on `SIGINT`/`SIGTERM` or when the client closes stdio. On stdio close, a small grace (~25ms) allows final responses to flush before exit.
+- Stateful per connection: asserted facts/rules live in memory for the lifetime of the MCP connection (one Node process and one SWI‑Prolog child). When the client disconnects and the server exits, in‑memory state is reset on next start.
+- Client guidance: keep a single stdio connection open for workflows that depend on shared state across multiple tool calls; avoid closing stdin immediately after a request.
+- Durability (optional): if persistent KB is desired across restarts, use `db_dump` to save to `~/.swipl-mcp-server/` and `db_load` (or `db_assert_many`) to restore on startup. See docs/lifecycle.md for patterns.
 
 ## Tools
 
@@ -190,6 +199,7 @@ For security practices, reporting, and hardening guidance, see SECURITY.md.
 
 Further reading:
 - [docs/architecture.md](docs/architecture.md) — components, modes, and wire protocol
+- [docs/lifecycle.md](docs/lifecycle.md) — server lifecycle, state, and persistence patterns
 - [docs/deployment.md](docs/deployment.md) — release, packaging, and install from source
 - [docs/examples.md](docs/examples.md) — copy‑paste examples
 

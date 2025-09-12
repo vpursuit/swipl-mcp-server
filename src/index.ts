@@ -187,15 +187,23 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  // Cleanup on exit
-  process.on("SIGTERM", () => {
-    prologInterface.stop();
+  // Cleanup on exit and when client disconnects (stdio closed)
+  let shuttingDown = false;
+  const shutdown = (reason: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    try { prologInterface.stop(); } catch { /* ignore */ }
+    // Prefer graceful exit
     process.exit(0);
-  });
+  };
 
-  process.on("SIGINT", () => {
-    prologInterface.stop();
-    process.exit(0);
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  // When the MCP client closes stdio, terminate this server as well.
+  // Use only 'close' (not 'end') and add a tiny grace period to allow flush.
+  process.stdin.on("close", () => {
+    const timer = setTimeout(() => shutdown("stdin_close"), 25);
+    (timer as any).unref?.();
   });
 }
 

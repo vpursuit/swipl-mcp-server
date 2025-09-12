@@ -287,9 +287,8 @@ class NPXIntegrationTest {
         }
       });
 
-      // Send the request
+      // Send the request (keep stdin open to avoid premature disconnect)
       child.stdin.write(JSON.stringify(request) + '\n');
-      child.stdin.end();
     });
   }
 
