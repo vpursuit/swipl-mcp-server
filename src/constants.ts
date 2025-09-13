@@ -13,4 +13,3 @@ export const MAX_BUFFER_SIZE = 1024 * 1024; // 1MB
 export const DEFAULT_QUERY_TIMEOUT_MS = 30000; // 30 seconds
 export const DEFAULT_READY_TIMEOUT_MS = 5000; // 5 seconds
 export const STOP_KILL_DELAY_MS = 50; // 50ms
-export const MAX_QUERY_PROMISES = 100;

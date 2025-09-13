@@ -18,11 +18,12 @@ import {
 export enum PrologErrorKind {
   UNSAFE_GOAL = 'unsafe_goal',
   PERMISSION_ERROR = 'permission_error',
-  FILE_NOT_FOUND = 'file_not_found',
   SYNTAX_ERROR = 'syntax_error',
   EXISTENCE_ERROR = 'existence_error',
   TIMEOUT = 'timeout',
-  PROCESS_ERROR = 'process_error',
+  SESSION_CONFLICT = 'session_conflict',
+  NO_ACTIVE_SESSION = 'no_active_session',
+  QUERY_TOO_LARGE = 'query_too_large',
   UNKNOWN = 'unknown'
 }
 
@@ -35,6 +36,7 @@ export interface PrologError {
     operation?: string;
     goal?: string;
     raw?: string;
+    timeoutMs?: number;
   };
 }
 
@@ -129,7 +131,7 @@ const ALLOWED_TRANSITIONS: Record<SessionState, SessionState[]> = {
 
 export class PrologInterface {
   private process: ChildProcess | null = null;
-  private queryPromises: Map<string, { resolve: Function; reject: Function }> = new Map();
+  private queryPromises: Map<string, { resolve: (value: string) => void; reject: (error: Error) => void }> = new Map();
   private queryCounter = 0;
   private isReady: boolean = false;
   private currentQuery: string | null = null;
@@ -561,7 +563,7 @@ export class PrologInterface {
 
       return new Promise<string>((resolve, reject) => {
         let stdinRef: (NodeJS.WritableStream & { removeListener?: Function }) | null = null;
-        let onWriteErrorRef: ((err: any) => void) | null = null;
+        let onWriteErrorRef: ((err: NodeJS.ErrnoException) => void) | null = null;
         const finish = () => {
           if (timer) {
             try { clearTimeout(timer); } catch { }
@@ -569,17 +571,17 @@ export class PrologInterface {
           }
           // Detach error listener if still attached
           if (stdinRef && onWriteErrorRef) {
-            try { (stdinRef as any)?.removeListener?.("error", onWriteErrorRef); } catch { }
+            try { (stdinRef as NodeJS.WritableStream & { removeListener?: Function })?.removeListener?.("error", onWriteErrorRef); } catch { }
           }
           stdinRef = null;
           onWriteErrorRef = null;
         };
 
-        const resolveAndFinish = (value: any) => {
+        const resolveAndFinish = (value: string) => {
           finish();
           resolve(value);
         };
-        const rejectAndFinish = (err: any) => {
+        const rejectAndFinish = (err: Error | string | unknown) => {
           finish();
           reject(err instanceof Error ? err : new Error(String(err)));
         };
@@ -597,8 +599,8 @@ export class PrologInterface {
           }
           const stdin = this.process.stdin as NodeJS.WritableStream & { removeListener?: Function };
           stdinRef = stdin;
-          const onWriteError = (err: any) => {
-            try { (stdin as any)?.removeListener?.("error", onWriteError); } catch { }
+          const onWriteError = (err: NodeJS.ErrnoException) => {
+            try { (stdin as NodeJS.WritableStream & { removeListener?: Function })?.removeListener?.("error", onWriteError); } catch { }
             this.queryPromises.delete(queryId);
             const error = err as NodeJS.ErrnoException;
             if (error?.code === "EPIPE" || String(error?.message || "").includes("EPIPE")) {
@@ -631,8 +633,9 @@ export class PrologInterface {
         timer = setTimeout(() => {
           if (this.queryPromises.has(queryId)) {
             this.queryPromises.delete(queryId);
-            logger.warn(`Query timeout after ${qTimeout}ms for command: ${command.substring(0, 100)}${command.length > 100 ? '...' : ''}`);
-            logger.info(`Cleaned up timed-out promise for query ${queryId}. Active promises: ${this.queryPromises.size}`);
+            // Avoid logging full command payloads (may contain sensitive data)
+            logger.warn(`Query timeout after ${qTimeout}ms (id:${queryId}).`);
+            logger.info(`Cleaned up timed-out promise for id:${queryId}. Active promises: ${this.queryPromises.size}`);
             rejectAndFinish(new Error(`Query timeout after ${qTimeout}ms. Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.`));
           }
         }, qTimeout);
@@ -657,7 +660,8 @@ export class PrologInterface {
    */
   async consultFile(filename: string): Promise<string> {
     const absolutePath = path.resolve(filename);
-    const escaped = absolutePath.replace(/'/g, "\\'");
+    // Escape backslashes first (Windows paths) then single quotes for Prolog atom
+    const escaped = absolutePath.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     return this.query(`consult('${escaped}')`);
   }
 
@@ -807,6 +811,9 @@ export class PrologInterface {
         try {
           proc.stdout?.removeAllListeners("data");
         } catch { }
+        try {
+          proc.stderr?.removeAllListeners("data");
+        } catch { }
       } catch { }
       // Best-effort terminate after a short delay
       const timer: NodeJS.Timeout = setTimeout(() => {
@@ -849,18 +856,19 @@ export class PrologInterface {
   static parsePrologError(errorTerm: string): PrologError {
     const trimmed = errorTerm.trim();
 
-    // Handle timeout errors specially
-    if (trimmed.toLowerCase().includes('timeout')) {
-      return {
-        kind: PrologErrorKind.TIMEOUT,
-        message: 'Query timed out',
-        details: { raw: trimmed }
-      };
-    }
-
     // Parse error(ErrorType) format
     const errorMatch = trimmed.match(/^error\((.*)\)$/);
     if (!errorMatch) {
+      // Detect client-side timeout messages explicitly
+      const clientTimeout = trimmed.match(/^Query timeout after\s+(\d+)ms/i);
+      if (clientTimeout) {
+        const ms = parseInt(clientTimeout[1]);
+        return {
+          kind: PrologErrorKind.TIMEOUT,
+          message: 'Query timed out',
+          details: { raw: trimmed, timeoutMs: Number.isFinite(ms) ? ms : undefined }
+        };
+      }
       return {
         kind: PrologErrorKind.UNKNOWN,
         message: trimmed,
@@ -913,6 +921,98 @@ export class PrologInterface {
       };
     }
 
+    // timeout(...) — future-proof for Prolog-side timeouts
+    const timeoutTerm = errorContent.match(/^timeout\((.*)\)$/);
+    if (timeoutTerm) {
+      return {
+        kind: PrologErrorKind.TIMEOUT,
+        message: 'Query timed out',
+        details: { raw: trimmed }
+      };
+    }
+
+    // Custom server-specific error patterns
+
+    // session_conflict(CurrentType, Type)
+    const sessionConflictMatch = errorContent.match(/^session_conflict\(([^,]+),\s*([^)]+)\)$/);
+    if (sessionConflictMatch) {
+      const [, currentType, requestedType] = sessionConflictMatch;
+      return {
+        kind: PrologErrorKind.SESSION_CONFLICT,
+        message: `Session conflict: A ${currentType.trim()} session is already active, cannot start ${requestedType.trim()} session`,
+        details: { raw: trimmed }
+      };
+    }
+
+    // invalid_query_syntax(ParseError)
+    const invalidSyntaxMatch = errorContent.match(/^invalid_query_syntax\((.*)\)$/);
+    if (invalidSyntaxMatch) {
+      return {
+        kind: PrologErrorKind.SYNTAX_ERROR,
+        message: `Invalid query syntax`,
+        details: { raw: trimmed }
+      };
+    }
+
+    // invalid_query_structure(ValidationError)
+    const invalidStructureMatch = errorContent.match(/^invalid_query_structure\((.*)\)$/);
+    if (invalidStructureMatch) {
+      return {
+        kind: PrologErrorKind.SYNTAX_ERROR,
+        message: `Invalid query structure`,
+        details: { raw: trimmed }
+      };
+    }
+
+    // no_active_query or no_active_engine
+    if (errorContent === 'no_active_query' || errorContent === 'no_active_engine') {
+      return {
+        kind: PrologErrorKind.NO_ACTIVE_SESSION,
+        message: `No active ${errorContent === 'no_active_query' ? 'query' : 'engine'} session`,
+        details: { raw: trimmed }
+      };
+    }
+
+    // undefined_predicate_in_query(Pred, Query)
+    const undefinedPredMatch = errorContent.match(/^undefined_predicate_in_query\(([^,]+),\s*(.*)\)$/);
+    if (undefinedPredMatch) {
+      const [, pred, query] = undefinedPredMatch;
+      return {
+        kind: PrologErrorKind.EXISTENCE_ERROR,
+        message: `Undefined predicate: ${pred.trim()}`,
+        details: { predicate: pred.trim(), goal: query.trim(), raw: trimmed }
+      };
+    }
+
+    // nothing_to_retract
+    if (errorContent === 'nothing_to_retract') {
+      return {
+        kind: PrologErrorKind.EXISTENCE_ERROR,
+        message: `No matching facts to retract`,
+        details: { raw: trimmed }
+      };
+    }
+
+    // line_too_long(Len)
+    const lineTooLongMatch = errorContent.match(/^line_too_long\((\d+)\)$/);
+    if (lineTooLongMatch) {
+      const len = lineTooLongMatch[1];
+      return {
+        kind: PrologErrorKind.QUERY_TOO_LARGE,
+        message: `Query too large: ${len} characters exceeds limit`,
+        details: { raw: trimmed }
+      };
+    }
+
+    // state_inconsistency
+    if (errorContent === 'state_inconsistency') {
+      return {
+        kind: PrologErrorKind.UNKNOWN,
+        message: `Internal state inconsistency detected`,
+        details: { raw: trimmed }
+      };
+    }
+
     // Default case
     return {
       kind: PrologErrorKind.UNKNOWN,
@@ -927,9 +1027,15 @@ export class PrologInterface {
   static formatPrologError(error: PrologError): string {
     switch (error.kind) {
       case PrologErrorKind.UNSAFE_GOAL:
-        const predicate = error.details?.goal?.match(/^(\w+)\(/)?.[1];
-        if (predicate) {
-          return `Security Error: Operation blocked - contains dangerous predicate '${predicate}'`;
+        const goalText = error.details?.goal;
+        if (goalText) {
+          // Handle module:predicate patterns by taking the rightmost segment after splitting on ':'
+          const segments = goalText.split(':');
+          const predicatePart = segments[segments.length - 1];
+          const predicate = predicatePart.match(/^(\w+)\(/)?.[1];
+          if (predicate) {
+            return `Security Error: Operation blocked - contains dangerous predicate '${predicate}'`;
+          }
         }
         return error.message;
 
@@ -939,18 +1045,29 @@ export class PrologInterface {
         }
         return error.message;
 
-      case PrologErrorKind.FILE_NOT_FOUND:
       case PrologErrorKind.EXISTENCE_ERROR:
         return error.message;
 
       case PrologErrorKind.SYNTAX_ERROR:
         return 'Syntax Error: Invalid Prolog syntax';
 
-      case PrologErrorKind.TIMEOUT:
-        return 'Query timed out. Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.';
+      case PrologErrorKind.TIMEOUT: {
+        const ms = error.details?.timeoutMs;
+        const base = 'Query timed out';
+        const hint = 'Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.';
+        return typeof ms === 'number' && Number.isFinite(ms)
+          ? `${base} after ${ms}ms. ${hint}`
+          : `${base}. ${hint}`;
+      }
 
-      case PrologErrorKind.PROCESS_ERROR:
-        return `Process Error: ${error.message}`;
+      case PrologErrorKind.SESSION_CONFLICT:
+        return error.message;
+
+      case PrologErrorKind.NO_ACTIVE_SESSION:
+        return error.message;
+
+      case PrologErrorKind.QUERY_TOO_LARGE:
+        return error.message;
 
       default:
         return error.message;
