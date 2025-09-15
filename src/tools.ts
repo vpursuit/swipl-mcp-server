@@ -99,6 +99,22 @@ export const toolHandlers = {
         "- Recursive rules: ancestor(X,Y) :- parent(X,Y). ancestor(X,Z) :- parent(X,Y), ancestor(Y,Z).",
         "See docs/examples.md for many more.",
       ],
+      prompts: [
+        "Expert Prompts (Start Here!):",
+        "- prolog_init_expert: Initialize as Prolog expert - USE THIS FIRST",
+        "  Sets you up with full context from resources and expert knowledge",
+        "- prolog_quick_reference: Get complete server overview and capabilities",
+        "- prolog_analyze_kb: Analyze current knowledge base using resources",
+        "- prolog_expert_reasoning: Expert reasoning for specific tasks",
+        "- prolog_kb_builder: Build knowledge bases following best practices",
+        "- prolog_query_optimizer: Optimize queries for performance",
+        "",
+        "Prompt Usage Pattern:",
+        "1. Start with prolog_init_expert prompt to become Prolog expert",
+        "2. The prompt will guide you to read all resources first for context",
+        "3. Then use tools efficiently based on discovered capabilities",
+        "4. Use specialized prompts for specific tasks as needed",
+      ],
       troubleshooting: [
         "Troubleshooting:",
         "- error(unsafe_goal(...)): goal rejected by hybrid security (uses dangerous built-ins)",
@@ -120,6 +136,7 @@ export const toolHandlers = {
       "safety",
       "security",
       "examples",
+      "prompts",
       "troubleshooting",
     ] as const;
 
@@ -141,6 +158,7 @@ export const toolHandlers = {
 
     return { content: [{ type: "text", text: parts.join("\n") }], structuredContent: structured };
   },
+
 
   async license(): Promise<ToolResponse> {
     try {
@@ -169,43 +187,13 @@ export const toolHandlers = {
 
 
   async capabilities(): Promise<ToolResponse> {
-    const version = resolvePackageVersion();
-    const caps = {
-      server: { name: "swipl-mcp-server", version },
-      modes: ["standard", "engine"],
-      tools: {
-        core: ["help", "license", "capabilities"],
-        database: ["db_load", "db_assert", "db_assert_many", "db_retract", "db_retract_many", "db_retract_all", "db_dump"],
-        query: ["query_start", "query_startEngine", "query_next", "query_close"],
-        symbols: ["symbols_list"],
-      },
-      security: {
-        module: "kb",
-        file_restrictions: {
-          allowed_directory: "~/.swipl-mcp-server/",
-          blocked_directories: ["/etc", "/usr", "/bin", "/var", "/sys", "/proc", "/boot", "/dev", "/root"],
-          validation: "pre-execution path checking"
-        },
-        consult: "facts/rules only; directives rejected",
-        model: "enhanced_hybrid",
-        dangerous_predicate_blocking: {
-          detection: "pre-execution",
-          blocked_predicates: ["call/1", "assert/1", "system/1", "shell/1", "retract/1", "abolish/1", "halt/1"],
-          error_format: "Security Error: Operation blocked - contains dangerous predicate 'X'"
-        },
-        sandbox_validation: "library(sandbox) validates most built-ins",
-        user_predicates: "allowed in kb/user modules for recursion",
-        safe_categories: [
-          "arithmetic", "lists", "term operations", "logic",
-          "string/atom helpers", "comparisons", "type checking"
-        ],
-        blocked_categories: ["I/O", "OS/process", "network", "external modules", "directives", "system files"],
-      },
-    } as const;
-
+    const caps = getCapabilitiesSummary();
+    const json = JSON.stringify(caps, null, 2);
     return {
-      content: [{ type: "text", text: JSON.stringify(caps, null, 2) }],
-      structuredContent: caps as any,
+      content: [
+        { type: "text", text: json },
+      ],
+      structuredContent: caps,
     };
   },
 
@@ -810,3 +798,94 @@ export const toolHandlers = {
 };
 
 export { prologInterface };
+
+// Build a machine-readable summary of capabilities for the resource handler
+export function getCapabilitiesSummary(): Record<string, unknown> {
+  const version = resolvePackageVersion();
+  const caps = {
+    server: { name: "swipl-mcp-server", version },
+    modes: ["standard", "engine"],
+    tools: {
+      core: ["help", "license", "capabilities"],
+      database: [
+        "db_load",
+        "db_assert",
+        "db_assert_many",
+        "db_retract",
+        "db_retract_many",
+        "db_retract_all",
+        "db_dump",
+      ],
+      query: ["query_start", "query_startEngine", "query_next", "query_close"],
+      symbols: ["symbols_list"],
+    },
+    prompts: {
+      expert_guidance: [
+        "prolog_init_expert",
+        "prolog_expert_reasoning",
+        "prolog_query_optimizer"
+      ],
+      knowledge_base: [
+        "prolog_analyze_kb",
+        "prolog_kb_builder"
+      ],
+      orientation: [
+        "prolog_quick_reference"
+      ]
+    },
+    security: {
+      module: "kb",
+      file_restrictions: {
+        allowed_directory: "~/.swipl-mcp-server/",
+        blocked_directories: [
+          "/etc",
+          "/usr",
+          "/bin",
+          "/var",
+          "/sys",
+          "/proc",
+          "/boot",
+          "/dev",
+          "/root",
+        ],
+        validation: "pre-execution path checking",
+      },
+      consult: "facts/rules only; directives rejected",
+      model: "enhanced_hybrid",
+      dangerous_predicate_blocking: {
+        detection: "pre-execution",
+        blocked_predicates: [
+          "call/1",
+          "assert/1",
+          "system/1",
+          "shell/1",
+          "retract/1",
+          "abolish/1",
+          "halt/1",
+        ],
+        error_format:
+          "Security Error: Operation blocked - contains dangerous predicate 'X'",
+      },
+      sandbox_validation: "library(sandbox) validates most built-ins",
+      user_predicates: "allowed in kb/user modules for recursion",
+      safe_categories: [
+        "arithmetic",
+        "lists",
+        "term operations",
+        "logic",
+        "string/atom helpers",
+        "comparisons",
+        "type checking",
+      ],
+      blocked_categories: [
+        "I/O",
+        "OS/process",
+        "network",
+        "external modules",
+        "directives",
+        "system files",
+      ],
+    },
+  } as const;
+  return caps as unknown as Record<string, unknown>;
+}

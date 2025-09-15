@@ -11,11 +11,12 @@ export const zodSchemas = {
         "safety",
         "security",
         "examples",
+        "prompts",
         "troubleshooting",
       ])
       .optional()
       .describe(
-        "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, troubleshooting)",
+        "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, prompts, troubleshooting)",
       ),
   },
   dbLoad: {
@@ -31,6 +32,20 @@ export const zodSchemas = {
   },
   dbDump: {},
   symbolsList: {},
+  // Prompt schemas
+  prologInitExpert: {},
+  prologQuickReference: {},
+  prologAnalyzeKb: {},
+  prologExpertReasoning: {
+    task: z.string().optional().describe("The reasoning task to solve using Prolog"),
+  },
+  prologKbBuilder: {
+    domain: z.string().optional().describe("The domain to model (e.g., family relationships, expert system, planning)"),
+  },
+  prologQueryOptimizer: {
+    query: z.string().optional().describe("The Prolog query to analyze and optimize"),
+  },
+  
   dbAssert: {
     fact: z
       .string()
@@ -72,7 +87,7 @@ export const jsonSchemas = {
           "troubleshooting",
         ],
         description:
-          "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, troubleshooting)",
+          "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, prompts, troubleshooting)",
       },
     },
   },
@@ -127,6 +142,53 @@ export const jsonSchemas = {
     additionalProperties: false,
     properties: {},
   },
+  // Prompt JSON schemas
+  prologInitExpert: {
+    type: "object",
+    additionalProperties: false,
+    properties: {},
+  },
+  prologQuickReference: {
+    type: "object",
+    additionalProperties: false,
+    properties: {},
+  },
+  prologAnalyzeKb: {
+    type: "object",
+    additionalProperties: false,
+    properties: {},
+  },
+  prologExpertReasoning: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      task: {
+        type: "string",
+        description: "The reasoning task to solve using Prolog",
+      },
+    },
+  },
+  prologKbBuilder: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      domain: {
+        type: "string",
+        description: "The domain to model (e.g., family relationships, expert system, planning)",
+      },
+    },
+  },
+  prologQueryOptimizer: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      query: {
+        type: "string",
+        description: "The Prolog query to analyze and optimize",
+      },
+    },
+  },
+  
   dbAssert: {
     type: "object",
     additionalProperties: false,

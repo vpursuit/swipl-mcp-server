@@ -1,7 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { inputSchemas, toolHandlers, prologInterface } from "./tools.js";
+import { inputSchemas, toolHandlers, prologInterface, getCapabilitiesSummary } from "./tools.js";
 import { resolvePackageVersion } from "./meta.js";
+import { prologPrompts } from "./prompts.js";
 
 /**
  * SWI-Prolog MCP Server
@@ -26,6 +27,8 @@ const server = new McpServer({
   name: "swipl-mcp-server",
   version: resolvePackageVersion(),
 });
+
+// No template; we expose only a single static resource for kb
 
 // Register help tool (guidelines for agents)
 server.registerTool(
@@ -97,6 +100,8 @@ server.registerTool(
   toolHandlers.symbolsList as any,
 );
 
+// (module_load tool removed for now to keep API minimal)
+
 // Register db_assert tool
 server.registerTool(
   "db_assert",
@@ -167,6 +172,104 @@ server.registerTool(
   toolHandlers.dbDump as any,
 );
 
+// Register minimal MCP Resources
+
+// 2) (Example resource removed to keep the API minimal.)
+
+// (Predicate-specific template removed; keep only module-level predicates template.)
+
+// Two static resources: predicates listing and full dump
+server.registerResource(
+  "kb-predicates",
+  "prolog://kb/predicates",
+  {
+    title: "KB Predicates",
+    description: "List predicates defined in the kb module",
+    mimeType: "text/plain",
+  },
+  async (uri) => {
+    await prologInterface.start();
+    const preds = await prologInterface.query("list_module_predicates(kb)");
+    const toLines = (s: string) => {
+      const trimmed = String(s).trim();
+      if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+        const inner = trimmed.slice(1, -1).trim();
+        if (!inner) return "(no exported predicates)";
+        return inner.split(",").map((p) => p.trim()).join("\n");
+      }
+      return trimmed || "(no exported predicates)";
+    };
+    return { contents: [{ uri: uri.href, text: toLines(preds) }] };
+  },
+);
+
+server.registerResource(
+  "kb-dump",
+  "prolog://kb/dump",
+  {
+    title: "KB Dump",
+    description: "Export current knowledge base as Prolog clauses",
+    mimeType: "text/prolog",
+  },
+  async (uri) => {
+    await prologInterface.start();
+    const dump = await prologInterface.query("dump_kb");
+    return { contents: [{ uri: uri.href, text: dump }] };
+  },
+);
+
+// Static resources for server metadata
+server.registerResource(
+  "help",
+  "meta://help",
+  {
+    title: "Help",
+    description: "Usage guidelines and tips for this server",
+    mimeType: "text/plain",
+  },
+  async (uri) => {
+    const res = await toolHandlers.help({});
+    const text = Array.isArray(res.content) && (res.content as any)[0]?.text ? (res.content as any)[0].text : "";
+    return { contents: [{ uri: uri.href, text }] };
+  },
+);
+
+server.registerResource(
+  "license",
+  "meta://license",
+  {
+    title: "License",
+    description: "License text for this software",
+    mimeType: "text/plain",
+  },
+  async (uri) => {
+    const res = await toolHandlers.license();
+    const text = Array.isArray(res.content) && (res.content as any)[0]?.text ? (res.content as any)[0].text : "License unavailable";
+    return { contents: [{ uri: uri.href, text }] };
+  },
+);
+
+server.registerResource(
+  "capabilities",
+  "meta://capabilities",
+  {
+    title: "Capabilities",
+    description: "Machine-readable summary of tools, modes, env, and safety",
+    mimeType: "application/json",
+  },
+  async (uri) => {
+    const caps = getCapabilitiesSummary();
+    const json = JSON.stringify(caps, null, 2);
+    return { contents: [{ uri: uri.href, text: json }] };
+  },
+);
+
+// (RDF support intentionally omitted for now to keep the API minimal.)
+
+// (No standalone modules resource; rely on template + completions.)
+
+// Cheat‑sheet removed to keep API minimal; use modules + template instead.
+
 
 // Register capabilities tool (machine-readable summary)
 server.registerTool(
@@ -178,7 +281,44 @@ server.registerTool(
   toolHandlers.capabilities as any,
 );
 
+// Register prompts for expert Prolog assistance
+// These guide agents to use resources first for context, then tools efficiently
 
+// Map prompt names to schema names
+const promptSchemaMap: Record<string, string> = {
+  "prolog_init_expert": "prologInitExpert",
+  "prolog_quick_reference": "prologQuickReference",
+  "prolog_analyze_kb": "prologAnalyzeKb",
+  "prolog_expert_reasoning": "prologExpertReasoning",
+  "prolog_kb_builder": "prologKbBuilder",
+  "prolog_query_optimizer": "prologQueryOptimizer"
+};
+
+for (const promptConfig of Object.values(prologPrompts)) {
+  const schemaName = promptSchemaMap[promptConfig.name];
+  if (schemaName) {
+    server.registerPrompt(
+      promptConfig.name,
+      {
+        title: promptConfig.title,
+        description: promptConfig.description,
+        argsSchema: (inputSchemas as any)[schemaName]
+      },
+      async (args: Record<string, unknown>) => {
+        const stringArgs = Object.fromEntries(
+          Object.entries(args).map(([key, value]) => [key, String(value)])
+        );
+        const promptMessages = promptConfig.messages(stringArgs);
+        return {
+          messages: promptMessages.map((msg: any) => ({
+            role: msg.role,
+            content: msg.content
+          }))
+        };
+      }
+    );
+  }
+}
 
 /**
  * Start the MCP server
@@ -186,6 +326,9 @@ server.registerTool(
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  // Warm-up Prolog process non-blocking to avoid first-call races
+  try { void prologInterface.start(); } catch { /* ignore */ }
 
   // Cleanup on exit and when client disconnects (stdio closed)
   let shuttingDown = false;
