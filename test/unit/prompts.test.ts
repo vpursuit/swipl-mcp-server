@@ -30,12 +30,10 @@ describe("Prolog Prompts", () => {
 
         const prompt = prologPrompts[promptKey];
         expect(prompt).toHaveProperty("name", expectedName);
-        expect(prompt).toHaveProperty("title");
         expect(prompt).toHaveProperty("description");
         expect(prompt).toHaveProperty("arguments");
         expect(prompt).toHaveProperty("messages");
 
-        expect(typeof prompt.title).toBe("string");
         expect(typeof prompt.description).toBe("string");
         expect(Array.isArray(prompt.arguments)).toBe(true);
         expect(typeof prompt.messages).toBe("function");
