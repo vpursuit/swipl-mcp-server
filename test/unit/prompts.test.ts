@@ -8,7 +8,6 @@ describe("Prolog Prompts", () => {
         "initExpert",
         "quickReference",
         "analyzeKnowledgeBase",
-        "expertReasoning",
         "knowledgeBaseBuilder",
         "queryOptimizer"
       ];
@@ -44,7 +43,7 @@ describe("Prolog Prompts", () => {
     });
 
     test("prompts without arguments should have empty arguments array", () => {
-      const noArgPrompts = ["initExpert", "quickReference", "analyzeKnowledgeBase"];
+      const noArgPrompts = ["quickReference", "analyzeKnowledgeBase"];
 
       for (const promptName of noArgPrompts) {
         const prompt = prologPrompts[promptName];
@@ -54,19 +53,19 @@ describe("Prolog Prompts", () => {
 
     test("prompts with arguments should have proper argument structure", () => {
       const argPrompts = [
-        { name: "expertReasoning", argName: "task" },
-        { name: "knowledgeBaseBuilder", argName: "domain" },
-        { name: "queryOptimizer", argName: "query" }
-      ];
+        { name: "initExpert", argName: "task", required: false },
+        { name: "knowledgeBaseBuilder", argName: "domain", required: true },
+        { name: "queryOptimizer", argName: "query", required: true }
+      ] as const;
 
-      for (const { name, argName } of argPrompts) {
+      for (const { name, argName, required } of argPrompts) {
         const prompt = prologPrompts[name];
         expect(prompt.arguments).toHaveLength(1);
 
         const arg = prompt.arguments[0];
         expect(arg).toHaveProperty("name", argName);
         expect(arg).toHaveProperty("description");
-        expect(arg).toHaveProperty("required", true);
+        expect(arg).toHaveProperty("required", required);
         expect(typeof arg.description).toBe("string");
       }
     });
@@ -120,24 +119,23 @@ describe("Prolog Prompts", () => {
       expect(text).toContain("Resource Discovery");
     });
 
-    test("expert reasoning prompt should handle missing task argument", () => {
-      const prompt = prologPrompts.expertReasoning;
+    test("init expert prompt should handle missing task argument", () => {
+      const prompt = prologPrompts.initExpert;
       const messages = prompt.messages();
 
       const text = messages[0].content.text;
-      expect(text).toContain("[Please specify a reasoning task]");
-      expect(text).toContain("DISCOVERY PHASE");
+      // No placeholder expected; should still include discovery cues
+      expect(text).toContain("Discovery");
       expect(text).toContain("capabilities");
       expect(text).toContain("security");
     });
 
-    test("expert reasoning prompt should use provided task argument", () => {
-      const prompt = prologPrompts.expertReasoning;
+    test("init expert prompt should use provided task argument", () => {
+      const prompt = prologPrompts.initExpert;
       const messages = prompt.messages({ task: "solve family tree relationships" });
 
       const text = messages[0].content.text;
       expect(text).toContain("solve family tree relationships");
-      expect(text).not.toContain("[Please specify a reasoning task]");
     });
 
     test("knowledge base builder prompt should handle missing domain argument", () => {
@@ -193,7 +191,6 @@ describe("Prolog Prompts", () => {
     test("prompts should include security awareness", () => {
       const securityAwarePrompts = [
         "initExpert",
-        "expertReasoning",
         "knowledgeBaseBuilder"
       ];
 
@@ -219,8 +216,8 @@ describe("Prolog Prompts", () => {
 
     test("workflow prompts should have structured phases", () => {
       const workflowPrompts = [
+        "initExpert",
         "analyzeKnowledgeBase",
-        "expertReasoning",
         "knowledgeBaseBuilder",
         "queryOptimizer"
       ];
@@ -239,7 +236,7 @@ describe("Prolog Prompts", () => {
   describe("Argument Handling", () => {
     test("prompts should handle undefined arguments gracefully", () => {
       const promptsWithArgs = [
-        "expertReasoning",
+        "initExpert",
         "knowledgeBaseBuilder",
         "queryOptimizer"
       ];
@@ -255,7 +252,7 @@ describe("Prolog Prompts", () => {
     });
 
     test("prompts should handle extra arguments gracefully", () => {
-      const prompt = prologPrompts.expertReasoning;
+      const prompt = prologPrompts.initExpert;
 
       expect(() => prompt.messages({
         task: "test task",
@@ -263,11 +260,7 @@ describe("Prolog Prompts", () => {
         anotherExtra: 123
       })).not.toThrow();
 
-      const messages = prompt.messages({
-        task: "test task",
-        extraArg: "should be ignored"
-      });
-
+      const messages = prompt.messages({ task: "test task", extraArg: "ignored" });
       expect(messages[0].content.text).toContain("test task");
     });
   });
@@ -306,7 +299,7 @@ describe("Prolog Prompts", () => {
 
   describe("Prompt Categories", () => {
     test("should have proper categorization of prompts", () => {
-      const expertGuidance = ["initExpert", "expertReasoning", "queryOptimizer"];
+      const expertGuidance = ["initExpert", "queryOptimizer"];
       const knowledgeBase = ["analyzeKnowledgeBase", "knowledgeBaseBuilder"];
       const orientation = ["quickReference"];
 
