@@ -79,3 +79,6 @@ pids/
 # Temporary folders
 tmp/
 temp/
+
+# Git worktrees
+.tree/
