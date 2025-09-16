@@ -48,7 +48,7 @@ maybeDescribe("Security: File Path Restrictions", () => {
   });
 
   test("should block loading /etc/passwd with clear security error", async () => {
-    const result = await toolHandlers.dbLoad({ filename: "/etc/passwd" });
+    const result = await toolHandlers.knowledgeBaseLoad({ filename: "/etc/passwd" });
     
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
@@ -59,7 +59,7 @@ maybeDescribe("Security: File Path Restrictions", () => {
   });
 
   test("should block loading /usr/bin/swipl with clear security error", async () => {
-    const result = await toolHandlers.dbLoad({ filename: "/usr/bin/swipl" });
+    const result = await toolHandlers.knowledgeBaseLoad({ filename: "/usr/bin/swipl" });
     
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
@@ -68,7 +68,7 @@ maybeDescribe("Security: File Path Restrictions", () => {
   });
 
   test("should block loading files outside allowed directory", async () => {
-    const result = await toolHandlers.dbLoad({ filename: "/tmp/malicious.pl" });
+    const result = await toolHandlers.knowledgeBaseLoad({ filename: "/tmp/malicious.pl" });
     
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
@@ -86,7 +86,7 @@ maybeDescribe("Security: File Path Restrictions", () => {
     
     try {
       // This should pass security check and load successfully
-      const result = await toolHandlers.dbLoad({ filename: testFile });
+      const result = await toolHandlers.knowledgeBaseLoad({ filename: testFile });
       
       // Should succeed - no security error
       expect(result).toBeDefined();
@@ -122,7 +122,7 @@ maybeDescribe("Security: Dangerous Operation Detection", () => {
   test("should return security error for dangerous shell operation", async () => {
     await prologInterface.start();
     
-    const result = await toolHandlers.dbAssert({ 
+    const result = await toolHandlers.knowledgeBaseAssert({ 
       fact: "test_system :- shell('echo test')." 
     });
     
@@ -137,7 +137,7 @@ maybeDescribe("Security: Dangerous Operation Detection", () => {
   test("should return security error for dangerous call operation", async () => {
     await prologInterface.start();
     
-    const result = await toolHandlers.dbAssert({ 
+    const result = await toolHandlers.knowledgeBaseAssert({ 
       fact: "test_call :- call(shell('echo test'))." 
     });
     
@@ -147,10 +147,10 @@ maybeDescribe("Security: Dangerous Operation Detection", () => {
     expect(result.structuredContent.success).toBe(0);
   });
 
-  test("should return security error in dbAssertMany for dangerous operations", async () => {
+  test("should return security error in knowledgeBaseAssertMany for dangerous operations", async () => {
     await prologInterface.start();
     
-    const result = await toolHandlers.dbAssertMany({ 
+    const result = await toolHandlers.knowledgeBaseAssertMany({ 
       facts: [
         "dangerous_fact1 :- system('rm -rf /').",
         "dangerous_fact2 :- shell('echo test')."
@@ -175,7 +175,7 @@ maybeDescribe("Security: Error Message Quality", () => {
   });
 
   test("security errors should be clear and actionable", async () => {
-    const result = await toolHandlers.dbLoad({ filename: "/etc/hosts" });
+    const result = await toolHandlers.knowledgeBaseLoad({ filename: "/etc/hosts" });
     
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).not.toContain("timeout");

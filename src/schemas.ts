@@ -11,14 +11,15 @@ export const zodSchemas = {
         "safety",
         "security",
         "examples",
+        "prompts",
         "troubleshooting",
       ])
       .optional()
       .describe(
-        "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, troubleshooting)",
+        "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, prompts, troubleshooting)",
       ),
   },
-  dbLoad: {
+  knowledgeBaseLoad: {
     filename: z.string().describe("Path to the Prolog file to load"),
   },
   queryStart: {
@@ -29,29 +30,43 @@ export const zodSchemas = {
   queryStartEngine: {
     query: z.string().min(1).describe("Prolog query to start with engine-based iteration"),
   },
-  dbDump: {},
+  knowledgeBaseDump: {},
   symbolsList: {},
-  dbAssert: {
+  // Prompt schemas
+  prologInitExpert: {
+    task: z.string().optional().describe("Optional task to focus expert setup and reasoning"),
+  },
+  prologQuickReference: {},
+  prologAnalyzeKnowledgeBase: {},
+  // prologExpertReasoning merged into prologInitExpert
+  prologKnowledgeBaseBuilder: {
+    domain: z.string().optional().describe("The domain to model (e.g., family relationships, expert system, planning)"),
+  },
+  prologQueryOptimizer: {
+    query: z.string().optional().describe("The Prolog query to analyze and optimize"),
+  },
+  
+  knowledgeBaseAssert: {
     fact: z
       .string()
       .describe(
         "Single Prolog clause to assert (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
       ),
   },
-  dbRetract: {
+  knowledgeBaseRetract: {
     fact: z
       .string()
       .describe(
         "Single Prolog clause to retract (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
       ),
   },
-  dbAssertMany: {
+  knowledgeBaseAssertMany: {
     facts: z.array(z.string()).describe("List of Prolog clauses to assert"),
   },
-  dbRetractMany: {
+  knowledgeBaseRetractMany: {
     facts: z.array(z.string()).describe("List of Prolog clauses to retract"),
   },
-  dbRetractAll: {},
+  knowledgeBaseClear: {},
 } as const;
 
 // JSON Schemas for MCP tool registration (must be plain, serializable objects)
@@ -72,11 +87,11 @@ export const jsonSchemas = {
           "troubleshooting",
         ],
         description:
-          "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, troubleshooting)",
+          "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, prompts, troubleshooting)",
       },
     },
   },
-  dbLoad: {
+  knowledgeBaseLoad: {
     type: "object",
     additionalProperties: false,
     required: ["filename"],
@@ -117,7 +132,7 @@ export const jsonSchemas = {
       },
     },
   },
-  dbDump: {
+  knowledgeBaseDump: {
     type: "object",
     additionalProperties: false,
     properties: {},
@@ -127,7 +142,47 @@ export const jsonSchemas = {
     additionalProperties: false,
     properties: {},
   },
-  dbAssert: {
+  // Prompt JSON schemas
+  prologInitExpert: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      task: { type: "string", description: "Optional task to focus expert setup and reasoning" },
+    },
+  },
+  prologQuickReference: {
+    type: "object",
+    additionalProperties: false,
+    properties: {},
+  },
+  prologAnalyzeKnowledgeBase: {
+    type: "object",
+    additionalProperties: false,
+    properties: {},
+  },
+  // prologExpertReasoning merged into prologInitExpert
+  prologKnowledgeBaseBuilder: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      domain: {
+        type: "string",
+        description: "The domain to model (e.g., family relationships, expert system, planning)",
+      },
+    },
+  },
+  prologQueryOptimizer: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      query: {
+        type: "string",
+        description: "The Prolog query to analyze and optimize",
+      },
+    },
+  },
+  
+  knowledgeBaseAssert: {
     type: "object",
     additionalProperties: false,
     required: ["fact"],
@@ -139,7 +194,7 @@ export const jsonSchemas = {
       },
     },
   },
-  dbRetract: {
+  knowledgeBaseRetract: {
     type: "object",
     additionalProperties: false,
     required: ["fact"],
@@ -151,7 +206,7 @@ export const jsonSchemas = {
       },
     },
   },
-  dbAssertMany: {
+  knowledgeBaseAssertMany: {
     type: "object",
     additionalProperties: false,
     required: ["facts"],
@@ -163,7 +218,7 @@ export const jsonSchemas = {
       },
     },
   },
-  dbRetractMany: {
+  knowledgeBaseRetractMany: {
     type: "object",
     additionalProperties: false,
     required: ["facts"],
@@ -175,7 +230,7 @@ export const jsonSchemas = {
       },
     },
   },
-  dbRetractAll: {
+  knowledgeBaseClear: {
     type: "object",
     additionalProperties: false,
     properties: {},

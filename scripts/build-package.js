@@ -42,6 +42,7 @@ const jsFiles = [
   "index.js",
   "PrologInterface.js",
   "tools.js",
+  "prompts.js",
   "logger.js",
   "schemas.js",
   "meta.js",

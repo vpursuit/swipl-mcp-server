@@ -194,7 +194,7 @@ describe("Prolog Error Parsing and Formatting", () => {
         const error = {
           kind: PrologErrorKind.UNSAFE_GOAL,
           message: "Security Error: Unsafe operation blocked",
-          details: { goal: "kb:dangerous_pred(X)" }
+          details: { goal: "knowledge_base:dangerous_pred(X)" }
         };
         const result = PrologInterface.formatPrologError(error);
         expect(result).toBe("Security Error: Operation blocked - contains dangerous predicate 'dangerous_pred'");

@@ -1,6 +1,6 @@
 import { readFile } from "fs/promises";
 import { PrologInterface } from "./PrologInterface.js";
-import { MAX_FILENAME_LENGTH, MAX_QUERY_LENGTH } from "./constants.js";
+import { MAX_FILENAME_LENGTH, MAX_QUERY_LENGTH, MAX_FACT_LENGTH } from "./constants.js";
 import { validateStringInput } from "./utils/validation.js";
 import { createErrorResponse, createSuccessResponse } from "./utils/response.js";
 import { resolvePackageVersion, findNearestFile } from "./meta.js";
@@ -41,6 +41,60 @@ function validateFilePath(filename: string): { allowed: boolean; error?: string 
 // Global Prolog interface instance
 const prologInterface = new PrologInterface();
 
+type KnowledgeBaseClauseOutcome = {
+  clause: string;
+  result: string;
+  ok: boolean;
+  threw: boolean;
+};
+
+async function knowledgeBaseAssertClauses(
+  facts: string[],
+  { ignoreStartErrors = false }: { ignoreStartErrors?: boolean } = {},
+): Promise<{ outcomes: KnowledgeBaseClauseOutcome[]; successCount: number; errorCount: number }> {
+  const normalize = (clause: string) => {
+    const trimmed = clause.trim().replace(/\.$/, "");
+    if (/:-/.test(trimmed) && !/^\s*\(/.test(trimmed)) {
+      return `(${trimmed})`;
+    }
+    return trimmed;
+  };
+
+  if (ignoreStartErrors) {
+    try {
+      await prologInterface.start();
+    } catch {
+      // Ignore start errors so we can still collect per-clause failures
+    }
+  } else {
+    await prologInterface.start();
+  }
+
+  const outcomes: KnowledgeBaseClauseOutcome[] = [];
+  let successCount = 0;
+  let errorCount = 0;
+
+  for (const fact of facts) {
+    const clause = normalize(fact);
+    try {
+      const result = await prologInterface.query(`assert(${clause})`);
+      const ok = result === "ok";
+      outcomes.push({ clause, result, ok, threw: false });
+      if (ok) {
+        successCount++;
+      } else {
+        errorCount++;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      outcomes.push({ clause, result: message, ok: false, threw: true });
+      errorCount++;
+    }
+  }
+
+  return { outcomes, successCount, errorCount };
+}
+
 // Schemas are centralized in './schemas.ts' and re-exported here
 export { zodSchemas as inputSchemas, jsonSchemas } from "./schemas.js";
 
@@ -51,7 +105,7 @@ export const toolHandlers = {
     // Build per-section lines so we can expose structured content too.
     const sectionsData: Record<string, string[]> = {
       overview: [
-        "SWI‑Prolog MCP Server: tools for loading files, querying, managing database, and exploring symbols.",
+        "SWI‑Prolog MCP Server: tools for loading files, querying, managing the knowledge base, and exploring symbols.",
         "Two modes: standard (call_nth/2) and engine (SWI engines). Unified query interface.",
       ],
       standard_mode: [
@@ -72,11 +126,11 @@ export const toolHandlers = {
         "Enhanced Security Model:",
         "- File Path Restrictions: Only ~/.swipl-mcp-server/ directory allowed for file operations",
         "- Dangerous Predicate Blocking: Pre-execution detection of shell(), system(), call(), etc.",
-        "- User code asserted into module 'kb' with unknown=fail",
+        "- User code asserted into module 'knowledge_base' with unknown=fail",
         "- Files loaded via guarded consult (facts/rules only; directives rejected)",
         "- library(sandbox) validates most built-in predicates as safe/unsafe",
         "- Explicit blacklist blocks dangerous operations even if sandbox allows them",
-        "- User-defined predicates in 'kb' module allowed for recursive definitions",
+        "- User-defined predicates in 'knowledge_base' module allowed for recursive definitions",
         "- Security is always enabled and cannot be disabled",
       ],
       security: [
@@ -87,7 +141,7 @@ export const toolHandlers = {
         "- Most built-ins validated by library(sandbox)",
         "- Safe built-ins: arithmetic, lists, term operations, logic, string/atom helpers",
         "- Dangerous operations explicitly blocked: shell(), system(), call(), assert(), halt()",
-        "- User predicates in kb/user modules permitted for recursion",
+        "- User predicates in knowledge_base/user modules permitted for recursion",
         "- All queries executed in sandboxed environment",
       ],
       examples: [
@@ -98,6 +152,22 @@ export const toolHandlers = {
         "- String helpers: sub_atom('hello_world',6,5,0,S) → S=world",
         "- Recursive rules: ancestor(X,Y) :- parent(X,Y). ancestor(X,Z) :- parent(X,Y), ancestor(Y,Z).",
         "See docs/examples.md for many more.",
+      ],
+      prompts: [
+        "Expert Prompts (Start Here!):",
+        "- prolog_init_expert: Initialize as Prolog expert (recommended first step)",
+        "  Sets you up with full context from resources and expert knowledge",
+        "- prolog_quick_reference: Get complete server overview and capabilities",
+        "- prolog_analyze_knowledge_base: Analyze current knowledge base using resources",
+        "- prolog_init_expert (with task): Expert reasoning for specific tasks",
+        "- prolog_knowledge_base_builder: Build knowledge bases following best practices",
+        "- prolog_query_optimizer: Optimize queries for performance",
+        "",
+        "Prompt Usage Pattern:",
+        "1. Start with prolog_init_expert to become Prolog expert",
+        "2. The prompt will guide you to read all resources first for context",
+        "3. Then use tools efficiently based on discovered capabilities",
+        "4. Use specialized prompts for specific tasks as needed",
       ],
       troubleshooting: [
         "Troubleshooting:",
@@ -120,6 +190,7 @@ export const toolHandlers = {
       "safety",
       "security",
       "examples",
+      "prompts",
       "troubleshooting",
     ] as const;
 
@@ -141,6 +212,7 @@ export const toolHandlers = {
 
     return { content: [{ type: "text", text: parts.join("\n") }], structuredContent: structured };
   },
+
 
   async license(): Promise<ToolResponse> {
     try {
@@ -169,47 +241,17 @@ export const toolHandlers = {
 
 
   async capabilities(): Promise<ToolResponse> {
-    const version = resolvePackageVersion();
-    const caps = {
-      server: { name: "swipl-mcp-server", version },
-      modes: ["standard", "engine"],
-      tools: {
-        core: ["help", "license", "capabilities"],
-        database: ["db_load", "db_assert", "db_assert_many", "db_retract", "db_retract_many", "db_retract_all", "db_dump"],
-        query: ["query_start", "query_startEngine", "query_next", "query_close"],
-        symbols: ["symbols_list"],
-      },
-      security: {
-        module: "kb",
-        file_restrictions: {
-          allowed_directory: "~/.swipl-mcp-server/",
-          blocked_directories: ["/etc", "/usr", "/bin", "/var", "/sys", "/proc", "/boot", "/dev", "/root"],
-          validation: "pre-execution path checking"
-        },
-        consult: "facts/rules only; directives rejected",
-        model: "enhanced_hybrid",
-        dangerous_predicate_blocking: {
-          detection: "pre-execution",
-          blocked_predicates: ["call/1", "assert/1", "system/1", "shell/1", "retract/1", "abolish/1", "halt/1"],
-          error_format: "Security Error: Operation blocked - contains dangerous predicate 'X'"
-        },
-        sandbox_validation: "library(sandbox) validates most built-ins",
-        user_predicates: "allowed in kb/user modules for recursion",
-        safe_categories: [
-          "arithmetic", "lists", "term operations", "logic",
-          "string/atom helpers", "comparisons", "type checking"
-        ],
-        blocked_categories: ["I/O", "OS/process", "network", "external modules", "directives", "system files"],
-      },
-    } as const;
-
+    const caps = getCapabilitiesSummary();
+    const json = JSON.stringify(caps, null, 2);
     return {
-      content: [{ type: "text", text: JSON.stringify(caps, null, 2) }],
-      structuredContent: caps as any,
+      content: [
+        { type: "text", text: json },
+      ],
+      structuredContent: caps,
     };
   },
 
-  async dbLoad({ filename }: { filename: string }): Promise<ToolResponse> {
+  async knowledgeBaseLoad({ filename }: { filename: string }): Promise<ToolResponse> {
     const startTime = Date.now();
 
     // Input validation
@@ -430,7 +472,7 @@ export const toolHandlers = {
     }
   },
 
-  async dbAssert({ fact }: { fact: string }): Promise<ToolResponse> {
+  async knowledgeBaseAssert({ fact }: { fact: string }): Promise<ToolResponse> {
     const startTime = Date.now();
 
     // Input validation
@@ -442,35 +484,45 @@ export const toolHandlers = {
       };
     }
 
-    if (fact.length > 5000) {
+    if (fact.length > MAX_FACT_LENGTH) {
       return {
-        content: [{ type: "text", text: "Error: fact must be a string with max 5000 characters" }],
+        content: [{ type: "text", text: `Error: fact must be a string with max ${MAX_FACT_LENGTH} characters` }],
         structuredContent: { error: "fact_too_long", processing_time_ms: Date.now() - startTime },
         isError: true,
       };
     }
 
-
     try {
-      await prologInterface.start();
-      const normalizeSingle = (cl: string) => {
-        const trimmed = cl.trim().replace(/\.$/, "");
-        if (/:-/.test(trimmed) && !/^\s*\(/.test(trimmed)) return `(${trimmed})`;
-        return trimmed;
-      };
-      const single = normalizeSingle(fact);
-      const result = await prologInterface.query(`assert(${single})`);
+      const { outcomes } = await knowledgeBaseAssertClauses([fact]);
+      const [{ clause, result, ok, threw }] = outcomes;
       const processingTimeMs = Date.now() - startTime;
+      if (threw) {
+        const details = `✗ ${clause}: ${result}`;
+        const summary = `Asserted 0/1 clauses successfully`;
+        const text = `Error: ${result}\n\nDetails:\n${details}\n${summary}\nProcessing time: ${processingTimeMs}ms`;
+        return {
+          content: [{ type: "text", text }],
+          structuredContent: {
+            error: result,
+            success: 0,
+            total: 1,
+            details: [details],
+            processing_time_ms: processingTimeMs,
+          },
+          isError: true,
+        };
+      }
+
       return {
-        content: [{ type: "text", text: `Asserted fact: ${single}\nResult: ${result}\nProcessing time: ${processingTimeMs}ms` }],
-        structuredContent: { fact: single, result, processing_time_ms: processingTimeMs },
-        isError: result !== "ok",
+        content: [{ type: "text", text: `Asserted fact: ${clause}\nResult: ${result}\nProcessing time: ${processingTimeMs}ms` }],
+        structuredContent: { fact: clause, result, processing_time_ms: processingTimeMs },
+        isError: !ok,
       };
     } catch (error) {
       const processingTimeMs = Date.now() - startTime;
       const errMsg = error instanceof Error ? error.message : String(error);
-      
-      
+
+
       const details = `✗ ${fact}: ${errMsg}`;
       const summary = `Asserted 0/1 clauses successfully`;
       const text = `Error: ${errMsg}\n\nDetails:\n${details}\n${summary}\nProcessing time: ${processingTimeMs}ms`;
@@ -482,7 +534,7 @@ export const toolHandlers = {
     }
   },
 
-  async dbAssertMany({ facts }: { facts: string[] }): Promise<ToolResponse> {
+  async knowledgeBaseAssertMany({ facts }: { facts: string[] }): Promise<ToolResponse> {
     const startTime = Date.now();
 
     // Input validation
@@ -504,52 +556,18 @@ export const toolHandlers = {
 
     // Validate each fact
     for (const f of facts) {
-      if (typeof f !== 'string' || f.length > 5000) {
+      if (typeof f !== 'string' || f.length > MAX_FACT_LENGTH) {
         return {
-          content: [{ type: "text", text: `Error: each fact must be a string with max 5000 characters` }],
+          content: [{ type: "text", text: `Error: each fact must be a string with max ${MAX_FACT_LENGTH} characters` }],
           structuredContent: { error: "fact_too_long", processing_time_ms: Date.now() - startTime },
           isError: true,
         };
       }
     }
 
-    // Try to start; if it fails (tests/mocks), continue to collect per-clause errors and produce summary
-    try { await prologInterface.start(); } catch { /* proceed anyway for summary */ }
-
     try {
-      // Normalize: if a clause looks like a rule without parentheses, wrap it: head :- body -> (head :- body)
-      const normalize = (cl: string) => {
-        const trimmed = cl.trim().replace(/\.$/, ""); // remove trailing dot if present
-        if (/:-/.test(trimmed) && !/^\s*\(/.test(trimmed)) {
-          return `(${trimmed})`;
-        }
-        return trimmed;
-      };
-      const results: string[] = [];
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const raw of facts) {
-        const singleFact = normalize(raw);
-        
-        
-        try {
-          const result = await prologInterface.query(`assert(${singleFact})`);
-          const isOk = result === "ok";
-          if (isOk) {
-            results.push(`✓ ${singleFact}: ${result}`);
-            successCount++;
-          } else {
-            results.push(`✗ ${singleFact}: ${result}`);
-            errorCount++;
-          }
-        } catch (error) {
-          const errMsg = error instanceof Error ? error.message : String(error);
-          results.push(`✗ ${singleFact}: ${errMsg}`);
-          errorCount++;
-        }
-      }
-
+      const { outcomes, successCount, errorCount } = await knowledgeBaseAssertClauses(facts, { ignoreStartErrors: true });
+      const results = outcomes.map(({ clause, result, ok }) => `${ok ? "✓" : "✗"} ${clause}: ${result}`);
       const processingTimeMs = Date.now() - startTime;
       const summary = `Asserted ${successCount}/${facts.length} clauses successfully`;
       const content = `${summary}\n\nDetails:\n${results.join("\n")}\nProcessing time: ${processingTimeMs}ms`;
@@ -574,7 +592,7 @@ export const toolHandlers = {
     }
   },
 
-  async dbRetract({ fact }: { fact: string }): Promise<ToolResponse> {
+  async knowledgeBaseRetract({ fact }: { fact: string }): Promise<ToolResponse> {
     const startTime = Date.now();
 
     // Input validation
@@ -586,9 +604,9 @@ export const toolHandlers = {
       };
     }
 
-    if (fact.length > 5000) {
+    if (fact.length > MAX_FACT_LENGTH) {
       return {
-        content: [{ type: "text", text: "Error: fact must be a string with max 5000 characters" }],
+        content: [{ type: "text", text: `Error: fact must be a string with max ${MAX_FACT_LENGTH} characters` }],
         structuredContent: { error: "fact_too_long", processing_time_ms: Date.now() - startTime },
         isError: true,
       };
@@ -618,7 +636,7 @@ export const toolHandlers = {
     }
   },
 
-  async dbRetractMany({ facts }: { facts: string[] }): Promise<ToolResponse> {
+  async knowledgeBaseRetractMany({ facts }: { facts: string[] }): Promise<ToolResponse> {
     const startTime = Date.now();
 
     // Input validation
@@ -640,9 +658,9 @@ export const toolHandlers = {
 
     // Validate each fact
     for (const f of facts) {
-      if (typeof f !== 'string' || f.length > 5000) {
+      if (typeof f !== 'string' || f.length > MAX_FACT_LENGTH) {
         return {
-          content: [{ type: "text", text: `Error: each fact must be a string with max 5000 characters` }],
+          content: [{ type: "text", text: `Error: each fact must be a string with max ${MAX_FACT_LENGTH} characters` }],
           structuredContent: { error: "fact_too_long", processing_time_ms: Date.now() - startTime },
           isError: true,
         };
@@ -700,11 +718,11 @@ export const toolHandlers = {
     }
   },
 
-  async dbRetractAll(): Promise<ToolResponse> {
+  async knowledgeBaseClear(): Promise<ToolResponse> {
     const startTime = Date.now();
     try {
       await prologInterface.start();
-      const result = await prologInterface.query("retract_all_kb");
+      const result = await prologInterface.query("clear_knowledge_base");
       const processingTimeMs = Date.now() - startTime;
       
       // Parse result to extract count
@@ -781,11 +799,11 @@ export const toolHandlers = {
     }
   },
 
-  async dbDump(): Promise<ToolResponse> {
+  async knowledgeBaseDump(): Promise<ToolResponse> {
     const startTime = Date.now();
     try {
       await prologInterface.start();
-      const result = await prologInterface.query("dump_kb");
+      const result = await prologInterface.query("dump_knowledge_base");
       const processingTimeMs = Date.now() - startTime;
 
       return {
@@ -810,3 +828,93 @@ export const toolHandlers = {
 };
 
 export { prologInterface };
+
+// Build a machine-readable summary of capabilities for the resource handler
+export function getCapabilitiesSummary(): Record<string, unknown> {
+  const version = resolvePackageVersion();
+  const caps = {
+    server: { name: "swipl-mcp-server", version },
+    modes: ["standard", "engine"],
+    tools: {
+      core: ["help", "license", "capabilities"],
+      knowledge_base: [
+        "knowledge_base_load",
+        "knowledge_base_assert",
+        "knowledge_base_assert_many",
+        "knowledge_base_retract",
+        "knowledge_base_retract_many",
+        "knowledge_base_clear",
+        "knowledge_base_dump",
+      ],
+      query: ["query_start", "query_startEngine", "query_next", "query_close"],
+      symbols: ["symbols_list"],
+    },
+    prompts: {
+      expert_guidance: [
+        "prolog_init_expert",
+        "prolog_query_optimizer"
+      ],
+      knowledge_base: [
+        "prolog_analyze_knowledge_base",
+        "prolog_knowledge_base_builder"
+      ],
+      orientation: [
+        "prolog_quick_reference"
+      ]
+    },
+    security: {
+      module: "knowledge_base",
+      file_restrictions: {
+        allowed_directory: "~/.swipl-mcp-server/",
+        blocked_directories: [
+          "/etc",
+          "/usr",
+          "/bin",
+          "/var",
+          "/sys",
+          "/proc",
+          "/boot",
+          "/dev",
+          "/root",
+        ],
+        validation: "pre-execution path checking",
+      },
+      consult: "facts/rules only; directives rejected",
+      model: "enhanced_hybrid",
+      dangerous_predicate_blocking: {
+        detection: "pre-execution",
+        blocked_predicates: [
+          "call/1",
+          "assert/1",
+          "system/1",
+          "shell/1",
+          "retract/1",
+          "abolish/1",
+          "halt/1",
+        ],
+        error_format:
+          "Security Error: Operation blocked - contains dangerous predicate 'X'",
+      },
+      sandbox_validation: "library(sandbox) validates most built-ins",
+      user_predicates: "allowed in knowledge_base/user modules for recursion",
+      safe_categories: [
+        "arithmetic",
+        "lists",
+        "term operations",
+        "logic",
+        "string/atom helpers",
+        "comparisons",
+        "type checking",
+      ],
+      blocked_categories: [
+        "I/O",
+        "OS/process",
+        "network",
+        "external modules",
+        "directives",
+        "system files",
+      ],
+    },
+  } as const;
+  return caps as unknown as Record<string, unknown>;
+}

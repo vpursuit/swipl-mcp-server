@@ -6,7 +6,7 @@ This server runs over the MCP `stdio` transport. The client owns the connection:
 
 - One Node.js process per MCP connection.
 - One SWI‑Prolog child process inside the Node process.
-- Tools (e.g., `db_assert`, `query_start`) operate against the single in‑memory knowledge base.
+- Tools (e.g., `knowledge_base_assert`, `query_start`) operate against the single in‑memory knowledge base.
 
 ## Shutdown Behavior
 
@@ -21,7 +21,7 @@ Why close on stdio? It prevents orphaned processes if a client crashes or termin
 ## State Persistence
 
 - State is **per connection**: asserted facts and rules live in memory for the duration of the connection only.
-- When the connection ends (signals or stdio close), the in‑memory KB is discarded, and a fresh KB is created on next start.
+- When the connection ends (signals or stdio close), the in‑memory Knowledge Base is discarded, and a fresh Knowledge Base is created on next start.
 
 This is the expected behavior for `stdio` MCP servers. Clients that rely on shared state should keep a single connection open for the duration of their workflow.
 
@@ -35,10 +35,10 @@ This is the expected behavior for `stdio` MCP servers. Clients that rely on shar
 If you want state to survive restarts, use an explicit dump/restore pattern under the allowed directory `~/.swipl-mcp-server/`:
 
 1. Save snapshot:
-   - Call `db_dump` and write the result into a file in `~/.swipl-mcp-server/`.
+   - Call `knowledge_base_dump` and write the result into a file in `~/.swipl-mcp-server/`.
 2. Restore on startup:
-   - Either script your client to call `db_load` for the snapshot file, or
-   - Replay facts via `db_assert_many` after connection initialization.
+   - Either script your client to call `knowledge_base_load` for the snapshot file, or
+   - Replay facts via `knowledge_base_assert_many` after connection initialization.
 
 Notes:
 - The server enforces file path restrictions; only `~/.swipl-mcp-server/` is permitted for file operations.

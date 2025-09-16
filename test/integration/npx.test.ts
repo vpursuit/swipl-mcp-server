@@ -79,7 +79,7 @@ maybeDescribe("NPX Integration Tests", () => {
         jsonrpc: '2.0', 
         id: 2, 
         method: 'tools/call', 
-        params: { name: 'db_assert', arguments: { fact: 'test_npx_fact(success)' } } 
+        params: { name: 'knowledge_base_assert', arguments: { fact: 'test_npx_fact(success)' } } 
       },
       validate: (result: any) => {
         const responseText = result.result?.content?.[0]?.text || '';
@@ -90,7 +90,7 @@ maybeDescribe("NPX Integration Tests", () => {
           throw new Error('prolog_server.pl not found - path resolution failed');
         }
         if (!responseText.includes('Result: ok') && !responseText.includes('Asserted 1/1 clauses successfully')) {
-          throw new Error(`db_assert did not succeed. Response: ${responseText}`);
+          throw new Error(`knowledge_base_assert did not succeed. Response: ${responseText}`);
         }
       }
     };
@@ -112,7 +112,7 @@ maybeDescribe("NPX Integration Tests", () => {
         jsonrpc: '2.0', 
         id: 3, 
         method: 'tools/call', 
-        params: { name: 'db_load', arguments: { filename: '/non/existent/file.pl' } } 
+        params: { name: 'knowledge_base_load', arguments: { filename: '/non/existent/file.pl' } } 
       },
       validate: (result: any) => {
         const text = result.result?.content?.[0]?.text || '';

@@ -9,7 +9,7 @@
 - **Dangerous Predicate Blocking**: Pre-execution detection and blocking of dangerous operations
 - Validates predicates using SWI-Prolog's `library(sandbox)`
 - Maintains an explicit blacklist of dangerous operations
-- Isolates user code in a dedicated `kb` module
+- Isolates user code in a dedicated `knowledge_base` module
 - Rejects dangerous directives during file consultation
 
 **All usage is at your own risk.** Review and understand any Prolog code before execution, especially from untrusted sources.
@@ -45,9 +45,9 @@
 - **Enhanced Security Model**: Combines `library(sandbox)` validation with explicit blacklist and path restrictions
   - `library(sandbox)` validates most built-ins as safe/unsafe
   - Additional blacklist prevents dangerous operations even if sandbox allows them
-  - User-defined predicates in `kb` module are allowed for recursive definitions
+  - User-defined predicates in `knowledge_base` module are allowed for recursive definitions
 - **Safe consult**: Only facts/rules are accepted; directives and module‑altering terms are rejected
-- **Isolation**: User data lives in `kb`; `unknown=fail` to avoid accidental calls
+- **Isolation**: User data lives in `knowledge_base`; `unknown=fail` to avoid accidental calls
 - **Timeouts**: Node side enforces query timeouts to prevent hangs
 - **Logging hygiene**: Logs go to `stderr`, default to `warn`, and redact absolute paths/PIDs
 
@@ -101,20 +101,20 @@ npm run build
 
 ### File Path Security Testing
 - Verify system directory blocking:
-  - Example: `db_load({ filename: "/etc/passwd" })` → `Security Error: Access to system directories is blocked`
-  - Example: `db_load({ filename: "/usr/bin/ls" })` → `Security Error: Access to system directories is blocked`
+  - Example: `knowledge_base_load({ filename: "/etc/passwd" })` → `Security Error: Access to system directories is blocked`
+  - Example: `knowledge_base_load({ filename: "/usr/bin/ls" })` → `Security Error: Access to system directories is blocked`
 - Verify allowed directory works:
-  - Example: `db_load({ filename: "~/.swipl-mcp-server/test.pl" })` → should work (if file exists)
+  - Example: `knowledge_base_load({ filename: "~/.swipl-mcp-server/test.pl" })` → should work (if file exists)
 
 ### Dangerous Predicate Testing
 - Verify pre-execution blocking:
-  - Example: `db_assert({ fact: "malware :- shell('rm -rf /')" })` → `Security Error: Operation blocked - contains dangerous predicate 'shell'`
-  - Example: `db_assert({ fact: "bad :- system('cat /etc/passwd')" })` → `Security Error: Operation blocked - contains dangerous predicate 'system'`
+  - Example: `knowledge_base_assert({ fact: "malware :- shell('rm -rf /')" })` → `Security Error: Operation blocked - contains dangerous predicate 'shell'`
+  - Example: `knowledge_base_assert({ fact: "bad :- system('cat /etc/passwd')" })` → `Security Error: Operation blocked - contains dangerous predicate 'system'`
 - Verify safe operations work:
   - Example: `X is 2 + 3` should succeed
   - Example: `append([1,2], [3], L)` should succeed
 - Verify recursive user predicates work:
-  - Example: `db_assert({ fact: "ancestor(X,Y) :- parent(X,Y)" })` should succeed
+  - Example: `knowledge_base_assert({ fact: "ancestor(X,Y) :- parent(X,Y)" })` should succeed
 
 ### Legacy Security Testing
 - Verify sandbox rejects remaining dangerous goals during execution:

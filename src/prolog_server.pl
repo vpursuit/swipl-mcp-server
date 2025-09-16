@@ -25,7 +25,7 @@ debug_trace(Term) :-
 
 % Entry point: write READY marker and start loop
 server_loop :-
-    ensure_kb_module,
+    ensure_knowledge_base_module,
     write('@@READY@@'), nl, flush_output,
     server_loop_().
 
@@ -109,7 +109,7 @@ end_session :-
 
 retract_all_clauses(Name/Arity) :-
     functor(Head, Name, Arity),
-    retractall(kb:Head).
+    retractall(knowledge_base:Head).
 
 % Clean up all sessions and resources
 cleanup_all_sessions :-
@@ -124,7 +124,7 @@ cleanup_all_sessions :-
 % ========== COMMAND DISPATCH ==========
 
 % File loading commands
-% Secure consult: only allow facts/rules; load into kb module
+% Secure consult: only allow facts/rules; load into knowledge_base module
 dispatch(consult(File), _) :- !,
     ( catch(safe_consult(File), E, (reply(error(E)), fail)) -> reply(ok) ; true ).
 
@@ -133,20 +133,20 @@ dispatch(consult_file(File), VN) :- !,
 
 % Dynamic database commands
 dispatch(assert(Fact), _) :- !,
-    ( catch(assert_kb_term_safe(Fact), E, (reply(error(E)), fail)) -> reply(ok) ; true ).
+    ( catch(assert_knowledge_base_term_safe(Fact), E, (reply(error(E)), fail)) -> reply(ok) ; true ).
 
 dispatch(assertz(Fact), _) :- !,
-    ( catch(assert_kb_term_safe(Fact), E, (reply(error(E)), fail)) -> reply(ok) ; true ).
+    ( catch(assert_knowledge_base_term_safe(Fact), E, (reply(error(E)), fail)) -> reply(ok) ; true ).
 
 % Helper to extract predicate functor/arity from a fact or rule
 head_of_clause((Head :- _Body), Name, Arity) :- !, functor(Head, Name, Arity).
 head_of_clause(Fact, Name, Arity) :- functor(Fact, Name, Arity).
 
 dispatch(retract(Fact), _) :- !,
-    ( catch(retract(kb:Fact), _, fail) -> reply(ok) ; reply(error(nothing_to_retract)) ).
+    ( catch(retract(knowledge_base:Fact), _, fail) -> reply(ok) ; reply(error(nothing_to_retract)) ).
 
 dispatch(retractall(Fact), _) :- !,
-    ( catch(retractall(kb:Fact), E, (reply(error(E)), fail)) -> reply(ok) ; true ).
+    ( catch(retractall(knowledge_base:Fact), E, (reply(error(E)), fail)) -> reply(ok) ; true ).
 
 % ========== STANDARD QUERY MODE (call_nth/2) ==========
 
@@ -179,7 +179,7 @@ start_query_impl(Query, VarNamesAll) :-
     term_variables(Query, QVars),
     include_varnames_for(QVars, VarNamesAll, QVarNames),
     % Enforce sandbox safety on requested goal (permit undefined user predicates)
-    ( safe_goal_ok(kb:Query) -> true ; debug_trace(unsafe_goal(Query)), reply(error(unsafe_goal(Query))), !, fail ),
+    ( safe_goal_ok(knowledge_base:Query) -> true ; debug_trace(unsafe_goal(Query)), reply(error(unsafe_goal(Query))), !, fail ),
     % Check for session conflicts and start new session
     ( start_session(query, (Query, QVarNames, 1)) ->
         % Set up legacy state for compatibility
@@ -197,7 +197,7 @@ dispatch(start_query(Query), VarNamesAll) :- !,
 dispatch(next_solution, _) :- !,
     ( get_active_session(query, (Query, VarNames, N)) ->
         copy_term(Query-VarNames, Q2-V2),
-        ( catch(call_nth(kb:Q2, N), E, (
+        ( catch(call_nth(knowledge_base:Q2, N), E, (
             debug_trace(query_execution_error(E, N)),
             reply(error(E)), 
             cleanup_query_session, 
@@ -271,7 +271,7 @@ start_engine_impl(Query, VarNamesAll) :-
     term_variables(Query, QVars),
     include_varnames_for(QVars, VarNamesAll, QVarNames),
     % Enforce sandbox safety on requested goal (permit undefined user predicates)
-    ( safe_goal_ok(kb:Query) -> true ; debug_trace(unsafe_goal(Query)), reply(error(unsafe_goal(Query))), !, fail ),
+    ( safe_goal_ok(knowledge_base:Query) -> true ; debug_trace(unsafe_goal(Query)), reply(error(unsafe_goal(Query))), !, fail ),
     
     % Check for session conflicts
     ( session_active ->
@@ -290,7 +290,7 @@ start_engine_impl(Query, VarNamesAll) :-
     % Answer template = QVarNames (list of Name=Var pairs for variable bindings)
     % Goal = Query (the goal to execute)
     % Engine = resulting engine ID
-    ( catch(engine_create(QVarNames, kb:Query, Engine), EngineError, (
+    ( catch(engine_create(QVarNames, knowledge_base:Query, Engine), EngineError, (
         debug_trace(engine_creation_error(EngineError, Query)),
         ( EngineError = error(existence_error(procedure, Pred), _) ->
             reply(error(undefined_predicate_in_query(Pred, Query)))
@@ -363,20 +363,63 @@ dispatch(close_engine, _) :- !,
 
 dispatch(list_predicates, _) :- !,
     findall(Name/Arity,
-        ( predicate_property(kb:Head, dynamic),
-          predicate_property(kb:Head, number_of_clauses(C)), C > 0,
+        ( predicate_property(knowledge_base:Head, dynamic),
+          predicate_property(knowledge_base:Head, number_of_clauses(C)), C > 0,
           functor(Head, Name, Arity)
         ), Preds0),
     sort(Preds0, Preds),
     reply(Preds).
 
-dispatch(dump_kb, _) :- !,
+% List only the safe, interesting modules we aim to expose
+base_exposed_modules([knowledge_base]).
+
+% Report the base exposed modules that are currently loaded
+dispatch(list_exposed_modules, _) :- !,
+    base_exposed_modules(Base),
+    findall(M, (member(M, Base), current_module(M)), Mods0),
+    sort(Mods0, Mods),
+    reply(Mods).
+
+% List all modules present (excluding internal '$' modules)
+dispatch(list_modules, _) :- !,
+    findall(M,
+        ( current_module(M),
+          \+ sub_atom(M, 0, _, _, '$')
+        ), Mods0),
+    sort(Mods0, Mods),
+    reply(Mods).
+
+% List exported predicates for a given module
+dispatch(list_module_predicates(Module), _) :- !,
+    atom(Module),
+    ( Module == knowledge_base ->
+        % For user KB, include dynamic predicates that have at least one clause
+        findall(Name/Arity,
+            ( current_predicate(knowledge_base:Name/Arity),
+              functor(Head, Name, Arity),
+              predicate_property(knowledge_base:Head, dynamic),
+              predicate_property(knowledge_base:Head, number_of_clauses(C)), C > 0
+            ), Preds0)
+    ;   % For other modules, include only exported/public, defined predicates
+        findall(Name/Arity,
+            ( current_predicate(Module:Name/Arity),
+              functor(Head, Name, Arity),
+              ( predicate_property(Module:Head, exported) -> true ; predicate_property(Module:Head, public) ),
+              predicate_property(Module:Head, defined)
+            ), Preds0)
+    ),
+    sort(Preds0, Preds),
+    reply(Preds).
+
+% RDF-related handlers intentionally omitted to keep API minimal for now.
+
+dispatch(dump_knowledge_base, _) :- !,
     findall(ClauseText,
-        ( current_predicate(kb:Name/Arity),
+        ( current_predicate(knowledge_base:Name/Arity),
           functor(Head, Name, Arity),
-          predicate_property(kb:Head, dynamic),
-          \+ predicate_property(kb:Head, imported_from(_)),
-          clause(kb:Head, Body),
+          predicate_property(knowledge_base:Head, dynamic),
+          \+ predicate_property(knowledge_base:Head, imported_from(_)),
+          clause(knowledge_base:Head, Body),
           ( Body == true ->
               with_output_to(string(ClauseText), write_term(Head, [quoted(true), numbervars(true)]))
           ; with_output_to(string(ClauseText), write_term((Head :- Body), [quoted(true), numbervars(true)]))
@@ -384,6 +427,27 @@ dispatch(dump_kb, _) :- !,
         ), ClauseTexts0),
     ( ClauseTexts0 == [] ->
         reply('% No clauses in knowledge base')
+    ; maplist(add_period, ClauseTexts0, ClauseTexts),
+      atomic_list_concat(ClauseTexts, '\n', DumpText),
+      reply(DumpText)
+    ).
+
+% Dump only clauses for a specific predicate Name/Arity
+dispatch(dump_predicate(Name, Arity), _) :- !,
+    atom(Name), integer(Arity),
+    ( current_predicate(knowledge_base:Name/Arity) -> true ; reply('% No clauses for predicate'), ! ),
+    findall(ClauseText,
+        ( functor(Head, Name, Arity),
+          predicate_property(knowledge_base:Head, dynamic),
+          \+ predicate_property(knowledge_base:Head, imported_from(_)),
+          clause(knowledge_base:Head, Body),
+          ( Body == true ->
+              with_output_to(string(ClauseText), write_term(Head, [quoted(true), numbervars(true)]))
+          ; with_output_to(string(ClauseText), write_term((Head :- Body), [quoted(true), numbervars(true)]))
+          )
+        ), ClauseTexts0),
+    ( ClauseTexts0 == [] ->
+        reply('% No clauses for predicate')
     ; maplist(add_period, ClauseTexts0, ClauseTexts),
       atomic_list_concat(ClauseTexts, '\n', DumpText),
       reply(DumpText)
@@ -401,10 +465,10 @@ dispatch(exit, _) :- !,
     cleanup_all_sessions,
     halt(0).
 
-dispatch(retract_all_kb, _) :- !,
+dispatch(clear_knowledge_base, _) :- !,
     findall(Name/Arity, 
-        (predicate_property(kb:Head, dynamic),
-         predicate_property(kb:Head, number_of_clauses(C)), C > 0,
+        (predicate_property(knowledge_base:Head, dynamic),
+         predicate_property(knowledge_base:Head, number_of_clauses(C)), C > 0,
          functor(Head, Name, Arity)
         ), Predicates),
     length(Predicates, Count),
@@ -416,8 +480,8 @@ dispatch(Goal, VarNamesAll) :-
     term_variables(Goal, GVars),
     include_varnames_for(GVars, VarNamesAll, GVarNames),
     % Enforce sandbox safety on ad-hoc goal (permit undefined user predicates)
-    ( safe_goal_ok(kb:Goal) -> true ; debug_trace(unsafe_goal(Goal)), reply(error(unsafe_goal(Goal))), !, fail ),
-    ( catch(call(kb:Goal), _, fail) ->
+    ( safe_goal_ok(knowledge_base:Goal) -> true ; debug_trace(unsafe_goal(Goal)), reply(error(unsafe_goal(Goal))), !, fail ),
+    ( catch(call(knowledge_base:Goal), _, fail) ->
         var_bindings(GVarNames, Bindings),
         reply(solution(Bindings))
     ; reply(false)
@@ -437,33 +501,49 @@ var_bindings([], []).
 var_bindings([Name=Var|T], [Name=Var|BT]) :-
     var_bindings(T, BT).
 
-% Ensure the kb module exists without changing this files module context
-ensure_kb_module :-
-    ( current_module(kb) -> true ; create_module(kb) ),
-    catch(set_prolog_flag(kb:unknown, fail), _, true),
-    % Import a safe subset of library predicates into kb
-    catch(kb:use_module(library(lists), [
+% Ensure the knowledge_base module exists without changing this files module context
+ensure_knowledge_base_module :-
+    ( current_module(knowledge_base) -> true ; create_module(knowledge_base) ),
+    catch(set_prolog_flag(knowledge_base:unknown, fail), _, true),
+    % Ensure safe library modules are loaded so they appear in module listings
+    catch(use_module(library(lists)), _, true),
+    catch(use_module(library(between)), _, true),
+    catch(use_module(library(apply)), _, true),
+    catch(use_module(library(pairs)), _, true),
+    catch(use_module(library(ordsets)), _, true),
+    % Import a safe subset of library predicates into knowledge_base
+    catch(knowledge_base:use_module(library(lists), [
         member/2, append/3, length/2, select/3, nth0/3, nth1/3,
         permutation/2, reverse/2, memberchk/2, last/2, flatten/2,
         sum_list/2, max_list/2, min_list/2, numlist/3, subtract/3,
         union/3, intersection/3, list_to_set/2, is_set/1, subset/2,
         delete/3, selectchk/3
     ]), _, true),
-    catch(kb:use_module(library(between), [between/3]), _, true),
+    catch(knowledge_base:use_module(library(between), [between/3]), _, true),
+    % Pure, data-only helpers: safe to import into knowledge_base
+    catch(knowledge_base:use_module(library(pairs), [
+        map_list_to_pairs/3, group_pairs_by_key/2, pairs_keys_values/3,
+        pairs_keys/2, pairs_values/2
+    ]), _, true),
+    catch(knowledge_base:use_module(library(ordsets), [
+        list_to_ord_set/2, ord_memberchk/2, ord_union/3, ord_intersection/3,
+        ord_subtract/3, ord_subset/2, ord_add_element/3, ord_del_element/3,
+        ord_disjoint/2
+    ]), _, true),
     % Note: Extended safe set functionality removed - now handled by library(sandbox)
     true.
 
-% Guarded kb:maplist variants delegating to library(apply)
-kb:maplist(P, L) :-
+% Guarded knowledge_base:maplist variants delegating to library(apply)
+knowledge_base:maplist(P, L) :-
     strip_module(P, M, Plain),
-    ( var(M) -> M2 = kb ; M2 = M ),
-    M2 == kb,
+    ( var(M) -> M2 = knowledge_base ; M2 = M ),
+    M2 == knowledge_base,
     apply:maplist(M2:Plain, L).
 
-kb:maplist(P, L1, L2) :-
+knowledge_base:maplist(P, L1, L2) :-
     strip_module(P, M, Plain),
-    ( var(M) -> M2 = kb ; M2 = M ),
-    M2 == kb,
+    ( var(M) -> M2 = knowledge_base ; M2 = M ),
+    M2 == knowledge_base,
     apply:maplist(M2:Plain, L1, L2).
 
 % To run: swipl -q -s prolog_server.pl -g server_loop
@@ -474,20 +554,20 @@ kb:maplist(P, L1, L2) :-
 safe_consult(File) :-
     absolute_file_name(File, Abs, [access(read)]),
     read_file_to_terms(Abs, Terms, [syntax_errors(error)]),
-    maplist(assert_kb_term_safe, Terms).
+    maplist(assert_knowledge_base_term_safe, Terms).
 
-% Reject directives and only assert plain clauses into kb
-assert_kb_term_safe((:- _Directive)) :-
+% Reject directives and only assert plain clauses into knowledge_base
+assert_knowledge_base_term_safe((:- _Directive)) :-
     throw(error(permission_error(execute, directive, 'Directives are not allowed in sandboxed consult'), _)).
-assert_kb_term_safe((?- _Query)) :-
+assert_knowledge_base_term_safe((?- _Query)) :-
     throw(error(permission_error(execute, directive, 'Queries are not allowed in sandboxed consult'), _)).
-assert_kb_term_safe(Term) :-
+assert_knowledge_base_term_safe(Term) :-
     % Validate clause body is safe before asserting
     clause_safe(Term),
-    % Ensure target predicate is dynamic in kb
+    % Ensure target predicate is dynamic in knowledge_base
     head_of_clause(Term, Name, Arity),
-    ( catch(dynamic(kb:Name/Arity), _, true) ; true ),
-    assertz(kb:Term).
+    ( catch(dynamic(knowledge_base:Name/Arity), _, true) ; true ),
+    assertz(knowledge_base:Term).
 
 % Validate a clause/fact has a safe body
 clause_safe((Head :- Body)) :- !,
@@ -502,15 +582,15 @@ body_safe((A,B)) :- !, body_safe(A), body_safe(B).
 body_safe((A;B)) :- !, body_safe(A), body_safe(B).
 body_safe((A->B)) :- !, body_safe(A), body_safe(B).
 body_safe(\+ A) :- !, body_safe(A).
-% Allow calls to user-defined predicates (treat as kb: predicates for safety)
+% Allow calls to user-defined predicates (treat as knowledge_base: predicates for safety)
 body_safe(Term) :-
     strip_module(Term, M, Plain),
     callable(Plain),
-    % Either explicitly kb: module or user module (default for clauses)  
-    ( M == kb ; M == user ),
+    % Either explicitly knowledge_base: module or user module (default for clauses)  
+    ( M == knowledge_base ; M == user ),
     % Reject explicitly dangerous operations even if sandbox allows them
     \+ explicitly_dangerous(Plain),
-    % For user/kb predicates: allow if sandbox approves OR it's user-defined
+    % For user/knowledge_base predicates: allow if sandbox approves OR it's user-defined
     ( catch(sandbox:safe_goal(Plain), 
             error(existence_error(procedure,_), _), 
             true  % Allow undefined user predicates (existence error = user-defined)
@@ -564,22 +644,22 @@ safe_goal_ok(Goal) :-
     explicitly_dangerous(Plain),
     !, fail.
 
-% Treat a goal in kb: as safe if its structure is safe per body_safe/1.
+% Treat a goal in knowledge_base: as safe if its structure is safe per body_safe/1.
 safe_goal_ok(Goal) :-
     strip_module(Goal, M, Plain),
-    M == kb, callable(Plain),
+    M == knowledge_base, callable(Plain),
     body_safe(Plain),
-    debug_trace(kb_goal_ok(Plain)),
+    debug_trace(knowledge_base_goal_ok(Plain)),
     !.
-% As a fallback for kb goals: allow if not imported (unknown user preds fail harmlessly)
+% As a fallback for knowledge_base goals: allow if not imported (unknown user preds fail harmlessly)
 % Only allow if we can verify the predicate is truly user-defined
 safe_goal_ok(Goal) :-
     strip_module(Goal, M, Plain),
-    M == kb, callable(Plain),
+    M == knowledge_base, callable(Plain),
     % Only allow if we can successfully verify it's not imported AND not built-in
-    catch(\+ predicate_property(kb:Plain, imported_from(_)), _, fail),
-    catch(\+ predicate_property(kb:Plain, built_in), _, fail),
-    debug_trace(kb_goal_default(Plain)),
+    catch(\+ predicate_property(knowledge_base:Plain, imported_from(_)), _, fail),
+    catch(\+ predicate_property(knowledge_base:Plain, built_in), _, fail),
+    debug_trace(knowledge_base_goal_default(Plain)),
     !.
 
 % Otherwise, defer to library(sandbox). Allow undefined predicates by
@@ -592,4 +672,3 @@ safe_goal_ok(Goal) :-
         ))),
     debug_trace(sandbox_ok(Goal)),
     !.
-

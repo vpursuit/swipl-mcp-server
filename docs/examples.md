@@ -16,7 +16,7 @@ npx @modelcontextprotocol/inspector --transport stdio node build/index.js
 
 ### 1. Load Test File
 
-**Tool:** `db_load`
+**Tool:** `knowledge_base_load`
 ```json
 {
   "filename": "test.pl"
@@ -98,14 +98,14 @@ npx @modelcontextprotocol/inspector --transport stdio node build/index.js
 
 ### 5. Add New Family Relations (Single Facts)
 
-**Tool:** `db_assert`
+**Tool:** `knowledge_base_assert`
 ```json
 {
   "fact": "parent(alice, bob)"
 }
 ```
 
-**Tool:** `db_assert`
+**Tool:** `knowledge_base_assert`
 ```json
 {
   "fact": "parent(bob, charlie)"
@@ -114,7 +114,7 @@ npx @modelcontextprotocol/inspector --transport stdio node build/index.js
 
 ### 5b. Add Multiple Family Relations at Once
 
-**Tool:** `db_assert_many`
+**Tool:** `knowledge_base_assert_many`
 ```json
 {
   "facts": [
@@ -131,7 +131,7 @@ npx @modelcontextprotocol/inspector --transport stdio node build/index.js
 
 ### 6. Query with Rules
 
-**Tool:** `db_assert`
+**Tool:** `knowledge_base_assert`
 ```json
 {
   "fact": "grandparent(X, Z) :- parent(X, Y), parent(Y, Z)"
@@ -217,14 +217,14 @@ This finds all combinations of colors and vehicles:
 
 ### 11. Working with Strings
 
-**Tool:** `db_assert`
+**Tool:** `knowledge_base_assert`
 ```json
 {
   "fact": "likes(john, pizza)"
 }
 ```
 
-**Tool:** `db_assert`
+**Tool:** `knowledge_base_assert`
 ```json
 {
   "fact": "likes(mary, pasta)"
@@ -244,7 +244,7 @@ This finds all combinations of colors and vehicles:
 
 ### 12. Remove Facts
 
-**Tool:** `db_retract`
+**Tool:** `knowledge_base_retract`
 ```json
 {
   "fact": "likes(john, pizza)"
@@ -298,7 +298,7 @@ This finds all combinations of colors and vehicles:
 
 ### 16. Remove Facts (Single and Multiple)
 
-**Tool:** `db_retract`
+**Tool:** `knowledge_base_retract`
 ```json
 {
   "fact": "parent(alice, bob)"
@@ -306,7 +306,7 @@ This finds all combinations of colors and vehicles:
 ```
 **Expected Response:** Confirmation that the fact was removed
 
-**Tool:** `db_retract_many`
+**Tool:** `knowledge_base_retract_many`
 ```json
 {
   "facts": [
@@ -320,7 +320,7 @@ This finds all combinations of colors and vehicles:
 
 ### 17. Clear All User-Defined Facts and Rules
 
-**Tool:** `db_retract_all`
+**Tool:** `knowledge_base_clear`
 ```json
 {}
 ```
@@ -350,7 +350,7 @@ This finds all combinations of colors and vehicles:
 
 ### 18. File Not Found
 
-**Tool:** `db_load`
+**Tool:** `knowledge_base_load`
 ```json
 {
   "filename": "nonexistent_file.pl"
@@ -387,13 +387,13 @@ This tests performance with large data structures.
 
 ### 21. Complete Knowledge Base Session
 
-1. Load data: `db_load` → `{"filename": "family.pl"}`
+1. Load data: `knowledge_base_load` → `{"filename": "family.pl"}`
 2. Explore structure: `symbols_list` → `{}`
 3. Query base facts: `query_start` → `{"query": "parent(X, Y)"}`
 4. Get solutions step by step with `query_next`
-5. Add new family: `db_assert` → `{"fact": "parent(alice, bob)"}`
+5. Add new family: `knowledge_base_assert` → `{"fact": "parent(alice, bob)"}`
 6. Complex query: `query_start` → `{"query": "grandparent(X, Y)"}`
-7. Cleanup: `db_retract` → `{"fact": "parent(alice, bob)"}`
+7. Cleanup: `knowledge_base_retract` → `{"fact": "parent(alice, bob)"}`
 
 ## Best Practices
 
@@ -403,9 +403,9 @@ This tests performance with large data structures.
 - Check "more_solutions" flag to know when to stop
 
 ### Error Prevention
-- Validate file paths before `db_load`
+- Validate file paths before `knowledge_base_load`
 - Test simple queries before complex ones
-- **Backup creation**: Use `query_start` to document facts before `db_retract`
+- **Backup creation**: Use `query_start` to document facts before `knowledge_base_retract`
 
 ### Performance Tips
 - Close infinite or very large solution queries early
@@ -418,7 +418,7 @@ This tests performance with large data structures.
 2. Test basic facts: `query` → simple fact checking
 3. Build complexity gradually
 4. Use step-by-step `next` to understand solution flow
-5. Add debugging facts with `db_assert` for tracing
+5. Add debugging facts with `knowledge_base_assert` for tracing
 
 ## Known Variations
 
@@ -434,7 +434,7 @@ Tips:
 
 ## Safe Built-ins (Whitelist) & Examples
 
-The server enables a safe subset of pure built-ins and list utilities in the `kb` module so you can write useful queries without side effects. Below are practical examples that work out of the box.
+The server enables a safe subset of pure built-ins and list utilities in the `knowledge_base` module so you can write useful queries without side effects. Below are practical examples that work out of the box.
 
 ### Arithmetic and Filtering
 
@@ -470,13 +470,13 @@ Collect elements from a list:
 ```
 **Response:** "L = [a,b,c]"
 
-### Guarded maplist/2-3 (kb only)
+### Guarded maplist/2-3 (knowledge base only)
 
-Define a pure helper, then map it over a list. The server exposes `kb:maplist` which only accepts `kb:` goals to keep execution safe.
+Define a pure helper, then map it over a list. The server exposes `knowledge_base:maplist` which only accepts `knowledge_base:` goals to keep execution safe.
 
-1) Define a helper in `kb`:
+1) Define a helper in `knowledge_base`:
 
-**Tool:** `db_assert`
+**Tool:** `knowledge_base_assert`
 ```json
 {
   "fact": "double(X, Y) :- Y is X * 2"
@@ -488,7 +488,7 @@ Define a pure helper, then map it over a list. The server exposes `kb:maplist` w
 **Tool:** `query_start`
 ```json
 {
-  "query": "kb:maplist(double, [1,2,3], L)"
+  "query": "knowledge_base:maplist(double, [1,2,3], L)"
 }
 ```
 
@@ -561,5 +561,5 @@ Each call yields a new solution until you receive "No more solutions available".
 Use tool `query_close`.
 
 Notes:
-- All examples rely on the server’s whitelist of pure predicates and kb-restricted calls.
+- All examples rely on the server’s whitelist of pure predicates and knowledge-base-restricted calls.
 - If you need additional helpers, open an issue to request specific pure predicates.

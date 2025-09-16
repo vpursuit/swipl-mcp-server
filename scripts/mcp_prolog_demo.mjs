@@ -46,7 +46,7 @@ async function main() {
   }
 
   // 1) Assert some facts and a simple rule
-  await callTool("db_assert_many", {
+  await callTool("knowledge_base_assert_many", {
     facts: [
       "parent(john, mary)",
       "parent(mary, alice)",
@@ -84,7 +84,7 @@ async function main() {
   await callTool("query_close", {});
 
   // 5) Retract one fact and verify effect
-  await callTool("db_retract", { fact: "parent(john, bob)" });
+  await callTool("knowledge_base_retract", { fact: "parent(john, bob)" });
   await callTool("query_start", { query: "parent(john, C)" });
   // Expect only mary now
   for (let i = 0; i < 3; i++) {

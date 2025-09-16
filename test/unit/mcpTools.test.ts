@@ -83,7 +83,7 @@ describe("MCP Tools", () => {
     });
 
     describe("DbAssertInputSchema", () => {
-      const DbAssertInputSchema = z.object(inputSchemas.dbAssert);
+      const DbAssertInputSchema = z.object(inputSchemas.knowledgeBaseAssert);
 
       it("should validate correct fact input", () => {
         const validInput = { fact: "parent(john, mary)" };
