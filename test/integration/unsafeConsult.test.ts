@@ -16,7 +16,7 @@ maybeDescribe("Unsafe File Consultation", () => {
     await prologInterface.start();
 
     // Try to consult the unsafe file that contains directives - should be blocked by Prolog
-    const result = await toolHandlers.dbLoad({ filename: "test/unsafe_test.pl" });
+    const result = await toolHandlers.knowledgeBaseLoad({ filename: "test/unsafe_test.pl" });
 
     // The consult should be blocked by Prolog's security validation
     expect(result.isError).toBeTruthy();
@@ -56,8 +56,8 @@ maybeDescribe("Unsafe File Consultation", () => {
 
     // Create a temporary safe file content and verify manual assertion works
     // (This tests that our security model allows safe recursive rules)
-    await toolHandlers.dbAssert({ fact: "parent(alice, bob)" });
-    await toolHandlers.dbAssert({ fact: "ancestor(X, Y) :- parent(X, Y)" });
+    await toolHandlers.knowledgeBaseAssert({ fact: "parent(alice, bob)" });
+    await toolHandlers.knowledgeBaseAssert({ fact: "ancestor(X, Y) :- parent(X, Y)" });
 
     // Test that the safe recursive rule works
     const result = await toolHandlers.queryStart({ query: "ancestor(alice, bob)" });

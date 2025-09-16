@@ -1,5 +1,6 @@
 // Centralized validation constants
 export const MAX_QUERY_LENGTH = 5000;
+export const MAX_FACT_LENGTH = 5000;
 export const MAX_FILENAME_LENGTH = 1000;
 
 // Protocol string constants

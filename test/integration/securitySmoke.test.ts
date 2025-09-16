@@ -37,7 +37,7 @@ maybeDescribe("Security Smoke Tests", () => {
 
   test("user predicate with lists via findall", async () => {
     await prologInterface.start();
-    // Define a pure helper in kb
+    // Define a pure helper in the knowledge_base module
     await prologInterface.query("assert((double(X,Y) :- Y is X*2))");
     await toolHandlers.queryStart({ query: "findall(Y, (member(X,[1,2,3]), double(X,Y)), L)" });
     const res = await toolHandlers.queryNext();

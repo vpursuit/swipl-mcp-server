@@ -97,28 +97,28 @@ Configure timeouts, logging, and behavior via environment variables:
 - Shutdown: the server exits on `SIGINT`/`SIGTERM` or when the client closes stdio. On stdio close, a small grace (~25ms) allows final responses to flush before exit.
 - Stateful per connection: asserted facts/rules live in memory for the lifetime of the MCP connection (one Node process and one SWI‑Prolog child). When the client disconnects and the server exits, in‑memory state is reset on next start.
 - Client guidance: keep a single stdio connection open for workflows that depend on shared state across multiple tool calls; avoid closing stdin immediately after a request.
-- Durability (optional): if persistent KB is desired across restarts, use `db_dump` to save to `~/.swipl-mcp-server/` and `db_load` (or `db_assert_many`) to restore on startup. See docs/lifecycle.md for patterns.
+- Durability (optional): if persistent Knowledge Base is desired across restarts, use `knowledge_base_dump` to save to `~/.swipl-mcp-server/` and `knowledge_base_load` (or `knowledge_base_assert_many`) to restore on startup. See docs/lifecycle.md for patterns.
 
 ## Tools
 
 - Core: `help`, `license`, `capabilities`
-- Database: `db_load`, `db_assert`, `db_assert_many`, `db_retract`, `db_retract_many`, `db_retract_all`, `db_dump`
+- Knowledge base: `knowledge_base_load`, `knowledge_base_assert`, `knowledge_base_assert_many`, `knowledge_base_retract`, `knowledge_base_retract_many`, `knowledge_base_clear`, `knowledge_base_dump`
 - Query: `query_start`, `query_startEngine`, `query_next`, `query_close`
 - Symbols: `symbols_list`
 
 ## Examples
 
 - Load and query (files must be in `~/.swipl-mcp-server/`):
-  - `db_load { filename: "~/.swipl-mcp-server/family.pl" }`
+  - `knowledge_base_load { filename: "~/.swipl-mcp-server/family.pl" }`
   - `query_start { query: "parent(X, mary)" }` → `query_next()` until no more solutions → `query_close()`
 - Engine mode:
   - `query_startEngine { query: "member(X, [1,2,3])" }` → `query_next()` repeatedly → `query_close()`
 - Database operations:
-  - Single: `db_assert { fact: "parent(john, mary)" }`
-  - Multiple: `db_assert_many { facts: ["parent(john, mary)", "parent(mary, alice)"] }`
-  - Remove single: `db_retract { fact: "parent(john, mary)" }`
-  - Remove multiple: `db_retract_many { facts: ["parent(john, mary)", "parent(mary, alice)"] }`
-  - Clear all: `db_retract_all {}`
+  - Single: `knowledge_base_assert { fact: "parent(john, mary)" }`
+  - Multiple: `knowledge_base_assert_many { facts: ["parent(john, mary)", "parent(mary, alice)"] }`
+  - Remove single: `knowledge_base_retract { fact: "parent(john, mary)" }`
+  - Remove multiple: `knowledge_base_retract_many { facts: ["parent(john, mary)", "parent(mary, alice)"] }`
+  - Clear all: `knowledge_base_clear {}`
 
 See docs/examples.md for many more, including arithmetic, list ops, collections, and string/atom helpers.
 
@@ -158,17 +158,17 @@ The server implements multiple security layers to protect your system:
 ### File Path Restrictions
 - **Allowed Directory**: Files can only be loaded from `~/.swipl-mcp-server/`
 - **Blocked Directories**: System directories (`/etc`, `/usr`, `/bin`, `/var`, etc.) are automatically blocked
-- **Example**: `db_load { filename: "/etc/passwd" }` → `Security Error: Access to system directories is blocked`
+- **Example**: `knowledge_base_load { filename: "/etc/passwd" }` → `Security Error: Access to system directories is blocked`
 
 ### Dangerous Predicate Detection
 - **Pre-execution Blocking**: Dangerous operations are caught before execution
 - **Blocked Predicates**: `shell()`, `system()`, `call()`, `assert()`, `halt()`, etc.
-- **Example**: `db_assert { fact: "malware :- shell('rm -rf /')" }` → `Security Error: Operation blocked - contains dangerous predicate 'shell'`
+- **Example**: `knowledge_base_assert { fact: "malware :- shell('rm -rf /')" }` → `Security Error: Operation blocked - contains dangerous predicate 'shell'`
 
 ### Additional Protections
 - Library(sandbox) validation for built-in predicates
 - Timeout protection against infinite loops
-- Module isolation in dedicated `kb` namespace
+- Module isolation in dedicated `knowledge_base` namespace
 
 See [SECURITY.md](SECURITY.md) for complete security documentation.
 

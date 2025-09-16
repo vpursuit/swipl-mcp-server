@@ -55,9 +55,9 @@ setTimeout(() => {
     send('tools/call', { name: 'LICENSE' });
 
     setTimeout(() => {
-      console.log('Sending db_assert test');
+      console.log('Sending knowledge_base_assert test');
       send('tools/call', { 
-        name: 'db_assert', 
+        name: 'knowledge_base_assert', 
         arguments: { facts: ['parent(john, mary).'] }
       });
 

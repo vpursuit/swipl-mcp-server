@@ -95,8 +95,8 @@ class NPXIntegrationTest {
         }
       },
       {
-        name: 'db_assert test',
-        request: { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'db_assert', arguments: { fact: 'test_fact(hello)' } } },
+        name: 'knowledge_base_assert test',
+        request: { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'knowledge_base_assert', arguments: { fact: 'test_fact(hello)' } } },
         validate: (result) => {
           const responseText = result.result?.content?.[0]?.text || '';
           if (responseText.includes('Prolog server not started')) {
@@ -106,17 +106,17 @@ class NPXIntegrationTest {
             throw new Error('prolog_server.pl not found - path resolution failed');
           }
           if (!responseText.includes('Result: ok') && !responseText.includes('Asserted 1/1 clauses successfully')) {
-            throw new Error(`db_assert did not succeed. Response: ${responseText}`);
+            throw new Error(`knowledge_base_assert did not succeed. Response: ${responseText}`);
           }
         }
       },
       {
-        name: 'db_load with non-existent file',
+        name: 'knowledge_base_load with non-existent file',
         request: { 
           jsonrpc: '2.0', 
           id: 4, 
           method: 'tools/call', 
-          params: { name: 'db_load', arguments: { filename: '/non/existent/file.pl' } } 
+          params: { name: 'knowledge_base_load', arguments: { filename: '/non/existent/file.pl' } } 
         },
         validate: (result) => {
           const text = result.result?.content?.[0]?.text || '';
@@ -156,12 +156,12 @@ class NPXIntegrationTest {
         }
       },
       {
-        name: 'db_retract non-existent fact',
+        name: 'knowledge_base_retract non-existent fact',
         request: { 
           jsonrpc: '2.0', 
           id: 7, 
           method: 'tools/call', 
-          params: { name: 'db_retract', arguments: { fact: 'non_existent_fact(x)' } } 
+          params: { name: 'knowledge_base_retract', arguments: { fact: 'non_existent_fact(x)' } } 
         },
         validate: (result) => {
           const text = result.result?.content?.[0]?.text || '';

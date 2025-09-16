@@ -3,7 +3,7 @@
 ## Components
 
 - PrologInterface (Node): manages the SWI‑Prolog process, request/response correlation, and session state.
-- Tools (Node): MCP tool handlers (`db_load`, `query_start`, etc.).
+- Tools (Node): MCP tool handlers (`knowledge_base_load`, `query_start`, etc.).
 - prolog_server.pl (SWI‑Prolog): single server supporting standard and engine modes.
 
 ## Query Modes
@@ -23,6 +23,6 @@
 
 - Hybrid model: `library(sandbox)` validation + explicit blacklist (I/O, OS, network, directives).
 - Guarded consultation: accepts facts/rules only; directives rejected.
-- User predicates in `kb` module; unknown predicates fail by default.
+- User predicates in `knowledge_base` module; unknown predicates fail by default.
 - Timeouts on startup and queries for protection.
 

@@ -39,7 +39,7 @@ const tests = [
   { name: 'tools/list', /* list all available tools */ },
   { name: 'license tool', /* test file resolution */ },
   { name: 'help tool', /* basic functionality */ },
-  { name: 'db_assert test', /* Prolog server startup */ }
+  { name: 'knowledge_base_assert test', /* Prolog server startup */ }
 ];
 ```
 

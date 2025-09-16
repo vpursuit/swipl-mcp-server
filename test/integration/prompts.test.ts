@@ -17,11 +17,11 @@ function createTestServer() {
   const testSchemas = {
     prologInitExpert: z.object({}),
     prologQuickReference: z.object({}),
-    prologAnalyzeKb: z.object({}),
+    prologAnalyzeKnowledgeBase: z.object({}),
     prologExpertReasoning: z.object({
       task: z.string().optional()
     }),
-    prologKbBuilder: z.object({
+    prologKnowledgeBaseBuilder: z.object({
       domain: z.string().optional()
     }),
     prologQueryOptimizer: z.object({
@@ -33,9 +33,9 @@ function createTestServer() {
   const promptSchemaMap: Record<string, string> = {
     "prolog_init_expert": "prologInitExpert",
     "prolog_quick_reference": "prologQuickReference",
-    "prolog_analyze_kb": "prologAnalyzeKb",
+    "prolog_analyze_knowledge_base": "prologAnalyzeKnowledgeBase",
     "prolog_expert_reasoning": "prologExpertReasoning",
-    "prolog_kb_builder": "prologKbBuilder",
+    "prolog_knowledge_base_builder": "prologKnowledgeBaseBuilder",
     "prolog_query_optimizer": "prologQueryOptimizer"
   };
 
@@ -79,9 +79,9 @@ describe("Prompts Integration", () => {
         expect(registeredPrompts).toHaveLength(6);
         expect(registeredPrompts).toContain("prolog_init_expert");
         expect(registeredPrompts).toContain("prolog_quick_reference");
-        expect(registeredPrompts).toContain("prolog_analyze_kb");
+        expect(registeredPrompts).toContain("prolog_analyze_knowledge_base");
         expect(registeredPrompts).toContain("prolog_expert_reasoning");
-        expect(registeredPrompts).toContain("prolog_kb_builder");
+        expect(registeredPrompts).toContain("prolog_knowledge_base_builder");
         expect(registeredPrompts).toContain("prolog_query_optimizer");
       }).not.toThrow();
     });
@@ -91,9 +91,9 @@ describe("Prompts Integration", () => {
       const expectedSchemas = [
         "prologInitExpert",
         "prologQuickReference",
-        "prologAnalyzeKb",
+        "prologAnalyzeKnowledgeBase",
         "prologExpertReasoning",
-        "prologKbBuilder",
+        "prologKnowledgeBaseBuilder",
         "prologQueryOptimizer"
       ];
 
@@ -118,8 +118,8 @@ describe("Prompts Integration", () => {
       expect(prompts.expert_guidance).toContain("prolog_expert_reasoning");
       expect(prompts.expert_guidance).toContain("prolog_query_optimizer");
 
-      expect(prompts.knowledge_base).toContain("prolog_analyze_kb");
-      expect(prompts.knowledge_base).toContain("prolog_kb_builder");
+      expect(prompts.knowledge_base).toContain("prolog_analyze_knowledge_base");
+      expect(prompts.knowledge_base).toContain("prolog_knowledge_base_builder");
 
       expect(prompts.orientation).toContain("prolog_quick_reference");
     });
@@ -194,9 +194,9 @@ describe("Prompts Integration", () => {
       expect(helpText).toContain("Expert Prompts (Start Here!)");
       expect(helpText).toContain("prolog_init_expert");
       expect(helpText).toContain("prolog_quick_reference");
-      expect(helpText).toContain("prolog_analyze_kb");
+      expect(helpText).toContain("prolog_analyze_knowledge_base");
       expect(helpText).toContain("prolog_expert_reasoning");
-      expect(helpText).toContain("prolog_kb_builder");
+      expect(helpText).toContain("prolog_knowledge_base_builder");
       expect(helpText).toContain("prolog_query_optimizer");
     });
   });
@@ -207,9 +207,9 @@ describe("Prompts Integration", () => {
       const schemaNames = [
         "prologInitExpert",
         "prologQuickReference",
-        "prologAnalyzeKb",
+        "prologAnalyzeKnowledgeBase",
         "prologExpertReasoning",
-        "prologKbBuilder",
+        "prologKnowledgeBaseBuilder",
         "prologQueryOptimizer"
       ];
 
@@ -226,7 +226,7 @@ describe("Prompts Integration", () => {
       const { testSchemas } = createTestServer();
       const testCases = [
         { schema: "prologExpertReasoning", validArgs: { task: "test task" } },
-        { schema: "prologKbBuilder", validArgs: { domain: "test domain" } },
+        { schema: "prologKnowledgeBaseBuilder", validArgs: { domain: "test domain" } },
         { schema: "prologQueryOptimizer", validArgs: { query: "test query" } }
       ];
 
@@ -258,9 +258,9 @@ describe("Prompts Integration", () => {
     test("prompts should reference specific resources", () => {
       const resourcePrompts = [
         "quickReference",
-        "analyzeKB",
+        "analyzeKnowledgeBase",
         "expertReasoning",
-        "kbBuilder"
+        "knowledgeBaseBuilder"
       ];
 
       for (const promptName of resourcePrompts) {
@@ -269,7 +269,7 @@ describe("Prompts Integration", () => {
         const text = messages[0].content.text;
 
         // Should reference specific resources
-        expect(text).toMatch(/meta:\/\/|prolog:\/\/|kb-predicates|kb-dump|capabilities|help/);
+        expect(text).toMatch(/meta:\/\/|prolog:\/\/|knowledge-base-predicates|knowledge-base-dump|capabilities|help/);
       }
     });
   });

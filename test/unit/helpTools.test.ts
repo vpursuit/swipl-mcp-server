@@ -17,10 +17,10 @@ describe("Agent vs Developer Help/Diagnostics", () => {
     expect(obj.server?.name).toBe("swipl-mcp-server");
     expect(typeof obj.tools).toBe("object");
     expect(obj.tools?.core).toContain("help");
-    expect(obj.tools?.database).toContain("db_assert");
-    expect(obj.tools?.database).toContain("db_assert_many");
-    expect(obj.tools?.database).toContain("db_retract_all");
-    expect(obj.security?.module).toBe("kb");
+    expect(obj.tools?.knowledge_base).toContain("knowledge_base_assert");
+    expect(obj.tools?.knowledge_base).toContain("knowledge_base_assert_many");
+    expect(obj.tools?.knowledge_base).toContain("knowledge_base_clear");
+    expect(obj.security?.module).toBe("knowledge_base");
     // Legacy env list should not exist in agent-facing capabilities
     expect(obj.env).toBeUndefined();
     // Capabilities should return JSON in content for backwards compatibility (MCP best practice)

@@ -7,18 +7,18 @@ describe("Prolog Prompts", () => {
       const expectedPrompts = [
         "initExpert",
         "quickReference",
-        "analyzeKB",
+        "analyzeKnowledgeBase",
         "expertReasoning",
-        "kbBuilder",
+        "knowledgeBaseBuilder",
         "queryOptimizer"
       ];
 
       const expectedNames = [
         "prolog_init_expert",
         "prolog_quick_reference",
-        "prolog_analyze_kb",
+        "prolog_analyze_knowledge_base",
         "prolog_expert_reasoning",
-        "prolog_kb_builder",
+        "prolog_knowledge_base_builder",
         "prolog_query_optimizer"
       ];
 
@@ -44,7 +44,7 @@ describe("Prolog Prompts", () => {
     });
 
     test("prompts without arguments should have empty arguments array", () => {
-      const noArgPrompts = ["initExpert", "quickReference", "analyzeKB"];
+      const noArgPrompts = ["initExpert", "quickReference", "analyzeKnowledgeBase"];
 
       for (const promptName of noArgPrompts) {
         const prompt = prologPrompts[promptName];
@@ -55,7 +55,7 @@ describe("Prolog Prompts", () => {
     test("prompts with arguments should have proper argument structure", () => {
       const argPrompts = [
         { name: "expertReasoning", argName: "task" },
-        { name: "kbBuilder", argName: "domain" },
+        { name: "knowledgeBaseBuilder", argName: "domain" },
         { name: "queryOptimizer", argName: "query" }
       ];
 
@@ -102,19 +102,19 @@ describe("Prolog Prompts", () => {
 
       const text = messages[0].content.text;
       expect(text).toContain("resources");
-      expect(text).toContain("meta://help");
-      expect(text).toContain("meta://capabilities");
-      expect(text).toContain("prolog://kb/predicates");
-      expect(text).toContain("prolog://kb/dump");
+      expect(text).toContain("reference://help");
+      expect(text).toContain("reference://capabilities");
+      expect(text).toContain("prolog://knowledge_base/predicates");
+      expect(text).toContain("prolog://knowledge_base/dump");
     });
 
-    test("analyze kb prompt should emphasize resource reading", () => {
-      const prompt = prologPrompts.analyzeKB;
+    test("analyze knowledge base prompt should emphasize resource reading", () => {
+      const prompt = prologPrompts.analyzeKnowledgeBase;
       const messages = prompt.messages();
 
       const text = messages[0].content.text;
-      expect(text).toContain("kb-predicates");
-      expect(text).toContain("kb-dump");
+      expect(text).toContain("knowledge-base-predicates");
+      expect(text).toContain("knowledge-base-dump");
       expect(text).toContain("capabilities");
       expect(text).toContain("STEP 1");
       expect(text).toContain("Resource Discovery");
@@ -140,8 +140,8 @@ describe("Prolog Prompts", () => {
       expect(text).not.toContain("[Please specify a reasoning task]");
     });
 
-    test("kb builder prompt should handle missing domain argument", () => {
-      const prompt = prologPrompts.kbBuilder;
+    test("knowledge base builder prompt should handle missing domain argument", () => {
+      const prompt = prologPrompts.knowledgeBaseBuilder;
       const messages = prompt.messages();
 
       const text = messages[0].content.text;
@@ -149,8 +149,8 @@ describe("Prolog Prompts", () => {
       expect(text).toContain("PREPARATION PHASE");
     });
 
-    test("kb builder prompt should use provided domain argument", () => {
-      const prompt = prologPrompts.kbBuilder;
+    test("knowledge base builder prompt should use provided domain argument", () => {
+      const prompt = prologPrompts.knowledgeBaseBuilder;
       const messages = prompt.messages({ domain: "medical diagnosis" });
 
       const text = messages[0].content.text;
@@ -186,7 +186,7 @@ describe("Prolog Prompts", () => {
         const text = messages[0].content.text;
 
         // Each prompt should guide users to check resources
-        expect(text.toLowerCase()).toMatch(/resource|capabilities|help|kb-/);
+        expect(text.toLowerCase()).toMatch(/resource|capabilities|help|knowledge-base-/);
       }
     });
 
@@ -194,7 +194,7 @@ describe("Prolog Prompts", () => {
       const securityAwarePrompts = [
         "initExpert",
         "expertReasoning",
-        "kbBuilder"
+        "knowledgeBaseBuilder"
       ];
 
       for (const promptName of securityAwarePrompts) {
@@ -219,9 +219,9 @@ describe("Prolog Prompts", () => {
 
     test("workflow prompts should have structured phases", () => {
       const workflowPrompts = [
-        "analyzeKB",
+        "analyzeKnowledgeBase",
         "expertReasoning",
-        "kbBuilder",
+        "knowledgeBaseBuilder",
         "queryOptimizer"
       ];
 
@@ -240,7 +240,7 @@ describe("Prolog Prompts", () => {
     test("prompts should handle undefined arguments gracefully", () => {
       const promptsWithArgs = [
         "expertReasoning",
-        "kbBuilder",
+        "knowledgeBaseBuilder",
         "queryOptimizer"
       ];
 
@@ -307,7 +307,7 @@ describe("Prolog Prompts", () => {
   describe("Prompt Categories", () => {
     test("should have proper categorization of prompts", () => {
       const expertGuidance = ["initExpert", "expertReasoning", "queryOptimizer"];
-      const knowledgeBase = ["analyzeKB", "kbBuilder"];
+      const knowledgeBase = ["analyzeKnowledgeBase", "knowledgeBaseBuilder"];
       const orientation = ["quickReference"];
 
       // Verify all categories are covered

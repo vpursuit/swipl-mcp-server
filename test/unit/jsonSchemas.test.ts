@@ -34,41 +34,41 @@ describe("JSON Schemas (MCP registration)", () => {
     expect(queryStart.properties.query.minLength).toBe(1);
   });
 
-  it("dbAssert.fact should accept only string", () => {
-    const dbAssert = jsonSchemas.dbAssert as any;
-    expect(dbAssert.type).toBe("object");
-    expect(dbAssert.required).toEqual(["fact"]);
-    expect(dbAssert.properties.fact.type).toBe("string");
+  it("knowledgeBaseAssert.fact should accept only string", () => {
+    const knowledgeBaseAssert = jsonSchemas.knowledgeBaseAssert as any;
+    expect(knowledgeBaseAssert.type).toBe("object");
+    expect(knowledgeBaseAssert.required).toEqual(["fact"]);
+    expect(knowledgeBaseAssert.properties.fact.type).toBe("string");
   });
 
-  it("dbAssertMany.facts should accept array of strings", () => {
-    const dbAssertMany = jsonSchemas.dbAssertMany as any;
-    expect(dbAssertMany.type).toBe("object");
-    expect(dbAssertMany.required).toEqual(["facts"]);
-    expect(dbAssertMany.properties.facts.type).toBe("array");
-    expect(dbAssertMany.properties.facts.items.type).toBe("string");
+  it("knowledgeBaseAssertMany.facts should accept array of strings", () => {
+    const knowledgeBaseAssertMany = jsonSchemas.knowledgeBaseAssertMany as any;
+    expect(knowledgeBaseAssertMany.type).toBe("object");
+    expect(knowledgeBaseAssertMany.required).toEqual(["facts"]);
+    expect(knowledgeBaseAssertMany.properties.facts.type).toBe("array");
+    expect(knowledgeBaseAssertMany.properties.facts.items.type).toBe("string");
   });
 
-  it("dbRetract.fact should accept only string", () => {
-    const dbRetract = jsonSchemas.dbRetract as any;
-    expect(dbRetract.type).toBe("object");
-    expect(dbRetract.required).toEqual(["fact"]);
-    expect(dbRetract.properties.fact.type).toBe("string");
+  it("knowledgeBaseRetract.fact should accept only string", () => {
+    const knowledgeBaseRetract = jsonSchemas.knowledgeBaseRetract as any;
+    expect(knowledgeBaseRetract.type).toBe("object");
+    expect(knowledgeBaseRetract.required).toEqual(["fact"]);
+    expect(knowledgeBaseRetract.properties.fact.type).toBe("string");
   });
 
-  it("dbRetractMany.facts should accept array of strings", () => {
-    const dbRetractMany = jsonSchemas.dbRetractMany as any;
-    expect(dbRetractMany.type).toBe("object");
-    expect(dbRetractMany.required).toEqual(["facts"]);
-    expect(dbRetractMany.properties.facts.type).toBe("array");
-    expect(dbRetractMany.properties.facts.items.type).toBe("string");
+  it("knowledgeBaseRetractMany.facts should accept array of strings", () => {
+    const knowledgeBaseRetractMany = jsonSchemas.knowledgeBaseRetractMany as any;
+    expect(knowledgeBaseRetractMany.type).toBe("object");
+    expect(knowledgeBaseRetractMany.required).toEqual(["facts"]);
+    expect(knowledgeBaseRetractMany.properties.facts.type).toBe("array");
+    expect(knowledgeBaseRetractMany.properties.facts.items.type).toBe("string");
   });
 
-  it("dbRetractAll should have no parameters", () => {
-    const dbRetractAll = jsonSchemas.dbRetractAll as any;
-    expect(dbRetractAll.type).toBe("object");
-    expect(dbRetractAll.properties).toEqual({});
-    expect(dbRetractAll.additionalProperties).toBe(false);
+  it("knowledgeBaseClear should have no parameters", () => {
+    const knowledgeBaseClear = jsonSchemas.knowledgeBaseClear as any;
+    expect(knowledgeBaseClear.type).toBe("object");
+    expect(knowledgeBaseClear.properties).toEqual({});
+    expect(knowledgeBaseClear.additionalProperties).toBe(false);
   });
 
   it("empty-input tools should forbid additionalProperties", () => {

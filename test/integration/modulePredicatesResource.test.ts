@@ -47,12 +47,12 @@ maybeDescribe("Module Predicates Resource", () => {
     child = null;
   });
 
-  test("lists predicates for kb module", async () => {
+  test("lists predicates for knowledge_base module", async () => {
     // Add a known predicate
-    await send("tools/call", { name: "db_assert", arguments: { fact: "parent(alice, bob)" } });
-    const readResp = await send("resources/read", { uri: "prolog://kb/predicates" });
+    await send("tools/call", { name: "knowledge_base_assert", arguments: { fact: "parent(alice, bob)" } });
+    const readResp = await send("resources/read", { uri: "prolog://knowledge_base/predicates" });
     const text = readResp?.result?.contents?.[0]?.text || "";
-    // We expect at least parent/2 in the exported set for kb
+    // We expect at least parent/2 in the exported set for knowledge_base
     expect(text).toMatch(/parent\/[0-9]+/);
   }, 60000);
 });

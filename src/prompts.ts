@@ -43,10 +43,10 @@ export const prologPrompts: Record<string, PrologPrompt> = {
 
 IMPORTANT - Discovery Phase (Do this FIRST):
 1. List all available resources to understand the server
-2. Read the 'capabilities' resource (meta://capabilities) for server features and security
-3. Read the 'help' resource (meta://help) for comprehensive usage guidelines
-4. Check 'kb-predicates' resource (prolog://kb/predicates) for current knowledge base predicates
-5. Review 'kb-dump' resource (prolog://kb/dump) for full knowledge base content
+2. Read the 'capabilities' resource (reference://capabilities) for server features and security
+3. Read the 'help' resource (reference://help) for comprehensive usage guidelines
+4. Check 'knowledge-base-predicates' resource (prolog://knowledge_base/predicates) for current knowledge base predicates
+5. Review 'knowledge-base-dump' resource (prolog://knowledge_base/dump) for full knowledge base content
 
 EXPERT KNOWLEDGE - You are an expert in:
 - SWI-Prolog syntax: facts, rules, queries, unification, DCGs
@@ -60,15 +60,15 @@ EXPERT KNOWLEDGE - You are an expert in:
 SECURITY AWARENESS (from capabilities resource):
 - File operations restricted to ~/.swipl-mcp-server/
 - Dangerous predicates blocked: shell(), system(), call(), halt()
-- Use only safe predicates in kb module
+- Use only safe predicates in knowledge_base module
 - All queries executed in sandboxed environment
 
 EFFICIENT TOOL USAGE:
-- Use db_assert_many for batch fact loading (more efficient than single assertions)
+- Use knowledge_base_assert_many for batch fact loading (more efficient than single assertions)
 - Prefer query_startEngine for complex queries with backtracking
 - Check symbols_list to see available predicates before defining new ones
-- Use db_dump to export and verify knowledge base state
-- Validate file paths before db_load operations
+- Use knowledge_base_dump to export and verify knowledge base state
+- Validate file paths before knowledge_base_load operations
 
 Always check resources first for context, then use tools based on discovered capabilities.`
         }
@@ -77,8 +77,8 @@ Always check resources first for context, then use tools based on discovered cap
   },
 
   // Knowledge base analysis - uses resources
-  analyzeKB: {
-    name: "prolog_analyze_kb",
+  analyzeKnowledgeBase: {
+    name: "prolog_analyze_knowledge_base",
     title: "Analyze Current Knowledge Base",
     description: "Analyze the current Prolog knowledge base using resources and provide insights",
     arguments: [],
@@ -91,8 +91,8 @@ Always check resources first for context, then use tools based on discovered cap
 
 STEP 1 - Resource Discovery:
 First, read these resources to understand the current state:
-- 'kb-predicates' resource: See what predicates are currently defined
-- 'kb-dump' resource: Review all facts and rules in detail
+- 'knowledge-base-predicates' resource: See what predicates are currently defined
+- 'knowledge-base-dump' resource: Review all facts and rules in detail
 - 'capabilities' resource: Understand security constraints and features
 
 STEP 2 - Analysis:
@@ -140,8 +140,8 @@ Provide example queries that demonstrate the KB's capabilities and suggest new o
 DISCOVERY PHASE (Critical - Do First):
 1. Read 'capabilities' resource: Understand server limits, security model, and available features
 2. Read 'help' resource: Review comprehensive usage guidelines and best practices
-3. Check 'kb-predicates' resource: See what predicates are already defined
-4. Review 'kb-dump' resource: Understand existing knowledge base content
+3. Check 'knowledge-base-predicates' resource: See what predicates are already defined
+4. Review 'knowledge-base-dump' resource: Understand existing knowledge base content
 
 PROLOG EXPERTISE:
 - Syntax: facts(atom), rules(Head :- Body), queries(?- Goal)
@@ -156,8 +156,8 @@ PROLOG EXPERTISE:
 SECURITY CONSTRAINTS (from capabilities):
 - File access limited to ~/.swipl-mcp-server/ directory only
 - Blocked predicates: shell(), system(), call(), assert(), halt()
-- Safe environment: only kb module predicates and approved built-ins
-- Use library predicates and user-defined predicates in kb module
+- Safe environment: only knowledge_base module predicates and approved built-ins
+- Use library predicates and user-defined predicates in knowledge_base module
 
 OPTIMAL WORKFLOW:
 1. Start by reading resources for full context
@@ -168,7 +168,7 @@ OPTIMAL WORKFLOW:
    - Order goals from most restrictive to least restrictive
    - Prefer tail recursion for efficiency
    - Use findall/3 family for collecting solutions
-4. Implement using db_assert_many for batch operations
+4. Implement using knowledge_base_assert_many for batch operations
 5. Test with appropriate query mode (standard for simple, engine for complex backtracking)
 6. Validate results and optimize as needed
 
@@ -193,11 +193,11 @@ Always prioritize correctness, then efficiency, following Prolog best practices.
 
 PHASE 1 - Resource Discovery:
 List all available resources and read each one completely:
-- meta://help: Usage guidelines and best practices
-- meta://license: License information
-- meta://capabilities: Server capabilities, security model, and constraints
-- prolog://kb/predicates: Currently defined predicates in knowledge base
-- prolog://kb/dump: Complete knowledge base content (facts and rules)
+- reference://help: Usage guidelines and best practices
+- reference://license: License information
+- reference://capabilities: Server capabilities, security model, and constraints
+- prolog://knowledge_base/predicates: Currently defined predicates in knowledge base
+- prolog://knowledge_base/dump: Complete knowledge base content (facts and rules)
 
 PHASE 2 - Analysis and Summary:
 After reading all resources, provide:
@@ -236,8 +236,8 @@ This will serve as a complete orientation to the server's capabilities.`
   },
 
   // Knowledge base builder with resource awareness
-  kbBuilder: {
-    name: "prolog_kb_builder",
+  knowledgeBaseBuilder: {
+    name: "prolog_knowledge_base_builder",
     title: "Build Prolog Knowledge Base with Resource Guidance",
     description: "Build a comprehensive knowledge base for a domain using server resources",
     arguments: [
@@ -256,8 +256,8 @@ This will serve as a complete orientation to the server's capabilities.`
 
 PREPARATION PHASE:
 1. Read 'capabilities' resource: Understand security constraints and available features
-2. Check 'kb-predicates' resource: See what predicates already exist to avoid conflicts
-3. Review 'kb-dump' resource: Understand current knowledge base state
+2. Check 'knowledge-base-predicates' resource: See what predicates already exist to avoid conflicts
+3. Review 'knowledge-base-dump' resource: Understand current knowledge base state
 4. Read 'help' resource: Get guidance on best practices
 
 DESIGN PHASE:
@@ -275,7 +275,7 @@ DESIGN PHASE:
 
 IMPLEMENTATION PHASE:
 1. Create Base Facts:
-   - Use db_assert_many for efficient batch loading
+   - Use knowledge_base_assert_many for efficient batch loading
    - Follow consistent naming: predicate(arg1, arg2, ...)
    - Group related facts together
 
@@ -294,7 +294,7 @@ VALIDATION PHASE:
 1. Verify Implementation:
    - Use symbols_list to confirm predicates are loaded
    - Test with sample queries using both query modes
-   - Check with kb-dump resource to see final structure
+   - Check with knowledge-base-dump resource to see final structure
 
 2. Testing Strategy:
    - Test base cases and edge cases
@@ -334,8 +334,8 @@ Create a robust, well-structured knowledge base following Prolog best practices.
 
 ANALYSIS PHASE:
 First, check the current knowledge base state:
-1. Read 'kb-predicates' resource: Understand available predicates
-2. Review 'kb-dump' resource: See data patterns and indexing opportunities
+1. Read 'knowledge-base-predicates' resource: Understand available predicates
+2. Review 'knowledge-base-dump' resource: See data patterns and indexing opportunities
 3. Check 'capabilities' resource: Understand system constraints
 
 OPTIMIZATION STRATEGY:

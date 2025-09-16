@@ -20,13 +20,13 @@ maybeDescribe("Ancestor Rules Test", () => {
     const startTime = Date.now();
 
     // Add parent facts
-    await toolHandlers.dbAssert({ fact: "parent(tom, bob)" });
-    await toolHandlers.dbAssert({ fact: "parent(bob, alice)" });
-    await toolHandlers.dbAssert({ fact: "parent(alice, charlie)" });
+    await toolHandlers.knowledgeBaseAssert({ fact: "parent(tom, bob)" });
+    await toolHandlers.knowledgeBaseAssert({ fact: "parent(bob, alice)" });
+    await toolHandlers.knowledgeBaseAssert({ fact: "parent(alice, charlie)" });
 
     // Add the complete ancestor rules (base case + recursive case)
-    await toolHandlers.dbAssert({ fact: "ancestor(X, Y) :- parent(X, Y)" });
-    await toolHandlers.dbAssert({ fact: "ancestor(X, Z) :- parent(X, Y), ancestor(Y, Z)" });
+    await toolHandlers.knowledgeBaseAssert({ fact: "ancestor(X, Y) :- parent(X, Y)" });
+    await toolHandlers.knowledgeBaseAssert({ fact: "ancestor(X, Z) :- parent(X, Y), ancestor(Y, Z)" });
 
     // Test direct parent relationship (ground query - should succeed)
     let result = await toolHandlers.queryStart({ query: "ancestor(tom, bob)" });
@@ -88,12 +88,12 @@ maybeDescribe("Ancestor Rules Test", () => {
     const startTime = Date.now();
 
     // Add parent facts
-    await toolHandlers.dbAssert({ fact: "parent(john, mary)" });
-    await toolHandlers.dbAssert({ fact: "parent(mary, susan)" });
+    await toolHandlers.knowledgeBaseAssert({ fact: "parent(john, mary)" });
+    await toolHandlers.knowledgeBaseAssert({ fact: "parent(mary, susan)" });
 
     // Add the complete ancestor rules
-    await toolHandlers.dbAssert({ fact: "ancestor(X, Y) :- parent(X, Y)" });
-    await toolHandlers.dbAssert({ fact: "ancestor(X, Z) :- parent(X, Y), ancestor(Y, Z)" });
+    await toolHandlers.knowledgeBaseAssert({ fact: "ancestor(X, Y) :- parent(X, Y)" });
+    await toolHandlers.knowledgeBaseAssert({ fact: "ancestor(X, Z) :- parent(X, Y), ancestor(Y, Z)" });
 
     // This query should find solutions without hanging
     let result = await toolHandlers.queryStart({ query: "ancestor(john, susan)" });

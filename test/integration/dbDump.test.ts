@@ -1,5 +1,5 @@
 /**
- * Unit tests for db_dump tool
+ * Unit tests for knowledge_base_dump tool
  * Tests the database dump functionality with proper Prolog formatting
  */
 
@@ -18,9 +18,9 @@ maybeDescribe("Database Dump Tool", () => {
     prologInterface.stop();
   });
 
-  describe("db_dump tool", () => {
+  describe("knowledge_base_dump tool", () => {
     test("should return empty message when knowledge base is empty", async () => {
-      const result = await toolHandlers.dbDump();
+      const result = await toolHandlers.knowledgeBaseDump();
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("% No clauses in knowledge base");
@@ -29,11 +29,11 @@ maybeDescribe("Database Dump Tool", () => {
 
     test("should properly format facts using portray_clause", async () => {
       // Add some facts to the knowledge base
-      await toolHandlers.dbAssert({ fact: "parent(john, mary)" });
-      await toolHandlers.dbAssert({ fact: "parent(mary, alice)" });
-      await toolHandlers.dbAssert({ fact: "age(john, 45)" });
+      await toolHandlers.knowledgeBaseAssert({ fact: "parent(john, mary)" });
+      await toolHandlers.knowledgeBaseAssert({ fact: "parent(mary, alice)" });
+      await toolHandlers.knowledgeBaseAssert({ fact: "age(john, 45)" });
 
-      const result = await toolHandlers.dbDump();
+      const result = await toolHandlers.knowledgeBaseDump();
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Knowledge base dump:");
@@ -49,11 +49,11 @@ maybeDescribe("Database Dump Tool", () => {
 
     test("should properly format rules using portray_clause", async () => {
       // Add a rule to the knowledge base
-      await toolHandlers.dbAssert({ fact: "parent(tom, bob)" });
-      await toolHandlers.dbAssert({ fact: "parent(bob, charlie)" });
-      await toolHandlers.dbAssert({ fact: "grandparent(X, Z) :- parent(X, Y), parent(Y, Z)" });
+      await toolHandlers.knowledgeBaseAssert({ fact: "parent(tom, bob)" });
+      await toolHandlers.knowledgeBaseAssert({ fact: "parent(bob, charlie)" });
+      await toolHandlers.knowledgeBaseAssert({ fact: "grandparent(X, Z) :- parent(X, Y), parent(Y, Z)" });
 
-      const result = await toolHandlers.dbDump();
+      const result = await toolHandlers.knowledgeBaseDump();
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Knowledge base dump:");
@@ -64,7 +64,7 @@ maybeDescribe("Database Dump Tool", () => {
 
     test("should handle mixed facts and rules", async () => {
       // Add both facts and rules
-      await toolHandlers.dbAssertMany({
+      await toolHandlers.knowledgeBaseAssertMany({
         facts: [
           "likes(mary, food)",
           "likes(mary, wine)",
@@ -73,7 +73,7 @@ maybeDescribe("Database Dump Tool", () => {
         ]
       });
 
-      const result = await toolHandlers.dbDump();
+      const result = await toolHandlers.knowledgeBaseDump();
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Knowledge base dump:");
@@ -86,7 +86,7 @@ maybeDescribe("Database Dump Tool", () => {
     });
 
     test("should include processing time in response", async () => {
-      const result = await toolHandlers.dbDump();
+      const result = await toolHandlers.knowledgeBaseDump();
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toMatch(/Processing time: \d+ms/);
@@ -95,19 +95,19 @@ maybeDescribe("Database Dump Tool", () => {
 
     test("should work after asserting and retracting facts", async () => {
       // Add some facts
-      await toolHandlers.dbAssert({ fact: "test_fact(a)" });
-      await toolHandlers.dbAssert({ fact: "test_fact(b)" });
+      await toolHandlers.knowledgeBaseAssert({ fact: "test_fact(a)" });
+      await toolHandlers.knowledgeBaseAssert({ fact: "test_fact(b)" });
 
       // Check initial dump
-      let result = await toolHandlers.dbDump();
+      let result = await toolHandlers.knowledgeBaseDump();
       expect(result.structuredContent.dump).toContain("test_fact(a).");
       expect(result.structuredContent.dump).toContain("test_fact(b).");
 
       // Retract one fact
-      await toolHandlers.dbRetract({ fact: "test_fact(a)" });
+      await toolHandlers.knowledgeBaseRetract({ fact: "test_fact(a)" });
 
       // Check updated dump
-      result = await toolHandlers.dbDump();
+      result = await toolHandlers.knowledgeBaseDump();
       expect(result.structuredContent.dump).not.toContain("test_fact(a).");
       expect(result.structuredContent.dump).toContain("test_fact(b).");
     });

@@ -49,7 +49,7 @@ Configure timeouts and logging via environment variables:
 ## Tools Overview
 
 - Core: `help`, `license`, `capabilities`
-- Database: `db_load`, `db_assert`, `db_retract`, `db_dump`
+- Knowledge base: `knowledge_base_load`, `knowledge_base_assert`, `knowledge_base_retract`, `knowledge_base_dump`
 - Query: `query_start`, `query_startEngine`, `query_next`, `query_close`
 - Symbols: `symbols_list`
 
@@ -60,7 +60,7 @@ Configure timeouts and logging via environment variables:
 
 ## Usage Examples
 
-1. Load knowledge: `db_load({"filename":"~/.swipl-mcp-server/family.pl"})`
+1. Load knowledge: `knowledge_base_load({"filename":"~/.swipl-mcp-server/family.pl"})`
 2. Start query: `query_start({"query":"parent(X, mary)"})`
 3. Get solutions: `query_next()` … then `query_close()`
 4. Try engine mode: `query_startEngine({"query":"member(X,[1,2,3])"})`
