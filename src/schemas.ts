@@ -40,10 +40,10 @@ export const zodSchemas = {
   prologAnalyzeKnowledgeBase: {},
   // prologExpertReasoning merged into prologInitExpert
   prologKnowledgeBaseBuilder: {
-    domain: z.string().optional().describe("The domain to model (e.g., family relationships, expert system, planning)"),
+    domain: z.string().describe("The domain to model (e.g., family relationships, expert system, planning)"),
   },
   prologQueryOptimizer: {
-    query: z.string().optional().describe("The Prolog query to analyze and optimize"),
+    query: z.string().describe("The Prolog query to analyze and optimize"),
   },
   
   knowledgeBaseAssert: {
@@ -164,6 +164,7 @@ export const jsonSchemas = {
   prologKnowledgeBaseBuilder: {
     type: "object",
     additionalProperties: false,
+    required: ["domain"],
     properties: {
       domain: {
         type: "string",
@@ -174,6 +175,7 @@ export const jsonSchemas = {
   prologQueryOptimizer: {
     type: "object",
     additionalProperties: false,
+    required: ["query"],
     properties: {
       query: {
         type: "string",
