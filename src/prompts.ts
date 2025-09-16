@@ -28,20 +28,22 @@ export interface PrologPrompt {
 }
 
 export const prologPrompts: Record<string, PrologPrompt> = {
-  // Initialize expert mode - START HERE
+  // Initialize expert mode (optionally focused on a task)
   initExpert: {
     name: "prolog_init_expert",
     title: "Initialize Prolog Expert Mode",
-    description: "Set up the LLM as a Prolog expert and discover server capabilities",
-    arguments: [],
-    messages: () => [
+    description: "Set up expert context; optionally focus on a specific task",
+    arguments: [
+      { name: "task", description: "Optional task to focus expert setup and reasoning", required: false },
+    ],
+    messages: (args = {}) => [
       {
         role: "user",
         content: {
           type: "text",
-          text: `You are now a Prolog and logic programming expert.
+          text: `You are a Prolog and logic programming expert.${args.task ? ` Focus on this task: ${args.task}` : ''}
 
-IMPORTANT - Discovery Phase (Do this FIRST):
+Recommended first step — Discovery:
 1. List all available resources to understand the server
 2. Read the 'capabilities' resource (reference://capabilities) for server features and security
 3. Read the 'help' resource (reference://help) for comprehensive usage guidelines
@@ -63,12 +65,13 @@ SECURITY AWARENESS (from capabilities resource):
 - Use only safe predicates in knowledge_base module
 - All queries executed in sandboxed environment
 
-EFFICIENT TOOL USAGE:
+EFFICIENT TOOL USAGE (token‑aware):
 - Use knowledge_base_assert_many for batch fact loading (more efficient than single assertions)
 - Prefer query_startEngine for complex queries with backtracking
 - Check symbols_list to see available predicates before defining new ones
 - Use knowledge_base_dump to export and verify knowledge base state
 - Validate file paths before knowledge_base_load operations
+\nToken hygiene: prefer summarizing resources (e.g. list predicates, skim dump headers) and quote only minimal snippets.
 
 Always check resources first for context, then use tools based on discovered capabilities.`
         }
@@ -118,65 +121,7 @@ Provide example queries that demonstrate the KB's capabilities and suggest new o
     ]
   },
 
-  // Expert reasoning with resource context
-  expertReasoning: {
-    name: "prolog_expert_reasoning",
-    title: "Prolog Expert Reasoning with Full Context",
-    description: "Configure as expert with full server awareness for a specific reasoning task",
-    arguments: [
-      {
-        name: "task",
-        description: "The reasoning task to solve using Prolog",
-        required: true
-      }
-    ],
-    messages: (args = {}) => [
-      {
-        role: "user",
-        content: {
-          type: "text",
-          text: `You are a Prolog expert tackling this task: ${args.task || '[Please specify a reasoning task]'}
-
-DISCOVERY PHASE (Critical - Do First):
-1. Read 'capabilities' resource: Understand server limits, security model, and available features
-2. Read 'help' resource: Review comprehensive usage guidelines and best practices
-3. Check 'knowledge-base-predicates' resource: See what predicates are already defined
-4. Review 'knowledge-base-dump' resource: Understand existing knowledge base content
-
-PROLOG EXPERTISE:
-- Syntax: facts(atom), rules(Head :- Body), queries(?- Goal)
-- Unification and pattern matching with variables (X, Y, _)
-- List operations: [H|T], append/3, member/2, length/2
-- Backtracking control: cuts (!), deterministic predicates
-- Built-ins: findall/3, bagof/3, setof/3, forall/2, once/1
-- Arithmetic: is/2, =:=/2, >/2, between/3
-- Meta-predicates: call/1-N, =../2, functor/3, arg/3
-- DCGs: phrase/2, -->/2 for parsing and generation
-
-SECURITY CONSTRAINTS (from capabilities):
-- File access limited to ~/.swipl-mcp-server/ directory only
-- Blocked predicates: shell(), system(), call(), assert(), halt()
-- Safe environment: only knowledge_base module predicates and approved built-ins
-- Use library predicates and user-defined predicates in knowledge_base module
-
-OPTIMAL WORKFLOW:
-1. Start by reading resources for full context
-2. Check existing predicates with symbols_list tool
-3. Design solution following these principles:
-   - Write deterministic predicates when possible
-   - Use cuts strategically to prevent unnecessary backtracking
-   - Order goals from most restrictive to least restrictive
-   - Prefer tail recursion for efficiency
-   - Use findall/3 family for collecting solutions
-4. Implement using knowledge_base_assert_many for batch operations
-5. Test with appropriate query mode (standard for simple, engine for complex backtracking)
-6. Validate results and optimize as needed
-
-Always prioritize correctness, then efficiency, following Prolog best practices.`
-        }
-      }
-    ]
-  },
+  // expertReasoning removed — merged into initExpert via optional 'task'
 
   // Quick reference prompt
   quickReference: {

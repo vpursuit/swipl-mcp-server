@@ -289,7 +289,6 @@ const promptSchemaMap: Record<string, string> = {
   "prolog_init_expert": "prologInitExpert",
   "prolog_quick_reference": "prologQuickReference",
   "prolog_analyze_knowledge_base": "prologAnalyzeKnowledgeBase",
-  "prolog_expert_reasoning": "prologExpertReasoning",
   "prolog_knowledge_base_builder": "prologKnowledgeBaseBuilder",
   "prolog_query_optimizer": "prologQueryOptimizer"
 };

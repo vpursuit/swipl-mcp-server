@@ -34,7 +34,7 @@ function createTestServer() {
     "prolog_init_expert": "prologInitExpert",
     "prolog_quick_reference": "prologQuickReference",
     "prolog_analyze_knowledge_base": "prologAnalyzeKnowledgeBase",
-    "prolog_expert_reasoning": "prologExpertReasoning",
+    // expert reasoning merged into init_expert
     "prolog_knowledge_base_builder": "prologKnowledgeBaseBuilder",
     "prolog_query_optimizer": "prologQueryOptimizer"
   };
@@ -80,7 +80,7 @@ describe("Prompts Integration", () => {
         expect(registeredPrompts).toContain("prolog_init_expert");
         expect(registeredPrompts).toContain("prolog_quick_reference");
         expect(registeredPrompts).toContain("prolog_analyze_knowledge_base");
-        expect(registeredPrompts).toContain("prolog_expert_reasoning");
+        // merged into prolog_init_expert
         expect(registeredPrompts).toContain("prolog_knowledge_base_builder");
         expect(registeredPrompts).toContain("prolog_query_optimizer");
       }).not.toThrow();
@@ -115,7 +115,7 @@ describe("Prompts Integration", () => {
       expect(prompts).toHaveProperty("orientation");
 
       expect(prompts.expert_guidance).toContain("prolog_init_expert");
-      expect(prompts.expert_guidance).toContain("prolog_expert_reasoning");
+      // merged into prolog_init_expert
       expect(prompts.expert_guidance).toContain("prolog_query_optimizer");
 
       expect(prompts.knowledge_base).toContain("prolog_analyze_knowledge_base");
@@ -195,7 +195,7 @@ describe("Prompts Integration", () => {
       expect(helpText).toContain("prolog_init_expert");
       expect(helpText).toContain("prolog_quick_reference");
       expect(helpText).toContain("prolog_analyze_knowledge_base");
-      expect(helpText).toContain("prolog_expert_reasoning");
+      // merged into prolog_init_expert
       expect(helpText).toContain("prolog_knowledge_base_builder");
       expect(helpText).toContain("prolog_query_optimizer");
     });

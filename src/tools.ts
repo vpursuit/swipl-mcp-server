@@ -155,16 +155,16 @@ export const toolHandlers = {
       ],
       prompts: [
         "Expert Prompts (Start Here!):",
-        "- prolog_init_expert: Initialize as Prolog expert - USE THIS FIRST",
+        "- prolog_init_expert: Initialize as Prolog expert (recommended first step)",
         "  Sets you up with full context from resources and expert knowledge",
         "- prolog_quick_reference: Get complete server overview and capabilities",
         "- prolog_analyze_knowledge_base: Analyze current knowledge base using resources",
-        "- prolog_expert_reasoning: Expert reasoning for specific tasks",
+        "- prolog_init_expert (with task): Expert reasoning for specific tasks",
         "- prolog_knowledge_base_builder: Build knowledge bases following best practices",
         "- prolog_query_optimizer: Optimize queries for performance",
         "",
         "Prompt Usage Pattern:",
-        "1. Start with prolog_init_expert prompt to become Prolog expert",
+        "1. Start with prolog_init_expert to become Prolog expert",
         "2. The prompt will guide you to read all resources first for context",
         "3. Then use tools efficiently based on discovered capabilities",
         "4. Use specialized prompts for specific tasks as needed",
@@ -852,7 +852,6 @@ export function getCapabilitiesSummary(): Record<string, unknown> {
     prompts: {
       expert_guidance: [
         "prolog_init_expert",
-        "prolog_expert_reasoning",
         "prolog_query_optimizer"
       ],
       knowledge_base: [

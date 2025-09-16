@@ -33,12 +33,12 @@ export const zodSchemas = {
   knowledgeBaseDump: {},
   symbolsList: {},
   // Prompt schemas
-  prologInitExpert: {},
+  prologInitExpert: {
+    task: z.string().optional().describe("Optional task to focus expert setup and reasoning"),
+  },
   prologQuickReference: {},
   prologAnalyzeKnowledgeBase: {},
-  prologExpertReasoning: {
-    task: z.string().optional().describe("The reasoning task to solve using Prolog"),
-  },
+  // prologExpertReasoning merged into prologInitExpert
   prologKnowledgeBaseBuilder: {
     domain: z.string().optional().describe("The domain to model (e.g., family relationships, expert system, planning)"),
   },
@@ -146,7 +146,9 @@ export const jsonSchemas = {
   prologInitExpert: {
     type: "object",
     additionalProperties: false,
-    properties: {},
+    properties: {
+      task: { type: "string", description: "Optional task to focus expert setup and reasoning" },
+    },
   },
   prologQuickReference: {
     type: "object",
@@ -158,16 +160,7 @@ export const jsonSchemas = {
     additionalProperties: false,
     properties: {},
   },
-  prologExpertReasoning: {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      task: {
-        type: "string",
-        description: "The reasoning task to solve using Prolog",
-      },
-    },
-  },
+  // prologExpertReasoning merged into prologInitExpert
   prologKnowledgeBaseBuilder: {
     type: "object",
     additionalProperties: false,

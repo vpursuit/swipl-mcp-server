@@ -17,7 +17,7 @@ describe("Prolog Prompts", () => {
         "prolog_init_expert",
         "prolog_quick_reference",
         "prolog_analyze_knowledge_base",
-        "prolog_expert_reasoning",
+        // prolog_expert_reasoning merged into prolog_init_expert
         "prolog_knowledge_base_builder",
         "prolog_query_optimizer"
       ];
