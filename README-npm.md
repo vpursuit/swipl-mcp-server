@@ -55,7 +55,7 @@ args = ["@vpursuit/swipl-mcp-server"]
 ```
 Add to `~/.codex/config.toml`
 
-### ... and may others may also work
+### ... and many others may also work
 
 ## Requirements
 

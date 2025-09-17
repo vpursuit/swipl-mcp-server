@@ -92,7 +92,7 @@ Add to `~/.codex/config.toml`
 npx @modelcontextprotocol/inspector --transport stdio npx @vpursuit/swipl-mcp-server
 ```
 
-### ... and may others may also work
+### ... and many others may also work
 
 ### Development Setup
 If you cloned the repo, you may use this configuration. Note: change <path to your development directory> to your local setup. 
