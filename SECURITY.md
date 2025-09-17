@@ -71,19 +71,37 @@ For enhanced security and stability, consider **downloading from GitHub** instea
 
 ### GitHub Installation:
 ```bash
-# Download and verify source
-curl -L -o swipl-mcp-server.tar.gz https://github.com/vpursuit/swipl-mcp-server/archive/refs/heads/main.tar.gz
-tar -xzf swipl-mcp-server.tar.gz
-cd swipl-mcp-server-main
-# Note: Remember this directory path for Claude Desktop configuration
+# Clone the repository
+git clone https://github.com/vpursuit/swipl-mcp-server.git
+cd swipl-mcp-server
+
+# Optional: checkout a specific release tag for stability
+# git checkout v2.0.1
 
 # Review source code before building
 less README.md SECURITY.md src/
 
-# Build and install
+# Build from source
 npm install
 npm run build
+
+# The built server is now at: build/index.js
+# Note this full path for Claude Desktop configuration
+pwd  # Shows your current directory path
 ```
+
+### Configure Claude Desktop with Local Build:
+```json
+{
+  "mcpServers": {
+    "swipl": {
+      "command": "node",
+      "args": ["/full/path/to/swipl-mcp-server/build/index.js"]
+    }
+  }
+}
+```
+Replace `/full/path/to/` with your actual directory path from the `pwd` command above.
 
 **Recommended for:**
 - Production environments requiring stability
