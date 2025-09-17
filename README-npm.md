@@ -1,17 +1,61 @@
 # SWI-Prolog MCP Server
 
+| Package | Version | License | Node |
+|---------|---------|---------|------|
+| [@vpursuit/swipl-mcp-server](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server) | 2.0.1 | BSD-3-Clause | ≥18.0.0 |
+
 An MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It supports loading Prolog files, adding/removing facts and rules, listing symbols, and running queries with deterministic pagination and true engine backtracking.
 
-## Quick Start
+## Installation
 
+### Claude Code CLI
 ```bash
-# Run directly with npx (no installation required)
-npx @vpursuit/swipl-mcp-server
-
-# Or install globally
-npm install -g @vpursuit/swipl-mcp-server
-swipl-mcp-server
+claude mcp add swipl-mcp-server npx @vpursuit/swipl-mcp-server
 ```
+
+### Claude Desktop
+```json
+{
+  "mcpServers": {
+    "swipl": {
+      "command": "npx",
+      "args": ["@vpursuit/swipl-mcp-server"]
+    }
+  }
+}
+```
+
+- MacOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%/Claude/claude_desktop_config.json`
+
+### Cline (VS Code Extension)
+```json
+{
+  "mcpServers": {
+    "swipl-mcp-server": {
+      "autoApprove": [],
+      "disabled": false,
+      "timeout": 60,
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@vpursuit/swipl-mcp-server"]
+    }
+  }
+}
+```
+Configure via Cline's MCP settings in VS Code.
+
+### Codex
+```toml
+[mcp_servers.swipl-mcp-server]
+transport = "stdio"
+enabled = true
+command = "npx"
+args = ["@vpursuit/swipl-mcp-server"]
+```
+Add to `~/.codex/config.toml`
+
+### ... and may others may also work
 
 ## Requirements
 
@@ -33,25 +77,41 @@ Configure timeouts and logging via environment variables:
 | `SWI_MCP_TRACE` | Low-level spawn/protocol trace | - |
 | `SWI_MCP_PROLOG_PATH` | Override Prolog server script path | - |
 
-### Claude Desktop Integration
+## Features
 
-```json
-{
-  "mcpServers": {
-    "swipl": {
-      "command": "npx",
-      "args": ["@vpursuit/swipl-mcp-server"]
-    }
-  }
-}
-```
+### MCP Prompts
+Prompts guide AI assistants to help you with Prolog programming, knowledge base building and query optimization.
 
-## Tools Overview
+**How it works:**
+1. You select a prompt (via `/swipl` command in Claude Code CLI)
+2. The prompt guides the AI assistant on how to approach your Prolog task
+3. The AI assistant helps you with expert knowledge and step-by-step guidance
 
-- Core: `help`, `license`, `capabilities`
-- Knowledge base: `knowledge_base_load`, `knowledge_base_assert`, `knowledge_base_retract`, `knowledge_base_dump`
-- Query: `query_start`, `query_startEngine`, `query_next`, `query_close`
-- Symbols: `symbols_list`
+*Note: Other AI assistants may access and use these prompts differently depending on their MCP implementation.*
+
+In Claude Code CLI, these prompts are available as slash commands. Simply type `/swipl` to see all available commands.
+
+- **`prolog_init_expert`** - Initialize expert Prolog assistance mode
+- **`prolog_quick_reference`** - Get comprehensive server overview
+- **`prolog_analyze_knowledge_base`** - Analyze current knowledge base state
+- **`prolog_knowledge_base_builder`** - Build domain-specific knowledge bases
+- **`prolog_query_optimizer`** - Optimize Prolog queries for performance
+
+### MCP Resources
+Access to knowledge base and server information:
+
+- **`prolog://knowledge_base/predicates`** - List all predicates in the knowledge base
+- **`prolog://knowledge_base/dump`** - Export complete knowledge base
+- **`reference://help`** - Usage guidelines and tips
+- **`reference://license`** - License information
+- **`reference://capabilities`** - Server capabilities (JSON)
+
+### Tools Overview
+
+- **Core:** `help`, `license`, `capabilities`
+- **Knowledge base:** `knowledge_base_load`, `knowledge_base_assert`, `knowledge_base_retract`, `knowledge_base_dump`
+- **Query:** `query_start`, `query_startEngine`, `query_next`, `query_close`
+- **Symbols:** `symbols_list`
 
 ## Protocol (short)
 
@@ -60,12 +120,38 @@ Configure timeouts and logging via environment variables:
 
 ## Usage Examples
 
-1. Load knowledge: `knowledge_base_load({"filename":"~/.swipl-mcp-server/family.pl"})`
-2. Start query: `query_start({"query":"parent(X, mary)"})`
-3. Get solutions: `query_next()` … then `query_close()`
-4. Try engine mode: `query_startEngine({"query":"member(X,[1,2,3])"})`
+### How the AI Assistant Helps You
 
-More examples in docs/examples.md.
+When you ask questions about Prolog, the AI assistant uses these tools behind the scenes:
+
+**You ask:** "Load my family relationships file"
+**AI uses:** `knowledge_base_load({"filename":"~/.swipl-mcp-server/family.pl"})`
+**You see:** "I've loaded your family relationships file."
+
+**You ask:** "Who are Mary's parents?"
+**AI uses:** `query_start({"query":"parent(X, mary)"})` then `query_next()`
+**You see:** "Mary's parent is John."
+
+**You ask:** "Add the fact that John is the parent of Mary"
+**AI uses:** `knowledge_base_assert({"fact": "parent(john, mary)"})`
+**You see:** "I've added that John is Mary's parent."
+
+**You ask:** "Show me all fruits in the list [apple, banana, cherry]"
+**AI uses:** `query_startEngine({"query": "member(X, [apple, banana, cherry])"})` with multiple `query_next()`
+**You see:** "The fruits in your list are: apple, banana, and cherry."
+
+**You ask:** "What predicates do I have defined?"
+**AI uses:** `symbols_list()`
+**You see:** "You have these predicates: parent/2, male/1, female/1..."
+
+### Behind the Scenes
+
+The AI assistant manages:
+- Loading and saving your Prolog knowledge bases
+- Running queries and collecting all solutions
+- Adding and removing facts as you request
+- Optimizing your Prolog code
+- Ensuring security (files only from ~/.swipl-mcp-server/)
 
 ## Safety & Security
 

@@ -2,6 +2,41 @@
 
 A collection of practical examples for using the SWI-Prolog MCP Server.
 
+## Inspector vs Production Usage
+
+This document demonstrates **inspector usage** where you manually call each tool individually. This is useful for:
+- Testing and debugging the MCP server
+- Learning how the tools work
+- Interactive exploration of Prolog knowledge bases
+
+In **production usage**, an AI agent (like Claude) automatically calls these tools based on natural language requests. For example:
+- You: "Find all parents of Mary in the family data"
+- AI agent: Automatically calls `query_start`, `query_next` (multiple times), then `query_close`
+
+The JSON examples below show the exact tool calls that happen behind the scenes in both scenarios.
+
+## Resources and Prompts
+
+Beyond the interactive tools, this MCP server also provides:
+
+### Resources
+Static documentation accessible via MCP resource URIs:
+- `swipl://docs/features` - Complete feature documentation
+- `swipl://docs/installation` - Installation and setup guide
+
+In production, AI agents can read these resources to understand server capabilities and provide better assistance.
+
+### Expert Prompts
+Six specialized prompts for Prolog development assistance:
+- `init_expert` - Initialize expert Prolog assistance for complex projects
+- `quick_reference` - Get quick syntax and built-in predicate references
+- `analyze_kb` - Analyze knowledge base structure and suggest improvements
+- `expert_reasoning` - Expert help with complex logical reasoning problems
+- `kb_builder` - Guided knowledge base construction assistance
+- `query_optimizer` - Optimize query performance and suggest alternatives
+
+These prompts help AI agents provide more specialized Prolog expertise when working with your knowledge bases.
+
 ## Setup
 
 1. Build server and start inspector:

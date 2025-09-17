@@ -1,35 +1,36 @@
 # SWI-Prolog MCP Server
 
+| Package | Version | License | Node | Repository |
+|---------|---------|---------|------|------------|
+| [@vpursuit/swipl-mcp-server](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server) | 2.0.1 | BSD-3-Clause | ≥18.0.0 | [GitHub](https://github.com/vpursuit/swipl-mcp-server) |
+
 An MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It supports loading Prolog files, adding/removing facts and rules, listing symbols, and running queries with two modes: deterministic pagination and true engine backtracking.
 
 ## Table of Contents
 
-- [🤖 How Claude Desktop™ Uses swipl-mcp-server to Solve the 4-Queens Problem](#-how-claude-desktop-uses-swipl-mcp-server-to-solve-the-4-queens-problem)
 - [Requirements](#requirements)
-- [Quick Start](#quick-start)
+- [Installation](#installation)
+  - [Claude Code CLI](#claude-code-cli)
+  - [Claude Desktop](#claude-desktop)
+  - [Cline (VS Code Extension)](#cline-vs-code-extension)
+  - [Codex](#codex)
+  - [MCP Inspector (for testing)](#mcp-inspector-for-testing)
+  - [Development Setup](#development-setup)
 - [Configuration](#configuration)
- - [State & Lifecycle](#state--lifecycle)
-- [Tools](#tools)
+  - [Environment Variables](#environment-variables)
+  - [State & Lifecycle](#state--lifecycle)
+- [Features](#features)
+  - [MCP Prompts](#mcp-prompts)
+  - [MCP Resources](#mcp-resources)
+  - [Tools](#tools)
 - [Examples](#examples)
 - [Architecture](#architecture)
+- [Security](#security)
 - [Troubleshooting](#troubleshooting)
 - [Development](#development)
 - [Contributing](#contributing)
+- [Documentation](#documentation)
 - [License](#license)
-
-## 🤖 How Claude Desktop™ Uses swipl-mcp-server to Solve the 4-Queens Problem
-
-🎯 **Watch Claude go from curious newcomer to chess puzzle master!** ✨ 
-
-These screenshots capture an *exciting* Claude Code session where our AI friend discovers the swipl-mcp-server, gets acquainted with its tools, and then tackles the **legendary 4-queens problem** like a digital detective—*no hints, no help*, just ***pure logical reasoning*** in action! 🚀
-
-<div style="display: flex; flex-direction: column; gap: 10px;">
-  <img src="images/make-yourself-familiar.png" alt="Claude exploring swipl-mcp-server capabilities" width="600">
-  <img src="images/make-yourself-familiar-2.png" alt="Claude loading Prolog predicates for 4-queens" width="600">
-  <img src="images/make-yourself-familiar-3.png" alt="Claude implementing the 4-queens solution" width="600">
-  <img src="images/make-yourself-familiar-4.png" alt="Claude finding all 4-queens solutions" width="600">
-</div>
-
 
 
 ## Requirements
@@ -37,9 +38,14 @@ These screenshots capture an *exciting* Claude Code session where our AI friend 
 - Node.js ≥ 18.0.0
 - SWI‑Prolog installed and available in PATH
 
-## Quick Start
+## Installation
 
-### Claude Desktop (basic)
+### Claude Code CLI
+```bash
+claude mcp add swipl-mcp-server npx @vpursuit/swipl-mcp-server
+```
+
+### Claude Desktop
 ```json
 {
   "mcpServers": {
@@ -51,13 +57,51 @@ These screenshots capture an *exciting* Claude Code session where our AI friend 
 }
 ```
 
-Optional timeouts (development):
+- MacOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%/Claude/claude_desktop_config.json`
+
+### Cline (VS Code Extension)
+```json
+{
+  "mcpServers": {
+    "swipl-mcp-server": {
+      "autoApprove": [],
+      "disabled": false,
+      "timeout": 60,
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@vpursuit/swipl-mcp-server"]
+    }
+  }
+}
+```
+Configure via Cline's MCP settings in VS Code.
+
+### Codex
+```toml
+[mcp_servers.swipl-mcp-server]
+transport = "stdio"
+enabled = true
+command = "npx"
+args = ["@vpursuit/swipl-mcp-server"]
+```
+Add to `~/.codex/config.toml`
+
+### MCP Inspector (for testing)
+```bash
+npx @modelcontextprotocol/inspector --transport stdio npx @vpursuit/swipl-mcp-server
+```
+
+### ... and may others may also work
+
+### Development Setup
+If you cloned the repo, you may use this configuration. Note: change <path to your development directory> to your local setup. 
 ```json
 {
   "mcpServers": {
     "swipl": {
-      "command": "npx",
-      "args": ["@vpursuit/swipl-mcp-server"],
+      "command": "node",
+      "args": ["<path to your development directory>/swipl-mcp-server/build/index.js"],
       "env": {
         "SWI_MCP_READY_TIMEOUT_MS": "10000",
         "SWI_MCP_QUERY_TIMEOUT_MS": "120000",
@@ -68,15 +112,6 @@ Optional timeouts (development):
   }
 }
 ```
-
-### MCP Inspector
-```bash
-npx @modelcontextprotocol/inspector --transport stdio npx @vpursuit/swipl-mcp-server
-```
-
-Configuration file location:
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%/Claude/claude_desktop_config.json`
 
 ## Configuration
 
@@ -99,12 +134,44 @@ Configure timeouts, logging, and behavior via environment variables:
 - Client guidance: keep a single stdio connection open for workflows that depend on shared state across multiple tool calls; avoid closing stdin immediately after a request.
 - Durability (optional): if persistent Knowledge Base is desired across restarts, use `knowledge_base_dump` to save to `~/.swipl-mcp-server/` and `knowledge_base_load` (or `knowledge_base_assert_many`) to restore on startup. See docs/lifecycle.md for patterns.
 
-## Tools
+## Features
 
-- Core: `help`, `license`, `capabilities`
-- Knowledge base: `knowledge_base_load`, `knowledge_base_assert`, `knowledge_base_assert_many`, `knowledge_base_retract`, `knowledge_base_retract_many`, `knowledge_base_clear`, `knowledge_base_dump`
-- Query: `query_start`, `query_startEngine`, `query_next`, `query_close`
-- Symbols: `symbols_list`
+### MCP Prompts
+Prompts guide AI assistants to help you with Prolog programming, knowledge base building and query optimization.
+
+**How it works:**
+1. You select a prompt (via `/swipl` command in Claude Code CLI)
+2. The prompt guides the AI assistant on how to approach your Prolog task
+3. The AI assistant helps you with expert knowledge and step-by-step guidance
+
+*Note: Other AI assistants may access and use these prompts differently depending on their MCP implementation.*
+
+In Claude Code CLI, these prompts are available as slash commands. Simply type `/swipl` to see all available commands:
+
+![SWI-Prolog slash commands in Claude Code CLI](images/swipl-slash-commands.png)
+
+Available prompts:
+- **`prolog_init_expert`** - Initialize expert Prolog assistance mode with optional task focus
+- **`prolog_quick_reference`** - Get comprehensive server overview and capabilities
+- **`prolog_analyze_knowledge_base`** - Analyze current knowledge base state and structure
+- **`prolog_knowledge_base_builder`** - Build domain-specific knowledge bases with guided construction
+- **`prolog_query_optimizer`** - Optimize Prolog queries for performance and efficiency
+
+### MCP Resources
+Dynamic and static resources for knowledge base access:
+
+- **`prolog://knowledge_base/predicates`** - List all predicates in the knowledge base
+- **`prolog://knowledge_base/dump`** - Export complete knowledge base as Prolog clauses
+- **`reference://help`** - Usage guidelines and server tips
+- **`reference://license`** - BSD-3-Clause license text
+- **`reference://capabilities`** - Machine-readable server capabilities (JSON)
+
+### Tools
+
+- **Core:** `help`, `license`, `capabilities`
+- **Knowledge base:** `knowledge_base_load`, `knowledge_base_assert`, `knowledge_base_assert_many`, `knowledge_base_retract`, `knowledge_base_retract_many`, `knowledge_base_clear`, `knowledge_base_dump`
+- **Query:** `query_start`, `query_startEngine`, `query_next`, `query_close`
+- **Symbols:** `symbols_list`
 
 ## Examples
 
@@ -197,11 +264,14 @@ See CONTRIBUTING.md for local setup, workflow, and the PR checklist.
 
 For security practices, reporting, and hardening guidance, see SECURITY.md.
 
-Further reading:
-- [docs/architecture.md](docs/architecture.md) — components, modes, and wire protocol
-- [docs/lifecycle.md](docs/lifecycle.md) — server lifecycle, state, and persistence patterns
-- [docs/deployment.md](docs/deployment.md) — release, packaging, and install from source
-- [docs/examples.md](docs/examples.md) — copy‑paste examples
+## Documentation
+
+- **[Installation Guide](docs/installation.md)** — Complete setup for all MCP clients
+- **[Features Reference](docs/features.md)** — Detailed prompts, resources, and tools documentation
+- **[Examples](docs/examples.md)** — Copy-paste usage examples
+- **[Architecture](docs/architecture.md)** — Components, modes, and wire protocol
+- **[Lifecycle](docs/lifecycle.md)** — Server lifecycle, state, and persistence patterns
+- **[Deployment](docs/deployment.md)** — Release, packaging, and install from source
 
 ## License
 
