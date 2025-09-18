@@ -7,6 +7,13 @@ on:
       - 'v*.*.*-*'
   release:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run tests without publishing'
+        required: false
+        default: true
+        type: boolean
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -145,15 +152,22 @@ jobs:
           fi
 
       - name: Publish to NPM
-        if: steps.check_version.outputs.version_exists == 'false'
+        if: steps.check_version.outputs.version_exists == 'false' && inputs.dry_run != true
         run: |
           cd dist
           npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Dry Run - Show what would be published
+        if: inputs.dry_run == true
+        run: |
+          cd dist
+          echo "DRY RUN: Would publish the following package:"
+          npm pack --dry-run
+
       - name: Create GitHub Release
-        if: steps.check_version.outputs.version_exists == 'false'
+        if: steps.check_version.outputs.version_exists == 'false' && inputs.dry_run != true
         run: |
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           gh release create "v$PACKAGE_VERSION" \
