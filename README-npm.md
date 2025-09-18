@@ -127,19 +127,33 @@ Access to knowledge base and server information:
 When you ask questions about Prolog, the AI assistant uses these tools behind the scenes:
 
 **You ask:** "Load my family relationships file"
-**AI uses:** `knowledge_base_load({"filename":"~/.swipl-mcp-server/family.pl"})`
+**AI uses:**
+```json
+knowledge_base_load { "filename": "~/.swipl-mcp-server/family.pl" }
+```
 **You see:** "I've loaded your family relationships file."
 
 **You ask:** "Who are Mary's parents?"
-**AI uses:** `query_start({"query":"parent(X, mary)"})` then `query_next()`
+**AI uses:**
+```json
+query_start { "query": "parent(X, mary)" }
+```
+then `query_next()`
 **You see:** "Mary's parent is John."
 
 **You ask:** "Add the fact that John is the parent of Mary"
-**AI uses:** `knowledge_base_assert({"fact": "parent(john, mary)"})`
+**AI uses:**
+```json
+knowledge_base_assert { "fact": "parent(john, mary)" }
+```
 **You see:** "I've added that John is Mary's parent."
 
 **You ask:** "Show me all fruits in the list [apple, banana, cherry]"
-**AI uses:** `query_startEngine({"query": "member(X, [apple, banana, cherry])"})` with multiple `query_next()`
+**AI uses:**
+```json
+query_startEngine { "query": "member(X, [apple, banana, cherry])" }
+```
+with multiple `query_next()`
 **You see:** "The fruits in your list are: apple, banana, and cherry."
 
 **You ask:** "What predicates do I have defined?"
