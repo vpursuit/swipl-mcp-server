@@ -80,7 +80,10 @@ maybeDescribe("Security: File Path Restrictions", () => {
   test("should allow loading files from allowed directory", async () => {
     const allowedDir = path.join(os.homedir(), '.swipl-mcp-server');
     const testFile = path.join(allowedDir, "test.pl");
-    
+
+    // Ensure the directory exists
+    await fs.mkdir(allowedDir, { recursive: true });
+
     // Create a simple test file
     await fs.writeFile(testFile, "test_fact(hello).\n", 'utf8');
     
