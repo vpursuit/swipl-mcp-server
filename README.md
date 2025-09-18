@@ -1,5 +1,9 @@
 # SWI-Prolog MCP Server
 
+[![Build Status](https://github.com/vpursuit/swipl-mcp-server/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/vpursuit/swipl-mcp-server/actions/workflows/npm-publish.yml)
+
+**NPM Package:** [@vpursuit/swipl-mcp-server](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server) | **License:** BSD-3-Clause | **Node:** ≥20.0.0
+
 | Package | License | Node | Repository |
 |---------|---------|------|------------|
 | [@vpursuit/swipl-mcp-server](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server) | BSD-3-Clause | ≥20.0.0 | [GitHub](https://github.com/vpursuit/swipl-mcp-server) |
