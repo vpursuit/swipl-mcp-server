@@ -95,7 +95,7 @@ const productionPkg = {
   type: "module",
   keywords: ["mcp", "prolog", "swi-prolog", "swipl", "model-context-protocol"],
   main: "lib/index.js",
-  bin: "lib/index.js",
+  bin: { "swipl-mcp-server": "lib/index.js" },
   exports: {
     ".": "./lib/index.js",
     "./package.json": "./package.json",

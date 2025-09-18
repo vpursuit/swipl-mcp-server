@@ -36,6 +36,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          registry-url: ${{ env.NPM_REGISTRY_URL }}
           cache: 'npm'
 
       - name: Install dependencies
@@ -63,6 +64,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          registry-url: ${{ env.NPM_REGISTRY_URL }}
           cache: 'npm'
 
       - name: Install dependencies
@@ -123,7 +125,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          registry-url: ${{ env.NPM_REGISTRY_URL }}
           cache: 'npm'
 
       - name: Install dependencies
@@ -151,21 +152,31 @@ jobs:
             echo "version_exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Publish to NPM
+      - name: Pre-publish diagnostics
         if: steps.check_version.outputs.version_exists == 'false' && inputs.dry_run != true
         run: |
-          cd dist
+          echo "Node: $(node -v)"
+          echo "npm:  $(npm -v)"
+          echo "Registry: $(npm config get registry)"
+          echo "Env flags (masked):"
+          env | sort | grep -E 'NPM_|NODE_AUTH|ACTIONS_ID_TOKEN' || true
+          echo "Root package: $(node -p "require('./package.json').name + '@' + require('./package.json').version")"
+          echo "Dist package: $(node -p "require('./dist/package.json').name + '@' + require('./dist/package.json').version")"
+          echo "Published versions on npm:"
+          npm view @vpursuit/swipl-mcp-server versions || true
+          echo "Pinging registry:"
+          npm ping || true
 
-          # Ensure .npmrc is configured for OIDC
-          echo "registry=https://registry.npmjs.org" >> .npmrc
-          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" >> .npmrc
-
-          # Debug: show npm config
-          npm config list
-
-          npm publish --access public --provenance
+      - name: Publish to NPM
+        if: steps.check_version.outputs.version_exists == 'false' && inputs.dry_run != true
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+          NPM_CONFIG_REGISTRY: https://registry.npmjs.org
+        run: |
+          # Ensure OIDC flow (no token-based auth)
+          unset NODE_AUTH_TOKEN || true
+          cd dist
+          npm publish --access public --provenance
 
       - name: Dry Run - Show what would be published
         if: inputs.dry_run == true
