@@ -4,7 +4,7 @@ Complete installation instructions for all MCP clients supporting the SWI-Prolog
 
 ## Requirements
 
-- Node.js ≥18.0.0
+- Node.js ≥20.0.0
 - SWI-Prolog installed and available in PATH
   - Test with: `swipl --version`
 

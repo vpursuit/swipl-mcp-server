@@ -27,8 +27,32 @@ env:
   NPM_REGISTRY_URL: 'https://registry.npmjs.org'
 
 jobs:
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security audit
+        run: npm run security:audit
+
+      - name: Check for high/critical vulnerabilities
+        run: npm run security:check
+
   build-and-test:
     name: Build and Test
+    needs: security-audit
     runs-on: ubuntu-latest
 
     steps:
@@ -80,7 +104,7 @@ jobs:
 
   publish:
     name: Publish to NPM
-    needs: build-and-test
+    needs: [security-audit, build-and-test]
     runs-on: ubuntu-latest
     if: github.event_name == 'release' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
 
@@ -131,6 +155,7 @@ jobs:
 
   manual-publish:
     name: Manual NPM Publish
+    needs: [security-audit, build-and-test]
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
 

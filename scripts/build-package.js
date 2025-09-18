@@ -102,7 +102,7 @@ const productionPkg = {
   },
   files: ["lib", "prolog", "README.md", "LICENSE"],
   engines: {
-    node: ">=18.0.0",
+    node: ">=20.0.0",
   },
   dependencies: {
     "@modelcontextprotocol/sdk": originalPkg.dependencies["@modelcontextprotocol/sdk"],
