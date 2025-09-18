@@ -3,7 +3,7 @@ import { toolHandlers, prologInterface } from "../../src/tools.js";
 import os from "os";
 import path from "path";
 import fs from "fs/promises";
-import { mkdirSync, existsSync } from "fs";
+import { mkdirSync, existsSync, writeFileSync, unlinkSync } from "fs";
 
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
@@ -107,7 +107,7 @@ maybeDescribe("Security: File Path Restrictions", () => {
 
     // Create a simple test file
     try {
-      await fs.writeFile(testFile, "test_fact(hello).\n", 'utf8');
+      writeFileSync(testFile, "test_fact(hello).\n", 'utf8');
       console.log(`Test file created: ${testFile}`);
 
       // Verify file was created
@@ -131,7 +131,7 @@ maybeDescribe("Security: File Path Restrictions", () => {
     } finally {
       // Clean up test file
       try {
-        await fs.unlink(testFile);
+        unlinkSync(testFile);
       } catch (_error) {
         // Ignore cleanup errors
       }
