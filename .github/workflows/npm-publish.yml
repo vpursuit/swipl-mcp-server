@@ -1,26 +1,16 @@
 name: Publish to NPM
 
 on:
-  workflow_dispatch:
-    inputs:
-      release_type:
-        description: 'Release type'
-        required: true
-        default: 'patch'
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
-          - prerelease
-
-  release:
-    types: [created]
-
   push:
     tags:
       - 'v*.*.*'
       - 'v*.*.*-*'
+  release:
+    types: [created]
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   NODE_VERSION: '20'
@@ -29,7 +19,7 @@ env:
 jobs:
   security-audit:
     name: Security Audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout repository
@@ -53,7 +43,7 @@ jobs:
   build-and-test:
     name: Build and Test
     needs: security-audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout repository
@@ -67,6 +57,14 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install SWI-Prolog
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y swi-prolog
+
+      - name: Verify SWI-Prolog installation
+        run: swipl --version
 
       - name: Run linting
         run: npm run lint
@@ -97,16 +95,19 @@ jobs:
         run: |
           cd dist
           npm pack --dry-run
-          echo "Package contents:"
-          npm pack --dry-run --json | jq -r '.files[].path'
-          echo "Package size:"
-          npm pack --dry-run --json | jq -r '.size' | numfmt --to=iec
+          if command -v jq >/dev/null 2>&1; then
+            echo "Package contents:"
+            npm pack --dry-run --json | jq -r '.files[].path'
+            echo "Package size:"
+            npm pack --dry-run --json | jq -r '.size' | numfmt --to=iec
+          else
+            echo "jq not available, skipping detailed package analysis"
+          fi
 
   publish:
     name: Publish to NPM
     needs: [security-audit, build-and-test]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-22.04
 
     permissions:
       contents: read
@@ -126,8 +127,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build distribution package
-        run: npm run build:package
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-package
+          path: dist/
 
       - name: Check existing versions
         id: check_version
@@ -154,7 +158,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
-        if: steps.check_version.outputs.version_exists == 'false'
+        if: steps.check_version.outputs.version_exists == 'false' && github.event_name == 'push'
         run: |
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           gh release create "v$PACKAGE_VERSION" \
@@ -168,66 +172,3 @@ jobs:
           - SWI-Prolog installed and available in PATH"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  manual-publish:
-    name: Manual NPM Publish
-    needs: [security-audit, build-and-test]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-
-    permissions:
-      contents: write
-      id-token: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
-
-      - name: Setup Git
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          registry-url: ${{ env.NPM_REGISTRY_URL }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Bump version
-        run: |
-          npm version ${{ github.event.inputs.release_type }} --no-git-tag-version
-          VERSION=$(node -p "require('./package.json').version")
-          echo "NEW_VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Commit version bump
-        run: |
-          git add package.json package-lock.json
-          git commit -m "chore: bump version to ${{ env.NEW_VERSION }}"
-          git tag -a "v${{ env.NEW_VERSION }}" -m "Release v${{ env.NEW_VERSION }}"
-
-      - name: Build and test
-        run: |
-          npm run lint
-          npm run test
-          npm run build:package
-          npm run test:npx
-
-      - name: Publish to NPM
-        run: |
-          cd dist
-          npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push changes to GitHub
-        run: |
-          git push origin main
-          git push origin "v${{ env.NEW_VERSION }}"
