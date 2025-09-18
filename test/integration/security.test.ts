@@ -3,6 +3,7 @@ import { toolHandlers, prologInterface } from "../../src/tools.js";
 import os from "os";
 import path from "path";
 import fs from "fs/promises";
+import { mkdirSync, existsSync } from "fs";
 
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
@@ -81,8 +82,15 @@ maybeDescribe("Security: File Path Restrictions", () => {
     const allowedDir = path.join(os.homedir(), '.swipl-mcp-server');
     const testFile = path.join(allowedDir, "test.pl");
 
-    // Ensure the directory exists
-    await fs.mkdir(allowedDir, { recursive: true });
+    // Ensure the directory exists using sync operations
+    if (!existsSync(allowedDir)) {
+      try {
+        mkdirSync(allowedDir, { recursive: true });
+      } catch (error) {
+        console.error(`Failed to create directory ${allowedDir}:`, error);
+        throw error;
+      }
+    }
 
     // Create a simple test file
     await fs.writeFile(testFile, "test_fact(hello).\n", 'utf8');
