@@ -1,0 +1,192 @@
+name: Publish to NPM
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+
+  release:
+    types: [created]
+
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'v*.*.*-*'
+
+env:
+  NODE_VERSION: '20'
+  NPM_REGISTRY_URL: 'https://registry.npmjs.org'
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run integration tests
+        run: npm run test:integration
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Build distribution package
+        run: npm run build:package
+
+      - name: Test NPX installation
+        run: npm run test:npx
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-package
+          path: dist/
+          retention-days: 7
+
+      - name: Check package size
+        run: |
+          cd dist
+          npm pack --dry-run
+          echo "Package contents:"
+          npm pack --dry-run --json | jq -r '.files[].path'
+          echo "Package size:"
+          npm pack --dry-run --json | jq -r '.size' | numfmt --to=iec
+
+  publish:
+    name: Publish to NPM
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: ${{ env.NPM_REGISTRY_URL }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build distribution package
+        run: npm run build:package
+
+      - name: Check existing versions
+        id: check_version
+        run: |
+          PACKAGE_NAME="@vpursuit/swipl-mcp-server"
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+
+          echo "Checking if $PACKAGE_NAME@$PACKAGE_VERSION already exists..."
+
+          if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version 2>/dev/null; then
+            echo "Version $PACKAGE_VERSION already exists on NPM"
+            echo "version_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version $PACKAGE_VERSION does not exist, safe to publish"
+            echo "version_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to NPM
+        if: steps.check_version.outputs.version_exists == 'false'
+        run: |
+          cd dist
+          npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  manual-publish:
+    name: Manual NPM Publish
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: ${{ env.NPM_REGISTRY_URL }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bump version
+        run: |
+          npm version ${{ github.event.inputs.release_type }} --no-git-tag-version
+          VERSION=$(node -p "require('./package.json').version")
+          echo "NEW_VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Commit version bump
+        run: |
+          git add package.json package-lock.json
+          git commit -m "chore: bump version to ${{ env.NEW_VERSION }}"
+          git tag -a "v${{ env.NEW_VERSION }}" -m "Release v${{ env.NEW_VERSION }}"
+
+      - name: Build and test
+        run: |
+          npm run lint
+          npm run test
+          npm run build:package
+          npm run test:npx
+
+      - name: Publish to NPM
+        run: |
+          cd dist
+          npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push changes to GitHub
+        run: |
+          git push origin main
+          git push origin "v${{ env.NEW_VERSION }}"
