@@ -79,21 +79,45 @@ maybeDescribe("Security: File Path Restrictions", () => {
   });
 
   test("should allow loading files from allowed directory", async () => {
-    const allowedDir = path.join(os.homedir(), '.swipl-mcp-server');
+    const homeDir = os.homedir();
+    const allowedDir = path.join(homeDir, '.swipl-mcp-server');
     const testFile = path.join(allowedDir, "test.pl");
 
-    // Ensure the directory exists using sync operations
-    if (!existsSync(allowedDir)) {
-      try {
+    console.log(`Home directory: ${homeDir}`);
+    console.log(`Target directory: ${allowedDir}`);
+    console.log(`Test file: ${testFile}`);
+
+    // Ensure the directory exists using sync operations with enhanced error handling
+    try {
+      if (!existsSync(allowedDir)) {
+        console.log(`Directory does not exist, creating: ${allowedDir}`);
         mkdirSync(allowedDir, { recursive: true });
-      } catch (error) {
-        console.error(`Failed to create directory ${allowedDir}:`, error);
-        throw error;
       }
+
+      // Double-check the directory was created
+      if (!existsSync(allowedDir)) {
+        throw new Error(`Directory creation failed: ${allowedDir}`);
+      }
+
+      console.log(`Directory confirmed to exist: ${allowedDir}`);
+    } catch (error) {
+      console.error(`Failed to create directory ${allowedDir}:`, error);
+      throw error;
     }
 
     // Create a simple test file
-    await fs.writeFile(testFile, "test_fact(hello).\n", 'utf8');
+    try {
+      await fs.writeFile(testFile, "test_fact(hello).\n", 'utf8');
+      console.log(`Test file created: ${testFile}`);
+
+      // Verify file was created
+      if (!existsSync(testFile)) {
+        throw new Error(`File creation failed: ${testFile}`);
+      }
+    } catch (error) {
+      console.error(`Failed to create test file ${testFile}:`, error);
+      throw error;
+    }
     
     try {
       // This should pass security check and load successfully
