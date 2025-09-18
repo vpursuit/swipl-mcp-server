@@ -138,7 +138,7 @@ jobs:
       - name: Check existing versions
         id: check_version
         run: |
-          PACKAGE_NAME="@vpursuit/swipl-mcp-server"
+          PACKAGE_NAME="swipl-mcp-server"
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
 
           echo "Checking if $PACKAGE_NAME@$PACKAGE_VERSION already exists..."
@@ -172,9 +172,9 @@ jobs:
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           gh release create "v$PACKAGE_VERSION" \
             --title "Release v$PACKAGE_VERSION" \
-            --notes "Released to NPM as @vpursuit/swipl-mcp-server@$PACKAGE_VERSION
+            --notes "Released to NPM as swipl-mcp-server@$PACKAGE_VERSION
 
-          Install with: \`npm install -g @vpursuit/swipl-mcp-server\`
+          Install with: \`npm install -g swipl-mcp-server\`
 
           ## Requirements
           - Node.js ≥ 20.0.0
