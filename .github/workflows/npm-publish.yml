@@ -36,6 +36,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          check-latest: true
           registry-url: ${{ env.NPM_REGISTRY_URL }}
           cache: 'npm'
 
@@ -125,6 +126,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          registry-url: ${{ env.NPM_REGISTRY_URL }}
           cache: 'npm'
 
       - name: Install dependencies
@@ -160,12 +162,36 @@ jobs:
           echo "Registry: $(npm config get registry)"
           echo "Env flags (masked):"
           env | sort | grep -E 'NPM_|NODE_AUTH|ACTIONS_ID_TOKEN' || true
+          echo "npm config files:"
+          npm config list -l | sed -n '1,120p'
           echo "Root package: $(node -p "require('./package.json').name + '@' + require('./package.json').version")"
           echo "Dist package: $(node -p "require('./dist/package.json').name + '@' + require('./dist/package.json').version")"
           echo "Published versions on npm:"
           npm view @vpursuit/swipl-mcp-server versions || true
           echo "Pinging registry:"
           npm ping || true
+
+      - name: Ensure recent npm (for OIDC/provenance)
+        if: steps.check_version.outputs.version_exists == 'false' && inputs.dry_run != true
+        run: |
+          npm --version
+          npm install -g npm@latest
+          npm --version
+
+      - name: Validate OIDC token fetch
+        if: steps.check_version.outputs.version_exists == 'false' && inputs.dry_run != true
+        run: |
+          set -e
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL present? ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
+          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN present? ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
+          if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+            CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+              -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm")
+            echo "OIDC endpoint HTTP status: $CODE"
+          else
+            echo "OIDC environment not available"
+          fi
 
       - name: Publish to NPM
         if: steps.check_version.outputs.version_exists == 'false' && inputs.dry_run != true
@@ -175,8 +201,9 @@ jobs:
         run: |
           # Ensure OIDC flow (no token-based auth)
           unset NODE_AUTH_TOKEN || true
+          # Publish from dist (package.json is prepared for distribution)
           cd dist
-          npm publish --access public --provenance
+          npm publish --access public --provenance --loglevel verbose
 
       - name: Dry Run - Show what would be published
         if: inputs.dry_run == true
