@@ -179,19 +179,63 @@ Dynamic and static resources for knowledge base access:
 
 ## Examples
 
-- Load and query (files must be in `~/.swipl-mcp-server/`):
-  - `knowledge_base_load { filename: "~/.swipl-mcp-server/family.pl" }`
-  - `query_start { query: "parent(X, mary)" }` → `query_next()` until no more solutions → `query_close()`
-- Engine mode:
-  - `query_startEngine { query: "member(X, [1,2,3])" }` → `query_next()` repeatedly → `query_close()`
-- Database operations:
-  - Single: `knowledge_base_assert { fact: "parent(john, mary)" }`
-  - Multiple: `knowledge_base_assert_many { facts: ["parent(john, mary)", "parent(mary, alice)"] }`
-  - Remove single: `knowledge_base_retract { fact: "parent(john, mary)" }`
-  - Remove multiple: `knowledge_base_retract_many { facts: ["parent(john, mary)", "parent(mary, alice)"] }`
-  - Clear all: `knowledge_base_clear {}`
+### Loading and Querying Knowledge Base
 
-See docs/examples.md for many more, including arithmetic, list ops, collections, and string/atom helpers.
+Load a Prolog file (files must be in `~/.swipl-mcp-server/`):
+```json
+knowledge_base_load { "filename": "~/.swipl-mcp-server/family.pl" }
+```
+
+Start a query and iterate through solutions:
+```json
+query_start { "query": "parent(X, mary)" }
+query_next()  // Get first solution
+query_next()  // Get next solution
+query_close() // Close when done
+```
+
+### Engine Mode (True Backtracking)
+
+For queries requiring all solutions or complex backtracking:
+```json
+query_startEngine { "query": "member(X, [1,2,3])" }
+query_next()  // X = 1
+query_next()  // X = 2
+query_next()  // X = 3
+query_next()  // No more solutions
+query_close()
+```
+
+### Database Operations
+
+**Add facts:**
+```json
+// Single fact
+knowledge_base_assert { "fact": "parent(john, mary)" }
+
+// Multiple facts
+knowledge_base_assert_many {
+  "facts": ["parent(john, mary)", "parent(mary, alice)"]
+}
+```
+
+**Remove facts:**
+```json
+// Single fact
+knowledge_base_retract { "fact": "parent(john, mary)" }
+
+// Multiple facts
+knowledge_base_retract_many {
+  "facts": ["parent(john, mary)", "parent(mary, alice)"]
+}
+
+// Clear all user facts
+knowledge_base_clear {}
+```
+
+### More Examples
+
+See [docs/examples.md](docs/examples.md) for comprehensive examples including arithmetic, list operations, collections, and string/atom helpers.
 
 ## Architecture
 
