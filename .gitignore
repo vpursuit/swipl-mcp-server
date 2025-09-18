@@ -82,3 +82,4 @@ temp/
 
 # Git worktrees
 .tree/
+.private/

@@ -77,7 +77,7 @@ npx @vpursuit/swipl-mcp-server
 \`\`\`
 
 ## Requirements
-- Node.js ≥ 18.0.0
+- Node.js ≥ 20.0.0
 - SWI-Prolog installed and available in PATH
 
 ${previousTag !== "HEAD~10" ? `**Full Changelog**: https://github.com/vpursuit/swipl-mcp-server/compare/${previousTag}...${tagName}` : ''}`;

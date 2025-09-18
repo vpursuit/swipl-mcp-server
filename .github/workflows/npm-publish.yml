@@ -153,6 +153,22 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create GitHub Release
+        if: steps.check_version.outputs.version_exists == 'false'
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          gh release create "v$PACKAGE_VERSION" \
+            --title "Release v$PACKAGE_VERSION" \
+            --notes "Released to NPM as @vpursuit/swipl-mcp-server@$PACKAGE_VERSION
+
+          Install with: \`npm install -g @vpursuit/swipl-mcp-server\`
+
+          ## Requirements
+          - Node.js ≥ 20.0.0
+          - SWI-Prolog installed and available in PATH"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   manual-publish:
     name: Manual NPM Publish
     needs: [security-audit, build-and-test]
