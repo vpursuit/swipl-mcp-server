@@ -138,7 +138,7 @@ maybeDescribe("Complex Query Fixes", () => {
         // Trigger an error in query mode
         await toolHandlers.queryStart({ query: "(X = 1, 0 is 1/0)" });
         try {
-          const errorResult = await toolHandlers.queryNext();
+          const _errorResult = await toolHandlers.queryNext();
           // If we get here, ensure cleanup
           try { await toolHandlers.queryClose(); } catch { }
         } catch {

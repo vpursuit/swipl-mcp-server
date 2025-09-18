@@ -331,7 +331,7 @@ async function main(): Promise<void> {
 
   // Cleanup on exit and when client disconnects (stdio closed)
   let shuttingDown = false;
-  const shutdown = (reason: string) => {
+  const shutdown = (_reason: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
     try { prologInterface.stop(); } catch { /* ignore */ }

@@ -30,7 +30,7 @@ function validateFilePath(filename: string): { allowed: boolean; error?: string 
       allowed: false,
       error: `Security Error: Files can only be loaded from ${ALLOWED_DIR}`
     };
-  } catch (error) {
+  } catch (_error) {
     return {
       allowed: false,
       error: `Security Error: Invalid file path`
@@ -278,7 +278,7 @@ export const toolHandlers = {
       try {
         await readFile(filename, "utf8");
       } catch (err) {
-        const processingTimeMs = Date.now() - startTime;
+        const _processingTimeMs = Date.now() - startTime;
         const error = err as NodeJS.ErrnoException;
         let errorMessage = `Error: File '${filename}' not found or not readable`;
         let errorCode = "file_error";

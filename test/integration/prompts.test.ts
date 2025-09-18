@@ -1,9 +1,7 @@
-import { describe, test, expect, beforeEach, afterEach } from "vitest";
+import { describe, test, expect } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { toolHandlers, getCapabilitiesSummary } from "../../src/tools.js";
 import { prologPrompts } from "../../src/prompts.js";
-import { zodSchemas } from "../../src/schemas.js";
 import { z } from "zod";
 
 // Mock the server setup to test prompt registration
@@ -73,7 +71,7 @@ describe("Prompts Integration", () => {
   describe("Server Registration", () => {
     test("should register all prompts without errors", () => {
       expect(() => {
-        const { server, registeredPrompts } = createTestServer();
+        const { server: _server, registeredPrompts } = createTestServer();
         // expert reasoning merged into init expert; total now 5
         expect(registeredPrompts).toHaveLength(5);
         expect(registeredPrompts).toContain("prolog_init_expert");
@@ -138,7 +136,7 @@ describe("Prompts Integration", () => {
 
   describe("Prompt Handler Execution", () => {
     test("prompt handlers should execute without errors", async () => {
-      const { server } = createTestServer();
+      const { server: _server } = createTestServer();
 
       // Test each prompt handler
       for (const promptConfig of Object.values(prologPrompts)) {

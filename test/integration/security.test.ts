@@ -100,7 +100,7 @@ maybeDescribe("Security: File Path Restrictions", () => {
       // Clean up test file
       try {
         await fs.unlink(testFile);
-      } catch (error) {
+      } catch (_error) {
         // Ignore cleanup errors
       }
     }
