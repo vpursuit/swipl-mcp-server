@@ -16,7 +16,6 @@
     "start": "node build/index.js",
     "server": "npm run build && npm start",
     "inspect": "npx @modelcontextprotocol/inspector node build/index.js",
-    "prepublishOnly": "npm run build:package && npm run test:npx",
     "lint": "eslint . --ext .ts,.js",
     "lint:fix": "eslint . --ext .ts,.js --fix",
     "format": "prettier --write \"**/*.{ts,js,json,yml,yaml}\"",
