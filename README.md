@@ -263,12 +263,20 @@ The server implements multiple security layers to protect your system:
 ### File Path Restrictions
 - **Allowed Directory**: Files can only be loaded from `~/.swipl-mcp-server/`
 - **Blocked Directories**: System directories (`/etc`, `/usr`, `/bin`, `/var`, etc.) are automatically blocked
-- **Example**: `knowledge_base_load { filename: "/etc/passwd" }` → `Security Error: Access to system directories is blocked`
+- **Example**:
+  ```json
+  knowledge_base_load { "filename": "/etc/passwd" }
+  ```
+  → `Security Error: Access to system directories is blocked`
 
 ### Dangerous Predicate Detection
 - **Pre-execution Blocking**: Dangerous operations are caught before execution
 - **Blocked Predicates**: `shell()`, `system()`, `call()`, `assert()`, `halt()`, etc.
-- **Example**: `knowledge_base_assert { fact: "malware :- shell('rm -rf /')" }` → `Security Error: Operation blocked - contains dangerous predicate 'shell'`
+- **Example**:
+  ```json
+  knowledge_base_assert { "fact": "malware :- shell('rm -rf /')" }
+  ```
+  → `Security Error: Operation blocked - contains dangerous predicate 'shell'`
 
 ### Additional Protections
 - Library(sandbox) validation for built-in predicates
