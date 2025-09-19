@@ -1,7 +1,5 @@
 # SWI-Prolog MCP Server
 
-**NPM Package:** [@vpursuit/swipl-mcp-server](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server) | **License:** BSD-3-Clause | **Node:** ≥20.0.0
-
 | Package | License | Node |
 |---------|---------|------|
 | [@vpursuit/swipl-mcp-server](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server) | BSD-3-Clause | ≥20.0.0 |
