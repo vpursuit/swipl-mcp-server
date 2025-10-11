@@ -53,10 +53,16 @@ EXPERT KNOWLEDGE - You are an expert in:
 - SWI-Prolog syntax: facts, rules, queries, unification, DCGs
 - Logic programming paradigms and best practices
 - Knowledge representation and automated reasoning
-- Constraint Logic Programming (CLP) and meta-programming
 - Query optimization: cuts, indexing, goal ordering
 - Debugging: trace/spy, deterministic vs non-deterministic predicates
-- Built-in predicates: findall/3, bagof/3, setof/3, member/2, append/3
+- Built-in predicates: findall/3, bagof/3, setof/3, member/2, append/3, between/3, permutation/2
+
+IMPORTANT - AVAILABLE PREDICATES:
+- All standard SWI-Prolog predicates are available
+- CLP(FD) library(clpfd) is NOT available (security restriction)
+- Use standard alternatives: between/3 for domains, is/2 for arithmetic, permutation/2 for uniqueness
+- Use generate-and-test pattern instead of constraint propagation
+- Check 'capabilities' resource for full details
 
 SECURITY AWARENESS (from capabilities resource):
 - File operations restricted to ~/.swipl-mcp-server/
@@ -171,6 +177,11 @@ After reading all resources, provide:
    - Essential Prolog built-in predicates available
    - Security do's and don'ts
 
+6. PREDICATE AVAILABILITY:
+   - Confirm all standard SWI-Prolog predicates are available
+   - Note that CLP(FD) library(clpfd) is NOT available
+   - List standard alternatives for constraint problems
+
 This will serve as a complete orientation to the server's capabilities.`
         }
       }
@@ -200,6 +211,11 @@ PREPARATION PHASE:
 2. Check 'knowledge-base-predicates' resource: See what predicates already exist to avoid conflicts
 3. Review 'knowledge-base-dump' resource: Understand current knowledge base state
 4. Read 'help' resource: Get guidance on best practices
+
+IMPORTANT - Predicate Availability:
+- All standard SWI-Prolog predicates are available (member/2, append/3, between/3, etc.)
+- CLP(FD) is NOT available - use standard alternatives (between/3, is/2, permutation/2)
+- For constraint problems, use generate-and-test pattern
 
 DESIGN PHASE:
 1. Domain Analysis:
@@ -277,6 +293,12 @@ First, check the current knowledge base state:
 1. Read 'knowledge-base-predicates' resource: Understand available predicates
 2. Review 'knowledge-base-dump' resource: See data patterns and indexing opportunities
 3. Check 'capabilities' resource: Understand system constraints
+
+IMPORTANT - Predicate Availability:
+- All standard SWI-Prolog predicates are available for optimization
+- CLP(FD) is NOT available - suggest standard alternatives if user is trying to use it
+- Recommend between/3 for domain generation, is/2 for arithmetic, permutation/2 for uniqueness
+- Use generate-and-test pattern instead of constraint propagation
 
 OPTIMIZATION STRATEGY:
 1. Goal Ordering Analysis:

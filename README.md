@@ -175,6 +175,16 @@ Dynamic and static resources for knowledge base access:
 - **Query:** `query_start`, `query_startEngine`, `query_next`, `query_close`
 - **Symbols:** `symbols_list`
 
+## Available Predicates
+
+All standard SWI-Prolog predicates are available (lists, arithmetic, meta-predicates, etc.).
+
+**Note:** CLP(FD) (`library(clpfd)`) is **not available** for security reasons. Use standard Prolog alternatives:
+- `between/3` instead of `X in 1..10`
+- `is/2` instead of `#=`
+- `permutation/2` for generating unique values
+- Generate-and-test pattern instead of constraint propagation
+
 ## Examples
 
 ### Loading and Querying Knowledge Base

@@ -113,6 +113,57 @@ Access to knowledge base and server information:
 - **Query:** `query_start`, `query_startEngine`, `query_next`, `query_close`
 - **Symbols:** `symbols_list`
 
+## What's Available
+
+### ✅ Standard Prolog Predicates (Available)
+
+The server includes a rich set of standard Prolog predicates for constraint solving and logic programming:
+
+| Category | Available Predicates |
+|----------|---------------------|
+| **List Operations** | `member/2`, `append/3`, `length/2`, `reverse/2`, `permutation/2`, `select/3`, `nth0/3`, `nth1/3`, `last/2`, `flatten/2`, `delete/3` |
+| **Set Operations** | `union/3`, `intersection/3`, `subtract/3`, `list_to_set/2`, `is_set/1`, `subset/2` |
+| **Numeric** | `between/3`, `sum_list/2`, `max_list/2`, `min_list/2`, `numlist/3` |
+| **Arithmetic** | `is/2`, `=\=/2`, `</2`, `>/2`, `=</2`, `>=/2`, `abs/1`, `+`, `-`, `*`, `/`, `mod`, `//` |
+| **Meta** | `findall/3`, `bagof/3`, `setof/3`, `forall/2`, `call/1`, `maplist/2-5` |
+| **Logic** | `\+/1` (negation), `->` (if-then), `;` (or), `,` (and) |
+
+**Key Points:**
+- These predicates work out-of-the-box - no need to assert or load them
+- Use standard Prolog syntax: `member(X, [1,2,3])`, `between(1, 10, X)`, `X is Y + 1`
+- Perfect for constraint problems using generate-and-test pattern
+
+### ❌ CLP(FD) Not Available
+
+For security reasons, `library(clpfd)` (Constraint Logic Programming over Finite Domains) is **not available**. This means:
+
+| CLP(FD) Syntax | Standard Prolog Alternative |
+|----------------|---------------------------|
+| `X in 1..10` | `between(1, 10, X)` |
+| `X #= Y + 1` | `X is Y + 1` |
+| `X #\= Y` | `X =\= Y` |
+| `X #< Y` | `X < Y` (requires instantiated values) |
+| `all_different/1` | Use `permutation/2` or custom predicate |
+| `label/1` | Use `member/2` or `permutation/2` |
+
+**But you CAN still solve constraint problems!** Use generate-and-test pattern:
+```prolog
+% Generate candidates, then test constraints
+solution(X, Y, Z) :-
+    member(X, [1,2,3,4]),
+    member(Y, [1,2,3,4]),
+    member(Z, [1,2,3,4]),
+    X =\= Y, X =\= Z, Y =\= Z,  % All different
+    X < Y + Z.                   % Custom constraint
+```
+
+### 📚 Key Points
+
+- All standard SWI-Prolog predicates work out-of-the-box
+- Use standard Prolog syntax: `member(X, [1,2,3])`, `between(1, 10, X)`, `X is Y + 1`
+- CLP(FD) library(clpfd) is not available for security reasons
+- Use alternatives: `between/3` for domains, `is/2` for arithmetic, `permutation/2` for uniqueness
+
 ## Protocol (short)
 
 - Each request/response is a single-line Prolog term.

@@ -54,7 +54,10 @@ async function knowledgeBaseAssertClauses(
 ): Promise<{ outcomes: KnowledgeBaseClauseOutcome[]; successCount: number; errorCount: number }> {
   const normalize = (clause: string) => {
     const trimmed = clause.trim().replace(/\.$/, "");
-    if (/:-/.test(trimmed) && !/^\s*\(/.test(trimmed)) {
+    // For rules (containing :-), wrap in parentheses to prevent comma operator confusion
+    // Example: "assert(a :- b, c)" would be parsed as assert/2 instead of assert/1 with rule body "b, c"
+    // Wrapping as "assert((a :- b, c))" ensures the entire rule is treated as a single term
+    if (/:-/.test(trimmed) && !/^\(.*\)$/.test(trimmed)) {
       return `(${trimmed})`;
     }
     return trimmed;
@@ -169,6 +172,13 @@ export const toolHandlers = {
         "3. Then use tools efficiently based on discovered capabilities",
         "4. Use specialized prompts for specific tasks as needed",
       ],
+      available_predicates: [
+        "Available Predicates:",
+        "- All standard SWI-Prolog predicates are available",
+        "- CLP(FD) library(clpfd) is NOT available (security restriction)",
+        "- Alternatives: between/3 for domains, is/2 for arithmetic, permutation/2 for uniqueness",
+        "- Use generate-and-test pattern instead of constraint propagation",
+      ],
       troubleshooting: [
         "Troubleshooting:",
         "- error(unsafe_goal(...)): goal rejected by hybrid security (uses dangerous built-ins)",
@@ -191,6 +201,7 @@ export const toolHandlers = {
       "security",
       "examples",
       "prompts",
+      "available_predicates",
       "troubleshooting",
     ] as const;
 
@@ -835,6 +846,11 @@ export function getCapabilitiesSummary(): Record<string, unknown> {
   const caps = {
     server: { name: "swipl-mcp-server", version },
     modes: ["standard", "engine"],
+    predicates: {
+      standard_prolog: "All standard SWI-Prolog predicates available",
+      clpfd_available: false,
+      clpfd_note: "library(clpfd) not available for security reasons - use between/3, is/2, permutation/2",
+    },
     tools: {
       core: ["help", "license", "capabilities"],
       knowledge_base: [
