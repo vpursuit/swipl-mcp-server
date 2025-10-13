@@ -49,6 +49,8 @@
   "author": "Peter Trebing",
   "license": "BSD-3-Clause",
   "description": "SWI-Prolog MCP Server with dual query modes and security layer",
+  "logo": "images/logo.svg",
+  "icon": "images/logo.svg",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vpursuit/swipl-mcp-server.git"

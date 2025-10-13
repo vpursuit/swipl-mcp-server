@@ -845,6 +845,13 @@ export function getCapabilitiesSummary(): Record<string, unknown> {
   const version = resolvePackageVersion();
   const caps = {
     server: { name: "swipl-mcp-server", version },
+    branding: {
+      logo: {
+        uri: "reference://logo",
+        format: "image/svg+xml",
+        description: "Official swipl-mcp-server logo",
+      },
+    },
     modes: ["standard", "engine"],
     predicates: {
       standard_prolog: "All standard SWI-Prolog predicates available",

@@ -1,4 +1,4 @@
-# SWI-Prolog MCP Server
+# <img src="./images/logo.svg" alt="SWI-Prolog MCP Server logo" width="64" style="vertical-align: middle;" /> SWI-Prolog MCP Server
 
 [![Build Status](https://github.com/vpursuit/swipl-mcp-server/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/vpursuit/swipl-mcp-server/actions/workflows/npm-publish.yml)
 

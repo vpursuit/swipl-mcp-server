@@ -1,7 +1,8 @@
+import { promises as fs } from "fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { inputSchemas, toolHandlers, prologInterface, getCapabilitiesSummary } from "./tools.js";
-import { resolvePackageVersion } from "./meta.js";
+import { resolvePackageVersion, findNearestFile } from "./meta.js";
 import { prologPrompts } from "./prompts.js";
 
 /**
@@ -246,6 +247,26 @@ server.registerResource(
     const res = await toolHandlers.license();
     const text = Array.isArray(res.content) && (res.content as any)[0]?.text ? (res.content as any)[0].text : "License unavailable";
     return { contents: [{ uri: uri.href, text }] };
+  },
+);
+
+server.registerResource(
+  "logo",
+  "reference://logo",
+  {
+    title: "Server Logo",
+    description: "Official swipl-mcp-server logo (SVG)",
+    mimeType: "image/svg+xml",
+  },
+  async (uri) => {
+    const logoPath = findNearestFile("images/logo.svg");
+    if (!logoPath) {
+      const fallback = "Logo unavailable";
+      return { contents: [{ uri: uri.href, text: fallback }] };
+    }
+
+    const svg = await fs.readFile(logoPath, "utf8");
+    return { contents: [{ uri: uri.href, text: svg }] };
   },
 );
 

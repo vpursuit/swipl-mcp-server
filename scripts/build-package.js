@@ -86,6 +86,17 @@ const prologServerDest = path.join(prologDir, "prolog_server.pl");
 fs.copyFileSync(prologServerSrc, prologServerDest);
 console.log("✅ Copied prolog_server.pl → prolog/prolog_server.pl");
 
+// Step 3b: Copy branding assets
+const imagesDir = path.join(DIST_DIR, "images");
+const logoSrc = path.join(ROOT_DIR, "images", "logo.svg");
+if (fs.existsSync(logoSrc)) {
+  fs.mkdirSync(imagesDir, { recursive: true });
+  fs.copyFileSync(logoSrc, path.join(imagesDir, "logo.svg"));
+  console.log("✅ Copied logo.svg → images/logo.svg");
+} else {
+  console.warn("⚠️  Missing images/logo.svg");
+}
+
 // Step 4: Create production package.json
 const originalPkg = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, "package.json"), "utf8"));
 const productionPkg = {
@@ -96,11 +107,14 @@ const productionPkg = {
   keywords: ["mcp", "prolog", "swi-prolog", "swipl", "model-context-protocol"],
   main: "lib/index.js",
   bin: { "swipl-mcp-server": "lib/index.js" },
+  logo: "./images/logo.svg",
+  icon: "./images/logo.svg",
   exports: {
     ".": "./lib/index.js",
     "./package.json": "./package.json",
+    "./images/logo.svg": "./images/logo.svg",
   },
-  files: ["lib", "prolog", "README.md", "LICENSE"],
+  files: ["lib", "prolog", "images", "README.md", "LICENSE"],
   engines: {
     node: ">=20.0.0",
   },
