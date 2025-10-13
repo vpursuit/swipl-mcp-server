@@ -1,7 +1,6 @@
-<h1>
-  <img src="./images/logo.svg" alt="SWI-Prolog MCP Server logo" width="64" style="vertical-align: middle; margin-right: 0.4em;" />
-  SWI-Prolog MCP Server
-</h1>
+<img src="./images/logo.svg" alt="SWI-Prolog MCP Server logo" width="200" />
+
+<h1>SWI-Prolog MCP Server</h1>
 
 | Package | License | Node |
 |---------|---------|------|
