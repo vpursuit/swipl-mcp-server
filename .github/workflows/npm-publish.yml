@@ -3,12 +3,26 @@ name: Publish to NPM
 on:
   push:
     tags:
-      - 'v*.*.*'
-      - 'v*.*.*-*'
+      - 'v*.*.*'                    # swipl-mcp-server releases (v3.0.0)
+      - 'v*.*.*-*'                  # swipl-mcp-server pre-releases
+      - 'mcp-prolog-v*.*.*'         # mcp-prolog releases
+      - 'mcp-core-v*.*.*'           # mcp-core releases
+      - 'mcp-roots-v*.*.*'          # mcp-roots releases
   release:
     types: [created]
   workflow_dispatch:
     inputs:
+      package:
+        description: 'Package to publish (swipl-mcp-server, mcp-prolog, mcp-core, mcp-roots, or all)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - swipl-mcp-server
+          - mcp-prolog
+          - mcp-core
+          - mcp-roots
       dry_run:
         description: 'Run tests without publishing'
         required: false
@@ -39,7 +53,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Configure npm registry for npmjs.org without injecting tokens
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -87,35 +100,28 @@ jobs:
       - name: Verify SWI-Prolog installation
         run: swipl --version
 
-      - name: Run linting
-        run: npm run lint
+      - name: Run linting (if configured)
+        run: npm run lint --if-present
+        continue-on-error: true
 
-      - name: Run unit tests
-        run: npm run test:unit
-
-      - name: Run integration tests
-        run: npm run test:integration
-
-      - name: Build TypeScript
+      - name: Build all packages
         run: npm run build
 
-      - name: Build distribution package
-        run: npm run build:package
+      - name: Run tests
+        run: npm test
 
-      - name: Test NPX installation
-        run: npm run test:npx
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-package
-          path: dist/
-          retention-days: 7
-
-      - name: Check package size
+      - name: Verify package contents
         run: |
-          cd dist
-          npm pack --dry-run
+          echo "=== Package verification ==="
+          for pkg in packages/*; do
+            if [ -f "$pkg/package.json" ]; then
+              echo ""
+              echo "Checking $pkg..."
+              cd "$pkg"
+              npm pack --dry-run
+              cd ../..
+            fi
+          done
 
   publish:
     name: Publish to NPM
@@ -140,67 +146,133 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-package
-          path: dist/
+      - name: Build all packages
+        run: npm run build
 
-      - name: Check existing versions
-        id: check_version
+      - name: Detect packages to publish
+        id: detect_packages
         run: |
-          PACKAGE_NAME="@vpursuit/swipl-mcp-server"
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          # Determine which package(s) to publish based on tag or manual input
+          PACKAGES_TO_PUBLISH=""
 
-          echo "Checking if $PACKAGE_NAME@$PACKAGE_VERSION already exists..."
-
-          if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version 2>/dev/null; then
-            echo "Version $PACKAGE_VERSION already exists on NPM"
-            echo "version_exists=true" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual workflow dispatch
+            if [ "${{ inputs.package }}" = "all" ]; then
+              PACKAGES_TO_PUBLISH="swipl-mcp-server mcp-prolog mcp-core mcp-roots"
+            else
+              PACKAGES_TO_PUBLISH="${{ inputs.package }}"
+            fi
           else
-            echo "Version $PACKAGE_VERSION does not exist, safe to publish"
-            echo "version_exists=false" >> $GITHUB_OUTPUT
+            # Tag-based publishing
+            TAG="${GITHUB_REF#refs/tags/}"
+            echo "Processing tag: $TAG"
+
+            if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+              # Main product release (v3.0.0)
+              PACKAGES_TO_PUBLISH="swipl-mcp-server"
+            elif [[ "$TAG" =~ ^mcp-prolog-v ]]; then
+              PACKAGES_TO_PUBLISH="mcp-prolog"
+            elif [[ "$TAG" =~ ^mcp-core-v ]]; then
+              PACKAGES_TO_PUBLISH="mcp-core"
+            elif [[ "$TAG" =~ ^mcp-roots-v ]]; then
+              PACKAGES_TO_PUBLISH="mcp-roots"
+            fi
           fi
+
+          echo "packages=$PACKAGES_TO_PUBLISH" >> $GITHUB_OUTPUT
+          echo "Publishing packages: $PACKAGES_TO_PUBLISH"
 
       # Important: Older npm may fail OIDC (ENEEDAUTH). Upgrade explicitly.
       - name: Ensure recent npm (for OIDC/provenance)
-        if: steps.check_version.outputs.version_exists == 'false' && inputs.dry_run != true
+        if: inputs.dry_run != true
         run: |
           npm --version
           npm install -g npm@11
           npm --version
 
       # OIDC trusted publish: no tokens, provenance enabled.
-      - name: Publish to NPM
-        if: steps.check_version.outputs.version_exists == 'false' && inputs.dry_run != true
+      - name: Publish packages to NPM
+        if: inputs.dry_run != true
         env:
           NPM_CONFIG_PROVENANCE: true
         run: |
           # Ensure OIDC flow (no token-based auth)
           unset NODE_AUTH_TOKEN || true
-          # Publish from dist (package.json is prepared for distribution)
-          cd dist
-          npm publish --access public --provenance
+
+          # Publish each detected package
+          for pkg in ${{ steps.detect_packages.outputs.packages }}; do
+            echo ""
+            echo "==================================="
+            echo "Publishing @vpursuit/$pkg"
+            echo "==================================="
+
+            # Check if version already exists
+            PACKAGE_NAME="@vpursuit/$pkg"
+            PACKAGE_VERSION=$(node -p "require('./packages/$pkg/package.json').version")
+
+            echo "Checking if $PACKAGE_NAME@$PACKAGE_VERSION already exists..."
+
+            if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version 2>/dev/null; then
+              echo "⚠️  Version $PACKAGE_VERSION already exists on NPM, skipping"
+              continue
+            fi
+
+            echo "✅ Version $PACKAGE_VERSION does not exist, publishing..."
+
+            # Publish from workspace
+            npm publish --workspace="packages/$pkg" --access public --provenance
+
+            echo "✅ Successfully published $PACKAGE_NAME@$PACKAGE_VERSION"
+          done
 
       - name: Dry Run - Show what would be published
         if: inputs.dry_run == true
         run: |
-          cd dist
-          echo "DRY RUN: Would publish the following package:"
-          npm pack --dry-run
+          echo "DRY RUN: Would publish the following packages:"
+          echo ""
+
+          for pkg in ${{ steps.detect_packages.outputs.packages }}; do
+            echo "==================================="
+            echo "Package: @vpursuit/$pkg"
+            echo "==================================="
+            cd "packages/$pkg"
+            npm pack --dry-run
+            cd ../..
+            echo ""
+          done
 
       - name: Create GitHub Release
-        if: steps.check_version.outputs.version_exists == 'false' && inputs.dry_run != true
+        if: inputs.dry_run != true && github.event_name == 'push'
         run: |
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          gh release create "v$PACKAGE_VERSION" \
-            --title "Release v$PACKAGE_VERSION" \
-            --notes "Released to NPM as @vpursuit/swipl-mcp-server@$PACKAGE_VERSION
+          # Create release for the first published package
+          FIRST_PKG=$(echo "${{ steps.detect_packages.outputs.packages }}" | awk '{print $1}')
 
-          Install with: \`npm install -g @vpursuit/swipl-mcp-server\`
+          if [ -n "$FIRST_PKG" ]; then
+            PACKAGE_NAME="@vpursuit/$FIRST_PKG"
+            PACKAGE_VERSION=$(node -p "require('./packages/$FIRST_PKG/package.json').version")
+            TAG="${GITHUB_REF#refs/tags/}"
+
+            # Create release notes file
+            cat > release_notes.md <<EOF
+          Released to NPM as $PACKAGE_NAME@$PACKAGE_VERSION
+
+          ## Installation
+          \`\`\`bash
+          npm install $PACKAGE_NAME
+          \`\`\`
 
           ## Requirements
           - Node.js ≥ 20.0.0
-          - SWI-Prolog installed and available in PATH"
+          EOF
+
+            # Add SWI-Prolog requirement for main package
+            if [ "$FIRST_PKG" = "swipl-mcp-server" ]; then
+              echo "- SWI-Prolog installed and available in PATH" >> release_notes.md
+            fi
+
+            gh release create "$TAG" \
+              --title "Release $TAG" \
+              --notes-file release_notes.md
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

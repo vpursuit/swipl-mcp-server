@@ -1,17 +1,18 @@
-import type { Server as McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { z } from "zod";
 
 /**
- * Response from a tool handler
+ * Response from a tool handler (MCP SDK format)
  */
 export interface ToolResponse {
-  success: boolean;
-  data?: any;
-  error?: string;
-  metadata?: {
-    processingTime?: number;
-    [key: string]: any;
-  };
+  content: Array<{
+    type: "text" | "image" | "resource";
+    text?: string;
+    data?: string;
+    mimeType?: string;
+  }>;
+  structuredContent?: Record<string, unknown>;
+  isError?: boolean;
 }
 
 /**

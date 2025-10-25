@@ -79,9 +79,11 @@ describe("Plugin Loader", () => {
 
       expect(mockServer.registerResource).toHaveBeenCalledTimes(1);
       expect(mockServer.registerResource).toHaveBeenCalledWith(
+        "Test Resource",
+        "test://resource",
         expect.objectContaining({
-          uri: "test://resource",
-          name: "Test Resource",
+          title: "Test Resource",
+          description: "A test resource",
         }),
         expect.any(Function)
       );
@@ -115,9 +117,16 @@ describe("Plugin Loader", () => {
 
       expect(mockServer.registerPrompt).toHaveBeenCalledTimes(1);
       expect(mockServer.registerPrompt).toHaveBeenCalledWith(
+        "test-prompt",
         expect.objectContaining({
-          name: "test-prompt",
+          title: "test-prompt",
           description: "A test prompt",
+          argsSchema: {
+            task: {
+              type: "string",
+              description: "Task description",
+            },
+          },
         }),
         expect.any(Function)
       );

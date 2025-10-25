@@ -33,16 +33,27 @@ export const plugin: Plugin = {
         const manager = RootsManager.getInstance();
         const roots = await manager.getRoots();
 
+        const rootsList = roots.map((r) => ({
+          uri: r.uri,
+          path: r.path,
+          name: r.name,
+        }));
+
         return {
-          success: true,
-          data: {
-            roots: roots.map((r) => ({
-              uri: r.uri,
-              path: r.path,
-              name: r.name,
-            })),
-            count: roots.length,
-          },
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  success: true,
+                  roots: rootsList,
+                  count: roots.length,
+                },
+                null,
+                2
+              ),
+            },
+          ],
         };
       },
     },

@@ -1,4 +1,4 @@
-import type { Server as McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import type {
   Plugin,
@@ -150,9 +150,10 @@ function registerResource(
 ): void {
   try {
     server.registerResource(
+      resourceDef.name,
+      resourceDef.uri,
       {
-        uri: resourceDef.uri,
-        name: resourceDef.name,
+        title: resourceDef.name,
         description: resourceDef.description,
         mimeType: resourceDef.mimeType,
       },
@@ -177,14 +178,17 @@ function registerPrompt(
 ): void {
   try {
     server.registerPrompt(
+      promptDef.name,
       {
-        name: promptDef.name,
+        title: promptDef.name,
         description: promptDef.description,
-        arguments: promptDef.arguments?.map((arg) => ({
-          name: arg.name,
-          description: arg.description,
-          required: arg.required,
-        })),
+        argsSchema: promptDef.arguments?.reduce((acc, arg) => {
+          acc[arg.name] = {
+            type: "string" as const,
+            description: arg.description,
+          };
+          return acc;
+        }, {} as Record<string, any>),
       },
       promptDef.handler as any
     );

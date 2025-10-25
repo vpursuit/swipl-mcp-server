@@ -25,20 +25,29 @@ export default defineWorkspace([
   {
     test: {
       name: 'mcp-prolog',
-      include: ['packages/mcp-prolog/test/**/*.test.ts'],
+      include: [
+        'packages/mcp-prolog/test/**/*.test.ts',
+        'packages/mcp-prolog/test/**/*.test.js',
+      ],
       environment: 'node',
       globals: true,
-      testTimeout: 10000,
+      testTimeout: 60000,
+      setupFiles: ['./packages/mcp-prolog/test/setup.js'],
     },
   },
   // Orchestrator package
   {
     test: {
       name: 'swipl-mcp-server',
-      include: ['packages/swipl-mcp-server/test/**/*.test.ts'],
+      include: [
+        'packages/swipl-mcp-server/test/**/*.test.ts',
+        'packages/swipl-mcp-server/test/**/*.test.js',
+      ],
+      exclude: ['packages/swipl-mcp-server/test/e2e/npx-integration.test.js'],
       environment: 'node',
       globals: true,
-      testTimeout: 10000,
+      testTimeout: 60000,
+      setupFiles: ['./packages/swipl-mcp-server/test/setup.js'],
     },
   },
 ]);

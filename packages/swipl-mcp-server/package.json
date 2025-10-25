@@ -1,25 +1,31 @@
 {
-  "name": "@vpursuit/mcp-roots",
-  "version": "1.0.0",
+  "name": "@vpursuit/swipl-mcp-server",
+  "version": "3.0.0",
   "type": "module",
-  "description": "Dynamic filesystem root discovery for MCP servers",
+  "icon": "./images/logo.svg",
+  "description": "SWI-Prolog integration for Model Context Protocol - orchestrator package",
   "keywords": [
     "mcp",
     "model-context-protocol",
-    "filesystem",
-    "roots",
-    "plugin"
+    "prolog",
+    "swi-prolog",
+    "ai",
+    "agent",
+    "llm"
   ],
   "author": "Peter Trebing",
   "license": "BSD-3-Clause",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vpursuit/swipl-mcp-server.git",
-    "directory": "packages/mcp-roots"
+    "directory": "packages/swipl-mcp-server"
   },
-  "homepage": "https://github.com/vpursuit/swipl-mcp-server/tree/main/packages/mcp-roots#readme",
+  "homepage": "https://github.com/vpursuit/swipl-mcp-server#readme",
   "bugs": {
     "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
+  },
+  "bin": {
+    "swipl-mcp-server": "./build/index.js"
   },
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
@@ -31,6 +37,7 @@
   },
   "files": [
     "build",
+    "images",
     "README.md",
     "SECURITY.md",
     "LICENSE"
@@ -42,15 +49,15 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "zod": "^3.25.76"
-  },
-  "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",
-    "@vpursuit/mcp-core": "^1.0.0"
+    "@vpursuit/mcp-core": "*",
+    "@vpursuit/mcp-roots": "*",
+    "@vpursuit/mcp-prolog": "*"
   },
   "devDependencies": {
-    "@modelcontextprotocol/sdk": "^1.18.0",
-    "@vpursuit/mcp-core": "*"
+    "@types/node": "^24.2.1",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=20.0.0"

@@ -16,6 +16,10 @@
     "url": "git+https://github.com/vpursuit/swipl-mcp-server.git",
     "directory": "packages/mcp-core"
   },
+  "homepage": "https://github.com/vpursuit/swipl-mcp-server/tree/main/packages/mcp-core#readme",
+  "bugs": {
+    "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
+  },
   "main": "./build/index.js",
   "types": "./build/index.d.ts",
   "exports": {
@@ -27,6 +31,7 @@
   "files": [
     "build",
     "README.md",
+    "SECURITY.md",
     "LICENSE"
   ],
   "scripts": {

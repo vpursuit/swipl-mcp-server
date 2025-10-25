@@ -1,16 +1,24 @@
 {
   "name": "@vpursuit/workspace",
   "version": "1.0.0",
+  "description": "Monorepo for Model Context Protocol packages with SWI-Prolog integration",
   "private": true,
   "type": "module",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "prolog",
+    "swi-prolog",
+    "monorepo",
+    "workspace",
+    "plugin-system"
+  ],
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "test": "vitest run",
-    "test:unit": "vitest run test/unit",
-    "test:integration": "vitest run test/integration",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "npm run lint --workspaces --if-present",

@@ -1,13 +1,13 @@
 {
-  "name": "@vpursuit/mcp-roots",
-  "version": "1.0.0",
+  "name": "@vpursuit/mcp-prolog",
+  "version": "3.0.0",
   "type": "module",
-  "description": "Dynamic filesystem root discovery for MCP servers",
+  "description": "SWI-Prolog integration for Model Context Protocol servers",
   "keywords": [
     "mcp",
     "model-context-protocol",
-    "filesystem",
-    "roots",
+    "prolog",
+    "swi-prolog",
     "plugin"
   ],
   "author": "Peter Trebing",
@@ -15,9 +15,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vpursuit/swipl-mcp-server.git",
-    "directory": "packages/mcp-roots"
+    "directory": "packages/mcp-prolog"
   },
-  "homepage": "https://github.com/vpursuit/swipl-mcp-server/tree/main/packages/mcp-roots#readme",
+  "homepage": "https://github.com/vpursuit/swipl-mcp-server/tree/main/packages/mcp-prolog#readme",
   "bugs": {
     "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
   },
@@ -31,6 +31,8 @@
   },
   "files": [
     "build",
+    "prolog",
+    "images",
     "README.md",
     "SECURITY.md",
     "LICENSE"
@@ -41,12 +43,13 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "dependencies": {
-    "zod": "^3.25.76"
-  },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",
     "@vpursuit/mcp-core": "^1.0.0"
+  },
+  "dependencies": {
+    "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.24.1"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",
