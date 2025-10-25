@@ -120,7 +120,8 @@ class NPXIntegrationTest {
         },
         validate: (result) => {
           const text = result.result?.content?.[0]?.text || '';
-          if (!text.includes('Security Error:') || !text.includes('Files can only be loaded from')) {
+          // Check for new roots-based error message format
+          if (!text.includes('Security Error:') || !text.includes('allowed roots')) {
             throw new Error(`Expected security error for file outside allowed directory, got: ${text}`);
           }
         }

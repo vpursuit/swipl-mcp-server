@@ -30,10 +30,13 @@
 ## Built‑in Protections
 
 ### File Path Security
-- **Allowed Directory**: Only `~/.swipl-mcp-server/` directory permitted for file operations
+- **MCP Roots Support**: Dynamically discovers allowed directories from MCP client using `server.listRoots()`
+- **Multiple Roots**: Supports multiple workspace directories from client
+- **Fallback Directory**: Always includes `~/.swipl-mcp-server/` as fallback
 - **System Directory Blocking**: Automatically blocks access to `/etc`, `/usr`, `/bin`, `/var`, `/sys`, `/proc`, `/boot`, `/dev`, `/root`
 - **Pre-validation**: File paths are checked before any Prolog interaction
-- **Clear Error Messages**: `Security Error: Files can only be loaded from ~/.swipl-mcp-server/`
+- **Clear Error Messages**: Lists all allowed roots when access is denied
+- **Inspection Tool**: Use `roots_list` tool to see currently active roots and their source
 
 ### Dangerous Predicate Detection
 - **Pre-execution Blocking**: Dangerous operations caught before execution, not during timeout

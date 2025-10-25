@@ -12,11 +12,12 @@ export const zodSchemas = {
         "security",
         "examples",
         "prompts",
+        "roots",
         "troubleshooting",
       ])
       .optional()
       .describe(
-        "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, prompts, troubleshooting)",
+        "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, prompts, roots, troubleshooting)",
       ),
   },
   knowledgeBaseLoad: {
@@ -32,6 +33,7 @@ export const zodSchemas = {
   },
   knowledgeBaseDump: {},
   symbolsList: {},
+  rootsList: {},
   // Prompt schemas
   prologInitExpert: {
     task: z.string().optional().describe("Optional task to focus expert setup and reasoning"),
@@ -84,10 +86,12 @@ export const jsonSchemas = {
           "safety",
           "security",
           "examples",
+          "prompts",
+          "roots",
           "troubleshooting",
         ],
         description:
-          "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, prompts, troubleshooting)",
+          "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, prompts, roots, troubleshooting)",
       },
     },
   },
@@ -138,6 +142,11 @@ export const jsonSchemas = {
     properties: {},
   },
   symbolsList: {
+    type: "object",
+    additionalProperties: false,
+    properties: {},
+  },
+  rootsList: {
     type: "object",
     additionalProperties: false,
     properties: {},

@@ -4,8 +4,8 @@ import { MAX_FILENAME_LENGTH, MAX_QUERY_LENGTH, MAX_FACT_LENGTH } from "./consta
 import { validateStringInput } from "./utils/validation.js";
 import { createErrorResponse, createSuccessResponse } from "./utils/response.js";
 import { resolvePackageVersion, findNearestFile } from "./meta.js";
-import path from "path";
-import os from "os";
+import { rootsManager } from "./utils/roots.js";
+import { logger } from "./logger.js";
 
 type ToolResponse = {
   content: any[];
@@ -13,29 +13,12 @@ type ToolResponse = {
   isError?: boolean;
 };
 
-// Security: Only allow files within the designated directory
-const ALLOWED_DIR = path.join(os.homedir(), '.swipl-mcp-server');
-
-function validateFilePath(filename: string): { allowed: boolean; error?: string } {
-  try {
-    const absolutePath = path.resolve(filename);
-    const relativePath = path.relative(ALLOWED_DIR, absolutePath);
-    const isWithinAllowed = !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
-    
-    if (isWithinAllowed) {
-      return { allowed: true };
-    }
-    
-    return {
-      allowed: false,
-      error: `Security Error: Files can only be loaded from ${ALLOWED_DIR}`
-    };
-  } catch (_error) {
-    return {
-      allowed: false,
-      error: `Security Error: Invalid file path`
-    };
-  }
+async function validateFilePath(filename: string): Promise<{ allowed: boolean; error?: string }> {
+  const result = await rootsManager.validatePath(filename);
+  return {
+    allowed: result.allowed,
+    error: result.error
+  };
 }
 
 // Global Prolog interface instance
@@ -127,7 +110,12 @@ export const toolHandlers = {
       ],
       safety: [
         "Enhanced Security Model:",
-        "- File Path Restrictions: Only ~/.swipl-mcp-server/ directory allowed for file operations",
+        "- File Path Restrictions: MCP roots-based with dynamic workspace discovery",
+        "  • Discovers allowed directories from MCP client via server.listRoots()",
+        "  • Falls back to ~/.swipl-mcp-server/ when roots unavailable",
+        "  • System directories (/etc, /usr, /bin, etc.) always blocked",
+        "  • 5-minute cache with notification support (roots/list_changed)",
+        "  • Environment overrides: SWI_MCP_ALLOWED_ROOTS, SWI_MCP_STRICT_ROOTS, SWI_MCP_USE_LEGACY_DIR",
         "- Dangerous Predicate Blocking: Pre-execution detection of shell(), system(), call(), etc.",
         "- User code asserted into module 'knowledge_base' with unknown=fail",
         "- Files loaded via guarded consult (facts/rules only; directives rejected)",
@@ -138,8 +126,17 @@ export const toolHandlers = {
       ],
       security: [
         "Security Architecture:",
-        "- File Path Restrictions: System directories (/etc, /usr, /bin, /var, etc.) blocked",
-        "- Only ~/.swipl-mcp-server/ directory allowed for file loading",
+        "- File Path Restrictions (MCP Roots Protocol):",
+        "  • Workspace-aware: discovers roots from MCP client (server.listRoots())",
+        "  • Multiple roots supported: allows access to all client-provided workspaces",
+        "  • Fallback directory: ~/.swipl-mcp-server/ (always included for compatibility)",
+        "  • System directories blocked: /etc, /usr, /bin, /var, /sys, /proc, /boot, /dev, /root",
+        "  • macOS system paths blocked: /System, /Library, /Applications",
+        "  • Windows system paths blocked: C:\\Windows, C:\\Program Files",
+        "  • Cache: 5-minute TTL, invalidates on roots/list_changed notification",
+        "  • Override via env: SWI_MCP_ALLOWED_ROOTS (colon-separated paths)",
+        "  • Strict mode: SWI_MCP_STRICT_ROOTS=true (disable fallback, roots-only)",
+        "  • Legacy mode: SWI_MCP_USE_LEGACY_DIR=true (use only ~/.swipl-mcp-server/)",
         "- Pre-execution validation catches dangerous predicates before execution",
         "- Most built-ins validated by library(sandbox)",
         "- Safe built-ins: arithmetic, lists, term operations, logic, string/atom helpers",
@@ -183,6 +180,7 @@ export const toolHandlers = {
         "Troubleshooting:",
         "- error(unsafe_goal(...)): goal rejected by hybrid security (uses dangerous built-ins)",
         "- Session conflicts: close current mode before starting the other",
+        "- File access denied: use roots_list to see allowed directories, check MCP client roots config",
         "- Timeouts: configure via environment variables in Claude Desktop config:",
         "  • SWI_MCP_READY_TIMEOUT_MS: server startup (default 5000ms, try 10000ms if slow)",
         "  • SWI_MCP_QUERY_TIMEOUT_MS: query execution (default 30000ms, increase for complex queries)",
@@ -190,6 +188,14 @@ export const toolHandlers = {
         "- Recursive clauses: now work properly with hybrid security model",
         "- Query hangs: increase SWI_MCP_QUERY_TIMEOUT_MS or check for infinite loops",
         "- Startup failures: increase SWI_MCP_READY_TIMEOUT_MS or check SWI-Prolog installation",
+      ],
+      roots: [
+        "Filesystem Access (roots_list tool):",
+        "- roots_list: Inspect currently allowed roots and their source",
+        "- Shows active directories from MCP client, environment variables, or fallback",
+        "- Displays cache age and TTL for transparency",
+        "- Useful for debugging 'file not allowed' errors",
+        "- Source can be: 'client' (from MCP), 'environment' (SWI_MCP_ALLOWED_ROOTS), 'legacy' (SWI_MCP_USE_LEGACY_DIR), or 'fallback' (~/.swipl-mcp-server)",
       ],
     };
 
@@ -202,6 +208,7 @@ export const toolHandlers = {
       "examples",
       "prompts",
       "available_predicates",
+      "roots",
       "troubleshooting",
     ] as const;
 
@@ -262,6 +269,54 @@ export const toolHandlers = {
     };
   },
 
+  async rootsList(): Promise<ToolResponse> {
+    const startTime = Date.now();
+
+    // EXPERIMENT: Force fresh discovery from client before returning roots list
+    logger.info("[EXPERIMENT] roots_list: forcing fresh discovery from MCP client");
+    const discoverySuccess = await rootsManager.discoverRoots(true);
+    logger.info(`[EXPERIMENT] roots_list: discovery result = ${discoverySuccess}`);
+
+    const info = await rootsManager.getRootsInfo();
+
+    const cacheAgeDisplay = info.cacheAge === -1
+      ? "Never discovered"
+      : `${Math.round(info.cacheAge / 1000)}s / ${Math.round(info.cacheTtl / 1000)}s TTL`;
+
+    const rootsListDisplay = info.roots.length > 0
+      ? info.roots.map(r => `  - ${r.path}${r.name ? ` (${r.name})` : ''}`).join("\n")
+      : "  (none - using fallback directory)";
+
+    const sourceExplanation = {
+      client: "Discovered from MCP client",
+      environment: "Set via SWI_MCP_ALLOWED_ROOTS environment variable",
+      legacy: "Using legacy mode (SWI_MCP_USE_LEGACY_DIR=true)",
+      fallback: "No roots configured, using default fallback directory"
+    }[info.source];
+
+    const summary = [
+      `[EXPERIMENTAL] Fresh discovery attempted: ${discoverySuccess ? 'Success' : 'Failed/Fallback'}`,
+      "",
+      `Roots Source: ${info.source}`,
+      `Explanation: ${sourceExplanation}`,
+      `Active Roots: ${info.roots.length}`,
+      "",
+      rootsListDisplay,
+      "",
+      `Fallback Directory: ${info.fallbackDir}`,
+      `Cache Age: ${cacheAgeDisplay}`
+    ].join("\n");
+
+    return createSuccessResponse(summary, startTime, {
+      experimentalFreshDiscovery: discoverySuccess,
+      roots: info.roots,
+      fallbackDir: info.fallbackDir,
+      source: info.source,
+      cacheAge: info.cacheAge,
+      cacheTtl: info.cacheTtl
+    });
+  },
+
   async knowledgeBaseLoad({ filename }: { filename: string }): Promise<ToolResponse> {
     const startTime = Date.now();
 
@@ -274,11 +329,11 @@ export const toolHandlers = {
     }
 
     // Security validation - check file path
-    const pathValidation = validateFilePath(filename);
+    const pathValidation = await validateFilePath(filename);
     if (!pathValidation.allowed) {
       return createErrorResponse(
-        pathValidation.error || "File access denied", 
-        startTime, 
+        pathValidation.error || "File access denied",
+        startTime,
         { error_code: "file_path_violation", blocked_path: filename }
       );
     }
@@ -859,7 +914,7 @@ export function getCapabilitiesSummary(): Record<string, unknown> {
       clpfd_note: "library(clpfd) not available for security reasons - use between/3, is/2, permutation/2",
     },
     tools: {
-      core: ["help", "license", "capabilities"],
+      core: ["help", "license", "capabilities", "roots_list"],
       knowledge_base: [
         "knowledge_base_load",
         "knowledge_base_assert",
@@ -887,20 +942,51 @@ export function getCapabilitiesSummary(): Record<string, unknown> {
     },
     security: {
       module: "knowledge_base",
+      mcp_roots_support: {
+        enabled: true,
+        protocol: "MCP roots (server.listRoots())",
+        discovery: "dynamic workspace detection from client",
+        multiple_roots: true,
+        fallback_directory: "~/.swipl-mcp-server/",
+        cache: {
+          ttl_ms: 300000,
+          ttl_description: "5 minutes",
+          invalidation: "roots/list_changed notification or TTL expiry",
+        },
+        notification_support: {
+          event: "roots/list_changed",
+          behavior: "immediate cache invalidation",
+          fallback: "5-minute cache TTL as safety net",
+        },
+        environment_variables: {
+          SWI_MCP_ALLOWED_ROOTS: "Override with colon-separated paths",
+          SWI_MCP_STRICT_ROOTS: "Set to 'true' to disable fallback (roots-only mode)",
+          SWI_MCP_USE_LEGACY_DIR: "Set to 'true' to use only ~/.swipl-mcp-server/",
+          SWI_MCP_ROOTS_CACHE_TTL: "Custom cache TTL in milliseconds",
+        },
+      },
       file_restrictions: {
-        allowed_directory: "~/.swipl-mcp-server/",
-        blocked_directories: [
+        model: "roots-based with system directory blocking",
+        allowed_roots: "Discovered from MCP client + fallback directory",
+        fallback_directory: "~/.swipl-mcp-server/ (always included)",
+        blocked_system_directories: [
           "/etc",
           "/usr",
           "/bin",
+          "/sbin",
           "/var",
           "/sys",
           "/proc",
           "/boot",
           "/dev",
           "/root",
+          "/System",
+          "/Library",
+          "/Applications",
+          "C:\\Windows",
+          "C:\\Program Files",
         ],
-        validation: "pre-execution path checking",
+        validation: "pre-execution path checking against roots and blocklist",
       },
       consult: "facts/rules only; directives rejected",
       model: "enhanced_hybrid",

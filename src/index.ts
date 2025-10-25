@@ -4,6 +4,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { inputSchemas, toolHandlers, prologInterface, getCapabilitiesSummary } from "./tools.js";
 import { resolvePackageVersion, findNearestFile } from "./meta.js";
 import { prologPrompts } from "./prompts.js";
+import { rootsManager } from "./utils/roots.js";
+import { logger } from "./logger.js";
 
 /**
  * SWI-Prolog MCP Server
@@ -302,6 +304,16 @@ server.registerTool(
   toolHandlers.capabilities as any,
 );
 
+// Register roots_list tool
+server.registerTool(
+  "roots_list",
+  {
+    description: "List all roots currently known to the server",
+    inputSchema: inputSchemas.rootsList,
+  },
+  toolHandlers.rootsList as any,
+);
+
 // Register prompts for expert Prolog assistance
 // These guide agents to use resources first for context, then tools efficiently
 
@@ -346,6 +358,27 @@ for (const promptConfig of Object.values(prologPrompts)) {
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  // Set up initialization callback - runs after client sends 'initialized' notification
+  server.server.oninitialized = async () => {
+    logger.debug("Client initialization complete, setting up roots discovery");
+
+    // Initialize roots manager with server instance for future roots discovery
+    rootsManager.setServerInstance(server);
+
+    // Discover roots from client (non-blocking, uses fallback if unavailable)
+    const rootsDiscovered = await rootsManager.discoverRoots();
+    if (rootsDiscovered) {
+      const roots = await rootsManager.getRoots();
+      logger.info(`Server initialized with ${roots.length} root(s) from client`);
+      roots.forEach(root => {
+        logger.info(`  - ${root.path}${root.name ? ` (${root.name})` : ''}`);
+      });
+    } else {
+      const fallbackDir = rootsManager.getFallbackDir();
+      logger.info(`No roots provided by client, using fallback directory: ${fallbackDir}`);
+    }
+  };
 
   // Warm-up Prolog process non-blocking to avoid first-call races
   try { void prologInterface.start(); } catch { /* ignore */ }

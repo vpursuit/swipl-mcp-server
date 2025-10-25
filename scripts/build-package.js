@@ -50,6 +50,7 @@ const jsFiles = [
   "constants.js",
   "utils/response.js",
   "utils/validation.js",
+  "utils/roots.js",
 ];
 jsFiles.forEach((file) => {
   const srcPath = path.join(BUILD_DIR, file);

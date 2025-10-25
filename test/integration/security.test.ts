@@ -50,30 +50,32 @@ maybeDescribe("Security: File Path Restrictions", () => {
 
   test("should block loading /etc/passwd with clear security error", async () => {
     const result = await toolHandlers.knowledgeBaseLoad({ filename: "/etc/passwd" });
-    
+
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
-    expect(result.content[0].text).toContain("Files can only be loaded from");
-    expect(result.content[0].text).toContain(path.join(os.homedir(), '.swipl-mcp-server'));
+    // New roots-based error message mentions system directory or allowed roots
+    expect(result.content[0].text).toMatch(/system directory|allowed roots/i);
     expect(result.structuredContent.error_code).toBe("file_path_violation");
     expect(result.structuredContent.blocked_path).toBe("/etc/passwd");
   });
 
   test("should block loading /usr/bin/swipl with clear security error", async () => {
     const result = await toolHandlers.knowledgeBaseLoad({ filename: "/usr/bin/swipl" });
-    
+
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
-    expect(result.content[0].text).toContain("Files can only be loaded from");
+    // New roots-based error message mentions system directory or allowed roots
+    expect(result.content[0].text).toMatch(/system directory|allowed roots/i);
     expect(result.structuredContent.error_code).toBe("file_path_violation");
   });
 
   test("should block loading files outside allowed directory", async () => {
     const result = await toolHandlers.knowledgeBaseLoad({ filename: "/tmp/malicious.pl" });
-    
+
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
-    expect(result.content[0].text).toContain("Files can only be loaded from");
+    // New roots-based error message shows allowed roots
+    expect(result.content[0].text).toMatch(/allowed roots/i);
     expect(result.content[0].text).toContain(path.join(os.homedir(), '.swipl-mcp-server'));
     expect(result.structuredContent.error_code).toBe("file_path_violation");
   });

@@ -172,10 +172,30 @@ Dynamic and static resources for knowledge base access:
 
 ### Tools
 
-- **Core:** `help`, `license`, `capabilities`
+- **Core:** `help`, `license`, `capabilities`, `roots_list`
 - **Knowledge base:** `knowledge_base_load`, `knowledge_base_assert`, `knowledge_base_assert_many`, `knowledge_base_retract`, `knowledge_base_retract_many`, `knowledge_base_clear`, `knowledge_base_dump`
 - **Query:** `query_start`, `query_startEngine`, `query_next`, `query_close`
 - **Symbols:** `symbols_list`
+
+#### `roots_list`
+
+Inspect currently active filesystem roots and their source. Shows which directories are allowed for file access, where the roots came from (MCP client, environment variable, or fallback), and cache information.
+
+**EXPERIMENTAL FEATURE:** This tool now forces a fresh discovery from the MCP client each time it's called, bypassing the cache. This helps diagnose roots discovery issues and ensures you always see the most current roots configuration.
+
+**Use cases:**
+- Debugging "file not allowed" errors
+- Verifying roots discovery from MCP client
+- Understanding current access restrictions
+- Testing if MCP client supports and responds to `listRoots()` requests
+
+**Response includes:**
+- `experimentalFreshDiscovery`: Whether fresh discovery succeeded or fell back to defaults
+- `roots`: Array of root directories with URI, path, and optional name
+- `fallbackDir`: Default fallback directory (`~/.swipl-mcp-server`)
+- `source`: Where roots came from (`client`, `environment`, `legacy`, or `fallback`)
+- `cacheAge`: How long since last refresh (milliseconds, or -1 if never discovered)
+- `cacheTtl`: Cache time-to-live (300000ms = 5 minutes)
 
 ## Available Predicates
 
