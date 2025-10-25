@@ -46,7 +46,9 @@
     "build": "tsc",
     "clean": "rm -rf build *.tsbuildinfo",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:npx": "vitest run --project=swipl-mcp-server -t 'NPX Integration'",
+    "prepublishOnly": "npm run build && npm run test:npx"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",

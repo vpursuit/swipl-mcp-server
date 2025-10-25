@@ -23,40 +23,53 @@ const ROOT_DIR = path.resolve(__dirname, '../../../..');
 class NPXIntegrationTest {
   constructor() {
     this.tempDir = null;
-    this.packagePath = null;
+    this.packagePaths = {}; // Store paths to all tarballs
     this.timeout = 30000; // 30 second timeout
   }
 
   async setup() {
     console.log('🏗️  Setting up npx integration test...');
-    
+
     // Create temporary directory
     this.tempDir = await fs.mkdtemp('/tmp/swipl-mcp-test-');
     console.log(`📁 Created temp directory: ${this.tempDir}`);
-    
-    // Use the exact same build process as production
-    console.log('📦 Building package using production scripts...');
-    await execAsync('npm run build:package', { cwd: ROOT_DIR });
-    
-    // Use the exact same pack process as production
-    console.log('📤 Creating package tarball using production process...');
-    const { stdout } = await execAsync('npm pack', { cwd: path.join(ROOT_DIR, 'dist') });
-    const tarballName = stdout.trim();
-    this.packagePath = path.join(ROOT_DIR, 'dist', tarballName);
-    
-    console.log(`✅ Package created: ${this.packagePath}`);
+
+    // Build all workspace packages (monorepo)
+    console.log('📦 Building all workspace packages...');
+    await execAsync('npm run build', { cwd: ROOT_DIR });
+
+    // Pack all workspace dependencies - these need to be available for the main package
+    console.log('📤 Creating tarballs for all workspace packages...');
+    const workspacePackages = ['mcp-core', 'mcp-roots', 'mcp-prolog', 'swipl-mcp-server'];
+
+    for (const pkg of workspacePackages) {
+      const pkgDir = path.join(ROOT_DIR, 'packages', pkg);
+      console.log(`  📦 Packing @vpursuit/${pkg}...`);
+      const { stdout } = await execAsync('npm pack', { cwd: pkgDir });
+      const tarballName = stdout.trim();
+      const tarballPath = path.join(pkgDir, tarballName);
+      this.packagePaths[pkg] = tarballPath;
+      console.log(`    ✅ Created: ${tarballName}`);
+    }
+
+    console.log('✅ All packages packed successfully');
   }
 
   async installPackage() {
-    console.log('📥 Installing locally built package...');
-    
-    // Install the exact package we just built (not from registry)
-    // This ensures we test our actual changes
-    await execAsync(`npm install "${this.packagePath}"`, {
-      cwd: this.tempDir
-    });
-    
-    console.log('✅ Locally built package installed successfully');
+    console.log('📥 Installing all locally built packages...');
+
+    // Install workspace dependencies first (in dependency order)
+    // mcp-core has no deps, roots and prolog depend on core, swipl-mcp-server depends on all
+    const installOrder = ['mcp-core', 'mcp-roots', 'mcp-prolog', 'swipl-mcp-server'];
+
+    for (const pkg of installOrder) {
+      console.log(`  📦 Installing @vpursuit/${pkg}...`);
+      await execAsync(`npm install "${this.packagePaths[pkg]}"`, {
+        cwd: this.tempDir
+      });
+    }
+
+    console.log('✅ All locally built packages installed successfully');
   }
 
   async testMCPProtocol() {
@@ -204,8 +217,8 @@ class NPXIntegrationTest {
   async runMCPCommand(request) {
     return new Promise((resolve, reject) => {
       // Run from clean directory that doesn't have source files
-      // This simulates real user environment 
-      const child = spawn('node', [path.join(this.tempDir, 'node_modules', '@vpursuit', 'swipl-mcp-server', 'lib', 'index.js')], {
+      // This simulates real user environment
+      const child = spawn('node', [path.join(this.tempDir, 'node_modules', '@vpursuit', 'swipl-mcp-server', 'build', 'index.js')], {
         cwd: '/tmp',  // Clean directory, no access to development files
         env: {
           ...process.env,
@@ -293,11 +306,24 @@ class NPXIntegrationTest {
   }
 
   async cleanup() {
+    console.log('🧹 Cleaning up...');
+
+    // Remove temporary test directory
     if (this.tempDir) {
-      console.log('🧹 Cleaning up...');      
       await fs.rm(this.tempDir, { recursive: true, force: true });
-      console.log('✅ Cleanup complete');
     }
+
+    // Remove all created tarballs
+    for (const [pkg, tarballPath] of Object.entries(this.packagePaths)) {
+      try {
+        await fs.unlink(tarballPath);
+        console.log(`  🗑️  Removed tarball: ${path.basename(tarballPath)}`);
+      } catch (err) {
+        // Tarball might already be removed, ignore
+      }
+    }
+
+    console.log('✅ Cleanup complete');
   }
 
   async run() {

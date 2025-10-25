@@ -1,15 +1,21 @@
 /**
  * NPX Integration Tests
- * 
+ *
  * This test runs the full end-to-end NPX integration scenario within the Vitest framework.
  * It builds the package, installs it in isolation, and tests MCP protocol functionality.
- * 
+ *
  * This ensures the package works correctly when installed via npm/npx in real environments.
+ *
+ * TESTING STRATEGY:
+ * - In monorepo dev: Uses local tarballs for all workspace dependencies
+ * - Post-publish: Can optionally test against npm registry versions
+ * - This allows testing npx functionality BEFORE publishing to npm
  */
 
 import { describe, beforeEach, afterEach, test, expect } from "vitest";
 import { NPXIntegrationTest } from "./npx-integration.test.js";
 
+// Run tests if SWI-Prolog is available (uses local tarballs in monorepo)
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
 maybeDescribe("NPX Integration Tests", () => {

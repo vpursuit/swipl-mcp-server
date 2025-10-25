@@ -1,5 +1,4 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { zodToJsonSchema } from "zod-to-json-schema";
 import type {
   Plugin,
   PluginLoaderConfig,
@@ -123,11 +122,13 @@ function registerTool(
   logger: PluginLoaderConfig["logger"] = defaultLogger
 ): void {
   try {
+    // MCP SDK expects Zod schemas natively (ZodRawShape), not JSON schemas
+    // Extract the .shape from the Zod object schema to pass to registerTool
     server.registerTool(
       toolName,
       {
         description: toolDef.description,
-        inputSchema: zodToJsonSchema(toolDef.inputSchema) as any,
+        inputSchema: (toolDef.inputSchema as any).shape,
       },
       toolDef.handler as any
     );
