@@ -6,15 +6,16 @@ import type {
   ResourceDefinition,
   PromptDefinition,
 } from "./types.js";
+import { createMcpLogger, type McpLogger } from "./logger.js";
 
 /**
- * Default console logger
+ * Default console logger (stderr fallback)
  */
 const defaultLogger = {
-  info: (message: string) => console.log(`[mcp-core] ${message}`),
+  info: (message: string) => console.error(`[mcp-core] ${message}`),
   error: (message: string, error?: Error) =>
     console.error(`[mcp-core] ERROR: ${message}`, error),
-  warn: (message: string) => console.warn(`[mcp-core] WARNING: ${message}`),
+  warn: (message: string) => console.error(`[mcp-core] WARNING: ${message}`),
 };
 
 /**

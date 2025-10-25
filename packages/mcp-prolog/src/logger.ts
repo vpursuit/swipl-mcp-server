@@ -1,53 +1,29 @@
+/**
+ * MCP-aware logger for mcp-prolog package
+ * Uses the shared MCP logger infrastructure
+ */
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createMcpLogger, type McpLogger } from "@vpursuit/mcp-core";
 import path from "path";
 
-type LogLevel = "debug" | "info" | "warn" | "error" | "silent";
+// Shared server reference for MCP logging
+export const serverRef: { current: McpServer | null } = { current: null };
 
-const levelOrder: Record<Exclude<LogLevel, "silent">, number> = {
-  debug: 10,
-  info: 20,
-  warn: 30,
-  error: 40,
-};
-
-function resolveLevel(): LogLevel {
-  const fromEnv = (process.env.MCP_LOG_LEVEL || "").toLowerCase();
-  if (fromEnv === "silent") return "silent";
-  if (fromEnv in levelOrder) return fromEnv as LogLevel;
-  // Fallback: enable debug if DEBUG includes 'swipl-mcp-server'
-  const dbg = process.env.DEBUG || "";
-  if (dbg.split(",").some((s) => s.trim().includes("swipl-mcp-server"))) return "debug";
-  return "warn";
-}
-
-let currentLevel: LogLevel = resolveLevel();
-
-function shouldLog(target: Exclude<LogLevel, "silent">): boolean {
-  if (currentLevel === "silent") return false;
-  const cur = levelOrder[currentLevel as Exclude<LogLevel, "silent">] ?? 9999;
-  const tgt = levelOrder[target];
-  return cur <= tgt;
-}
-
-function fmt(level: string, msg: string) {
-  const ts = new Date().toISOString();
-  return `[swipl-mcp-server ${level}] ${ts} ${msg}`;
-}
+// Create MCP-aware logger
+const mcpLogger: McpLogger = createMcpLogger("mcp-prolog", serverRef);
 
 export const logger = {
-  setLevel(lvl: LogLevel) {
-    currentLevel = lvl;
+  debug(msg: string, data?: Record<string, unknown>) {
+    mcpLogger.debug(msg, data);
   },
-  debug(msg: string) {
-    if (shouldLog("debug")) console.error(fmt("debug", msg));
+  info(msg: string, data?: Record<string, unknown>) {
+    mcpLogger.info(msg, data);
   },
-  info(msg: string) {
-    if (shouldLog("info")) console.error(fmt("info", msg));
+  warn(msg: string, data?: Record<string, unknown>) {
+    mcpLogger.warn(msg, data);
   },
-  warn(msg: string) {
-    if (shouldLog("warn")) console.error(fmt("warn", msg));
-  },
-  error(msg: string) {
-    if (shouldLog("error")) console.error(fmt("error", msg));
+  error(msg: string, errorOrData?: Error | Record<string, unknown>) {
+    mcpLogger.error(msg, errorOrData);
   },
   // Helpers to avoid leaking sensitive details
   redactPath(p: string): string {

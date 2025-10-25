@@ -21,3 +21,6 @@ export type {
 
 // Export loader functions
 export { loadPlugin, loadPlugins } from "./loader.js";
+
+// Export logger
+export { createMcpLogger, type McpLogger, type LogLevel } from "./logger.js";

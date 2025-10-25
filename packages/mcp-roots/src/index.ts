@@ -10,6 +10,7 @@ import { RootsManager } from "./roots.js";
 
 export { RootsManager } from "./roots.js";
 export type { RootDirectory, PathValidationResult } from "./roots.js";
+export { serverRef, logger } from "./logger.js";
 
 /**
  * Roots plugin for MCP servers
@@ -62,13 +63,20 @@ export const plugin: Plugin = {
   async onInit(server) {
     const manager = RootsManager.getInstance();
     manager.setServerInstance(server as any);
+
+    // Import and set server reference for logging
+    const { serverRef } = await import("./logger.js");
+    serverRef.current = server as any;
+
     // Perform initial discovery
     await manager.discoverRoots(true);
-    console.log("[mcp-roots] ✓ Roots manager initialized");
+    const { logger } = await import("./logger.js");
+    logger.info("Roots manager initialized");
   },
 
   async onShutdown() {
     // Cleanup if needed
-    console.log("[mcp-roots] Shutting down");
+    const { logger } = await import("./logger.js");
+    logger.info("Shutting down");
   },
 };

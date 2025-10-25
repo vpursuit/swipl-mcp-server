@@ -1,14 +1,23 @@
 /**
- * Simple logger for mcp-roots package
+ * MCP-aware logger for mcp-roots package
+ * Uses the shared MCP logger infrastructure
  */
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createMcpLogger, type McpLogger } from "@vpursuit/mcp-core";
+
+// Shared server reference for MCP logging
+export const serverRef: { current: McpServer | null } = { current: null };
+
+// Create MCP-aware logger
+const mcpLogger: McpLogger = createMcpLogger("mcp-roots", serverRef);
+
 export const logger = {
-  info: (message: string) => console.log(`[mcp-roots] ${message}`),
-  error: (message: string, error?: Error) =>
-    console.error(`[mcp-roots] ERROR: ${message}`, error),
-  warn: (message: string) => console.warn(`[mcp-roots] WARNING: ${message}`),
-  debug: (message: string) => {
-    if (process.env.DEBUG === "mcp-roots" || process.env.DEBUG === "*") {
-      console.log(`[mcp-roots] DEBUG: ${message}`);
-    }
-  },
+  info: (message: string, data?: Record<string, unknown>) =>
+    mcpLogger.info(message, data),
+  error: (message: string, errorOrData?: Error | Record<string, unknown>) =>
+    mcpLogger.error(message, errorOrData),
+  warn: (message: string, data?: Record<string, unknown>) =>
+    mcpLogger.warn(message, data),
+  debug: (message: string, data?: Record<string, unknown>) =>
+    mcpLogger.debug(message, data),
 };

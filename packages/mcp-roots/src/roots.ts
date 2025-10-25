@@ -66,7 +66,9 @@ export class RootsManager {
    * Set the MCP server instance for roots discovery
    */
   setServerInstance(server: any): void {
+    logger.debug("setServerInstance called");
     this.serverInstance = server;
+    logger.debug(`Server instance set, has .server property: ${!!server?.server}`);
     this.registerNotificationHandler();
   }
 
@@ -87,13 +89,18 @@ export class RootsManager {
    * @see Protocol.setNotificationHandler in @modelcontextprotocol/sdk
    */
   private registerNotificationHandler(): void {
+    logger.debug("registerNotificationHandler called");
+    logger.debug(`Already registered: ${this.notificationsRegistered}, Has server: ${!!this.serverInstance}`);
+
     if (this.notificationsRegistered || !this.serverInstance) {
+      logger.debug("Skipping registration - already registered or no server instance");
       return;
     }
 
     try {
       // Check if client advertises roots notification support
       const clientCaps = this.serverInstance.getClientCapabilities?.();
+      logger.debug(`Client capabilities: ${JSON.stringify(clientCaps)}`);
       const supportsNotifications = clientCaps?.roots?.listChanged ?? false;
       logger.info(`Client advertises roots/list_changed support: ${supportsNotifications}`);
 
@@ -104,6 +111,7 @@ export class RootsManager {
       }
 
       const protocol = this.serverInstance.server;
+      logger.debug(`Protocol object type: ${typeof protocol}, has setNotificationHandler: ${typeof protocol.setNotificationHandler}`);
 
       // Defensive check: ensure Protocol supports notification handlers
       if (typeof protocol.setNotificationHandler !== 'function') {
@@ -111,19 +119,24 @@ export class RootsManager {
         return;
       }
 
+      logger.debug("About to call protocol.setNotificationHandler...");
+
       // Register the notification handler (official MCP SDK API)
       // Always register regardless of advertised capabilities for maximum compatibility
       protocol.setNotificationHandler(
         RootsListChangedNotificationSchema,
         async (notification: any) => {
+          logger.info(`🔔 NOTIFICATION RECEIVED! Method: ${notification.method}`);
+          logger.debug(`Notification handler called! Notification object: ${JSON.stringify(notification)}`);
           await this.handleRootsChanged();
         }
       );
 
-      logger.info("Successfully registered roots/list_changed notification handler");
+      logger.info("✅ Successfully registered roots/list_changed notification handler");
+      logger.debug(`Handler registered for method: ${(RootsListChangedNotificationSchema.shape.method as any)._def.value}`);
       this.notificationsRegistered = true;
     } catch (error) {
-      logger.warn(`Could not register notification handler: ${error instanceof Error ? error.message : String(error)}`);
+      logger.error(`❌ Could not register notification handler`, error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -133,14 +146,19 @@ export class RootsManager {
    */
   private async handleRootsChanged(): Promise<void> {
     logger.info("Received roots/list_changed notification - refreshing roots");
+    logger.debug(`Before invalidation - Cache age: ${Date.now() - this.lastDiscoveryTime}ms, Cached roots: ${this.roots.length}`);
+
     this.invalidateCache();
+    logger.debug("Cache invalidated - lastDiscoveryTime reset to 0");
 
     // Small delay to allow client to update its roots list before we query it
     // Some clients may send the notification before their internal state is fully updated
+    logger.debug("Waiting 100ms for client state update...");
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Re-discover roots
-    const rootsDiscovered = await this.discoverRoots();
+    // Re-discover roots with forced refresh to bypass cache
+    logger.debug("Triggering root discovery...");
+    const rootsDiscovered = await this.discoverRoots(true);
 
     // Log the updated roots
     if (rootsDiscovered) {
@@ -149,9 +167,11 @@ export class RootsManager {
       roots.forEach(root => {
         logger.info(`  - ${root.path}${root.name ? ` (${root.name})` : ''}`);
       });
+      logger.debug(`Root URIs: ${roots.map(r => r.uri).join(", ")}`);
     } else {
       const fallbackDir = this.getFallbackDir();
       logger.info(`Roots refresh: No roots from client, using fallback: ${fallbackDir}`);
+      logger.debug("No client roots discovered - using fallback directory");
     }
   }
 
@@ -252,26 +272,39 @@ export class RootsManager {
     }
 
     try {
-      logger.debug("Requesting roots from MCP client...");
+      logger.debug("Requesting roots from MCP client via listRoots()...");
       // McpServer wraps the underlying Server, so we need to access .server.listRoots()
       const response = await this.serverInstance.server.listRoots();
 
-      logger.debug(`listRoots() response: ${JSON.stringify(response)}`);
+      logger.debug(`listRoots() response received - roots count: ${response?.roots?.length ?? "N/A"}`);
+      logger.debug(`Full response: ${JSON.stringify(response)}`);
 
       if (!response || !response.roots || !Array.isArray(response.roots)) {
         logger.info("Client did not provide roots array in response, using fallback directory");
         logger.debug(`Response structure: ${JSON.stringify(response)}`);
+        // Clear cached roots since client provided invalid response
+        this.roots = [];
+        this.lastDiscoveryTime = now;
+        logger.debug("Cleared cached roots due to invalid response");
         return false;
       }
 
       if (response.roots.length === 0) {
         logger.info("Client provided empty roots list, using fallback directory");
+        logger.debug("Empty roots array received from client");
+        // Clear cached roots since client has no roots configured
+        this.roots = [];
+        this.lastDiscoveryTime = now;
+        logger.debug("Cleared cached roots - client has no roots");
         return false;
       }
+
+      logger.debug(`Processing ${response.roots.length} root(s) from client...`);
 
       // Convert URIs to paths
       const discoveredRoots: RootDirectory[] = [];
       for (const root of response.roots) {
+        logger.debug(`Converting root URI: ${root.uri} (name: ${root.name ?? "none"})`);
         const fsPath = this.uriToPath(root.uri);
         if (fsPath) {
           discoveredRoots.push({
@@ -280,6 +313,7 @@ export class RootsManager {
             name: root.name
           });
           logger.info(`Discovered root: ${fsPath}${root.name ? ` (${root.name})` : ''}`);
+          logger.debug(`  → Converted to path: ${fsPath}`);
         } else {
           logger.warn(`Failed to convert root URI to path: ${root.uri}`);
         }
@@ -287,12 +321,19 @@ export class RootsManager {
 
       if (discoveredRoots.length === 0) {
         logger.warn("No valid file:// URIs found in client roots, using fallback directory");
+        logger.debug("All URI conversions failed");
+        // Clear cached roots since no valid URIs could be converted
+        this.roots = [];
+        this.lastDiscoveryTime = now;
+        logger.debug("Cleared cached roots - no valid URIs");
         return false;
       }
 
+      logger.debug(`Setting ${discoveredRoots.length} discovered roots and updating cache`);
       this.roots = discoveredRoots;
       this.lastDiscoveryTime = now;
       logger.info(`Successfully discovered ${this.roots.length} root(s)`);
+      logger.debug(`Cache updated - lastDiscoveryTime: ${this.lastDiscoveryTime}`);
       return true;
 
     } catch (error) {

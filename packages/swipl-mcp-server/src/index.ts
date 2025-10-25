@@ -59,13 +59,16 @@ import { resolvePackageVersion } from "./meta.js";
  * Start the MCP server with all plugins loaded
  */
 async function main(): Promise<void> {
-  // Create server instance
+  // Create server instance with logging capability
   const server = new McpServer({
     name: "swipl-mcp-server",
     version: resolvePackageVersion(),
+    capabilities: {
+      logging: {},
+    },
   });
 
-  // Load all plugins
+  // Load all plugins (they will set their own serverRefs in onInit)
   await loadPlugins(server, [rootsPlugin, prologPlugin], {
     continueOnError: false,
   });

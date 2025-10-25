@@ -9,12 +9,14 @@ import { tools } from "./tools.js";
 import { resources } from "./resources.js";
 import { prologPrompts } from "./prompts.js";
 import { prologInterface } from "./tools.js";
+import { serverRef, logger } from "./logger.js";
 
 // Re-export tools, resources, and prompts for direct access
 export { tools, resources, prologPrompts };
 export { prologInterface, toolHandlers, getCapabilitiesSummary } from "./tools.js";
 export { PrologInterface } from "./PrologInterface.js";
 export { zodSchemas, jsonSchemas } from "./schemas.js";
+export { serverRef, logger } from "./logger.js";
 
 /**
  * Convert internal prompt format to Plugin PromptDefinitions format
@@ -95,27 +97,30 @@ export const plugin: Plugin = {
   prompts: convertPromptsToDefinitions(),
 
   async onInit(server) {
-    console.log("[mcp-prolog] Initializing Prolog interface...");
+    // Set server reference for MCP-aware logging
+    serverRef.current = server;
+
+    logger.info("Initializing Prolog interface...");
 
     // Warm-up Prolog process non-blocking to avoid first-call races
     try {
       void prologInterface.start();
     } catch (error) {
-      console.warn("[mcp-prolog] Warning: Could not pre-start Prolog process:", error);
+      logger.warn("Could not pre-start Prolog process", { error: error instanceof Error ? error.message : String(error) });
     }
 
-    console.log("[mcp-prolog] ✓ Plugin initialized");
+    logger.info("Plugin initialized");
   },
 
   async onShutdown() {
-    console.log("[mcp-prolog] Shutting down Prolog interface...");
+    logger.info("Shutting down Prolog interface...");
 
     try {
       prologInterface.stop();
     } catch (error) {
-      console.warn("[mcp-prolog] Warning during shutdown:", error);
+      logger.warn("Warning during shutdown", { error: error instanceof Error ? error.message : String(error) });
     }
 
-    console.log("[mcp-prolog] ✓ Plugin shutdown complete");
+    logger.info("Plugin shutdown complete");
   },
 };

@@ -24,9 +24,8 @@ describe("Performance Benchmarks", () => {
     const startTime = Date.now();
 
     for (let i = 0; i < 100; i++) {
-      await prologInterface.sendCommand(
-        `member(X, [1,2,3]), query_next(), !.`,
-        30000
+      await prologInterface.query(
+        `member(X, [1,2,3])`
       );
     }
 
@@ -39,30 +38,25 @@ describe("Performance Benchmarks", () => {
 
   it("should handle complex queries efficiently", async () => {
     // Setup: Create facts for complex queries
-    await prologInterface.sendCommand(
-      `assertz(parent(john, mary)).`,
-      5000
+    await prologInterface.query(
+      `assertz(parent(john, mary))`
     );
-    await prologInterface.sendCommand(
-      `assertz(parent(john, tom)).`,
-      5000
+    await prologInterface.query(
+      `assertz(parent(john, tom))`
     );
-    await prologInterface.sendCommand(
-      `assertz(parent(mary, ann)).`,
-      5000
+    await prologInterface.query(
+      `assertz(parent(mary, ann))`
     );
-    await prologInterface.sendCommand(
-      `assertz(grandparent(X, Z) :- parent(X, Y), parent(Y, Z)).`,
-      5000
+    await prologInterface.query(
+      `assertz((grandparent(X, Z) :- parent(X, Y), parent(Y, Z)))`
     );
 
     const startTime = Date.now();
 
     // Run 50 complex queries
     for (let i = 0; i < 50; i++) {
-      await prologInterface.sendCommand(
-        `grandparent(john, X), query_next(), !.`,
-        10000
+      await prologInterface.query(
+        `grandparent(john, X)`
       );
     }
 
@@ -72,8 +66,8 @@ describe("Performance Benchmarks", () => {
     console.log(`\n  Performance: 50 complex queries in ${duration}ms (${qps.toFixed(2)} queries/sec)`);
 
     // Cleanup
-    await prologInterface.sendCommand(`retractall(parent(_, _)).`, 5000);
-    await prologInterface.sendCommand(`retractall(grandparent(_, _)).`, 5000);
+    await prologInterface.query(`retractall(parent(_, _))`);
+    await prologInterface.query(`retractall(grandparent(_, _))`);
 
     expect(duration).toBeLessThan(8000);
   }, 30000);
@@ -86,9 +80,8 @@ describe("Performance Benchmarks", () => {
 
     for (const size of sizes) {
       const list = Array.from({ length: size }, (_, i) => i).join(",");
-      await prologInterface.sendCommand(
-        `length([${list}], X), query_next(), !.`,
-        10000
+      await prologInterface.query(
+        `length([${list}], X)`
       );
     }
 
@@ -101,9 +94,8 @@ describe("Performance Benchmarks", () => {
   it("should maintain performance with knowledge base growth", async () => {
     // Add 1000 facts
     for (let i = 0; i < 1000; i++) {
-      await prologInterface.sendCommand(
-        `assertz(perf_fact(${i}, data_${i})).`,
-        5000
+      await prologInterface.query(
+        `assertz(perf_fact(${i}, data_${i}))`
       );
     }
 
@@ -111,9 +103,8 @@ describe("Performance Benchmarks", () => {
 
     // Query the large knowledge base 50 times
     for (let i = 0; i < 50; i++) {
-      await prologInterface.sendCommand(
-        `perf_fact(${i * 20}, X), query_next(), !.`,
-        5000
+      await prologInterface.query(
+        `perf_fact(${i * 20}, X)`
       );
     }
 
@@ -123,7 +114,7 @@ describe("Performance Benchmarks", () => {
     console.log(`\n  Performance: 50 queries with 1000 facts in ${duration}ms (${qps.toFixed(2)} queries/sec)`);
 
     // Cleanup
-    await prologInterface.sendCommand(`retractall(perf_fact(_, _)).`, 5000);
+    await prologInterface.query(`retractall(perf_fact(_, _))`);
 
     expect(duration).toBeLessThan(10000);
   }, 60000);
@@ -131,27 +122,28 @@ describe("Performance Benchmarks", () => {
   it("should efficiently parse large responses", async () => {
     // Create a large structure
     const largeList = Array.from({ length: 5000 }, (_, i) => i).join(",");
-    await prologInterface.sendCommand(
-      `assertz(large_response([${largeList}])).`,
-      10000
+    const assertResult = await prologInterface.query(
+      `assertz(large_response([${largeList}]))`
     );
+
+    // Verify assertion succeeded
+    expect(assertResult).toContain("ok");
 
     const startTime = Date.now();
 
     // Query the large structure 20 times
     for (let i = 0; i < 20; i++) {
-      const result = await prologInterface.sendCommand(
-        `large_response(X), query_next(), !.`,
-        10000
+      const result = await prologInterface.query(
+        `large_response(X)`
       );
-      expect(result).toContain("@@SOLUTION_START@@");
+      expect(result).toContain("solution(");
     }
 
     const duration = Date.now() - startTime;
     console.log(`\n  Performance: 20 large responses in ${duration}ms`);
 
     // Cleanup
-    await prologInterface.sendCommand(`retractall(large_response(_)).`, 5000);
+    await prologInterface.query(`retractall(large_response(_))`);
 
     expect(duration).toBeLessThan(8000);
   }, 30000);
@@ -160,13 +152,11 @@ describe("Performance Benchmarks", () => {
     const startTime = Date.now();
 
     for (let i = 0; i < 200; i++) {
-      await prologInterface.sendCommand(
-        `assertz(temp_fact(${i})).`,
-        5000
+      await prologInterface.query(
+        `assertz(temp_fact(${i}))`
       );
-      await prologInterface.sendCommand(
-        `retract(temp_fact(${i})).`,
-        5000
+      await prologInterface.query(
+        `retract(temp_fact(${i}))`
       );
     }
 
@@ -181,9 +171,8 @@ describe("Performance Benchmarks", () => {
   it("should efficiently handle findall operations", async () => {
     // Setup: Create 500 facts
     for (let i = 0; i < 500; i++) {
-      await prologInterface.sendCommand(
-        `assertz(findall_fact(${i}, value_${i})).`,
-        5000
+      await prologInterface.query(
+        `assertz(findall_fact(${i}, value_${i}))`
       );
     }
 
@@ -191,9 +180,8 @@ describe("Performance Benchmarks", () => {
 
     // Run 30 findall operations
     for (let i = 0; i < 30; i++) {
-      await prologInterface.sendCommand(
-        `findall(X, findall_fact(X, _), List), length(List, N), query_next(), !.`,
-        10000
+      await prologInterface.query(
+        `findall(X, findall_fact(X, _), List), length(List, N)`
       );
     }
 
@@ -203,7 +191,7 @@ describe("Performance Benchmarks", () => {
     console.log(`\n  Performance: 30 findall operations on 500 facts in ${duration}ms (${ops.toFixed(2)} ops/sec)`);
 
     // Cleanup
-    await prologInterface.sendCommand(`retractall(findall_fact(_, _)).`, 5000);
+    await prologInterface.query(`retractall(findall_fact(_, _))`);
 
     expect(duration).toBeLessThan(10000);
   }, 30000);
@@ -211,20 +199,16 @@ describe("Performance Benchmarks", () => {
   it("should benchmark query session lifecycle", async () => {
     const startTime = Date.now();
 
+    // Run query sessions sequentially (session API requires sequential execution)
     for (let i = 0; i < 100; i++) {
-      const queryId = `bench_query_${i}`;
+      // Start query session
+      await prologInterface.startQuery(`member(X, [a,b,c])`);
 
-      // Start
-      await prologInterface.sendCommand(
-        `query_start(member(X, [a,b,c]), ${queryId}).`,
-        5000
-      );
+      // Get first solution
+      await prologInterface.nextSolution();
 
-      // Next
-      await prologInterface.sendCommand(`query_next(${queryId}).`, 5000);
-
-      // Close
-      await prologInterface.sendCommand(`query_close(${queryId}).`, 5000);
+      // Close query session
+      await prologInterface.closeQuery();
     }
 
     const duration = Date.now() - startTime;
@@ -238,22 +222,18 @@ describe("Performance Benchmarks", () => {
   it("should benchmark engine-mode query performance", async () => {
     const startTime = Date.now();
 
+    // Run engine sessions sequentially (session API requires sequential execution)
     for (let i = 0; i < 50; i++) {
-      const queryId = `engine_bench_${i}`;
-
       // Start engine query
-      await prologInterface.sendCommand(
-        `query_startEngine(between(1, 10, X), ${queryId}).`,
-        5000
-      );
+      await prologInterface.startEngine(`between(1, 10, X)`);
 
-      // Get solutions
+      // Get 5 solutions
       for (let j = 0; j < 5; j++) {
-        await prologInterface.sendCommand(`query_next(${queryId}).`, 5000);
+        await prologInterface.nextEngine();
       }
 
-      // Close
-      await prologInterface.sendCommand(`query_close(${queryId}).`, 5000);
+      // Close engine
+      await prologInterface.closeEngine();
     }
 
     const duration = Date.now() - startTime;
@@ -273,21 +253,18 @@ describe("Performance Benchmarks", () => {
 
       if (operation === 0) {
         // Query
-        await prologInterface.sendCommand(
-          `member(X, [1,2,3]), query_next(), !.`,
-          5000
+        await prologInterface.query(
+          `member(X, [1,2,3])`
         );
       } else if (operation === 1) {
         // Assert
-        await prologInterface.sendCommand(
-          `assertz(mixed_fact(${i})).`,
-          5000
+        await prologInterface.query(
+          `assertz(mixed_fact(${i}))`
         );
       } else {
         // Retract
-        await prologInterface.sendCommand(
-          `retractall(mixed_fact(${i - 1})).`,
-          5000
+        await prologInterface.query(
+          `retractall(mixed_fact(${i - 1}))`
         ).catch(() => {}); // Ignore if fact doesn't exist
       }
     }
@@ -298,7 +275,7 @@ describe("Performance Benchmarks", () => {
     console.log(`\n  Performance: 100 mixed operations in ${duration}ms (${ops.toFixed(2)} ops/sec)`);
 
     // Cleanup
-    await prologInterface.sendCommand(`retractall(mixed_fact(_)).`, 5000);
+    await prologInterface.query(`retractall(mixed_fact(_))`);
 
     expect(duration).toBeLessThan(12000);
   }, 30000);
