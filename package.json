@@ -1,56 +1,29 @@
 {
-  "name": "@vpursuit/swipl-mcp-server",
-  "version": "2.0.6",
+  "name": "@vpursuit/workspace",
+  "version": "1.0.0",
+  "private": true,
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
+    "build": "npm run build --workspaces --if-present",
     "test": "vitest run",
     "test:unit": "vitest run test/unit",
     "test:integration": "vitest run test/integration",
-    "test:integration:npx": "vitest run test/integration/npx.test.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:npx": "node test/npx-integration.test.js",
-    "test:all": "npm run test && npm run test:npx",
-    "build": "tsc && chmod 755 build/index.js",
-    "build:package": "node scripts/build-package.js",
-    "start": "node build/index.js",
-    "server": "npm run build && npm start",
-    "inspect": "npx @modelcontextprotocol/inspector node build/index.js",
-    "lint": "eslint . --ext .ts,.js",
-    "lint:fix": "eslint . --ext .ts,.js --fix",
+    "lint": "npm run lint --workspaces --if-present",
+    "lint:fix": "npm run lint:fix --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,js,json,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,js,json,yml,yaml}\"",
-    "version:patch": "npm version patch",
-    "version:minor": "npm version minor",
-    "version:major": "npm version major",
-    "version:prerelease": "npm version prerelease",
-    "release:patch": "npm run version:patch && git push origin main --follow-tags",
-    "release:minor": "npm run version:minor && git push origin main --follow-tags",
-    "release:major": "npm run version:major && git push origin main --follow-tags",
-    "release:prerelease": "npm run version:prerelease && git push origin main --follow-tags",
+    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
     "security:audit": "npm audit --audit-level=moderate",
     "security:check": "npm audit --audit-level=high --json | jq -r '.vulnerabilities | length' | xargs -I {} test {} -eq 0",
     "security:update": "npm update && npm audit fix"
   },
-  "keywords": [
-    "mcp",
-    "prolog",
-    "swi-prolog",
-    "swipl",
-    "model-context-protocol",
-    "logic-programming",
-    "ai",
-    "llm",
-    "server",
-    "tools",
-    "knowledge-base",
-    "reasoning"
-  ],
   "author": "Peter Trebing",
   "license": "BSD-3-Clause",
-  "description": "SWI-Prolog MCP Server with dual query modes and security layer",
-  "logo": "images/logo.svg",
-  "icon": "images/logo.svg",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vpursuit/swipl-mcp-server.git"
@@ -58,10 +31,6 @@
   "homepage": "https://github.com/vpursuit/swipl-mcp-server#readme",
   "bugs": {
     "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.18.0",
-    "zod": "^3.25.76"
   },
   "engines": {
     "node": ">=20.0.0"
