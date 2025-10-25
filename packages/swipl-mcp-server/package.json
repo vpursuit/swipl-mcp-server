@@ -48,6 +48,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:npx": "vitest run --project=swipl-mcp-server -t 'NPX Integration'",
+    "server": "npm run build && node build/index.js",
+    "inspect": "npx @modelcontextprotocol/inspector node build/index.js",
     "prepublishOnly": "npm run build && npm run test:npx"
   },
   "dependencies": {

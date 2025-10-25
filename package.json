@@ -21,6 +21,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "server": "npm run server --workspace=@vpursuit/swipl-mcp-server",
+    "inspect": "npm run inspect --workspace=@vpursuit/swipl-mcp-server",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,js,json,yml,yaml}\"",
