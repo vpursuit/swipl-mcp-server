@@ -289,10 +289,12 @@ export const tools: ToolDefinitions = {
         ],
         available_predicates: [
           "Available Predicates:",
-          "- All standard SWI-Prolog predicates are available",
-          "- CLP(FD) library(clpfd) is NOT available (security restriction)",
-          "- Alternatives: between/3 for domains, is/2 for arithmetic, permutation/2 for uniqueness",
-          "- Use generate-and-test pattern instead of constraint propagation",
+          "- All standard SWI-Prolog built-in predicates are available",
+          "- Safe libraries can be loaded via :- use_module(library(...)) directives",
+          "- library(clpfd) NOW AVAILABLE: Constraint Logic Programming over Finite Domains",
+          "- Other safe libraries: lists, apply, aggregate, assoc, pairs, ordsets, clpb, and more",
+          "- See SECURITY.md for complete list of allowed libraries",
+          "- Load libraries in Prolog files before loading into knowledge base",
         ],
         troubleshooting: [
           "Troubleshooting:",

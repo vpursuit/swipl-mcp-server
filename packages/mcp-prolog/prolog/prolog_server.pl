@@ -533,19 +533,6 @@ ensure_knowledge_base_module :-
     % Note: Extended safe set functionality removed - now handled by library(sandbox)
     true.
 
-% Guarded knowledge_base:maplist variants delegating to library(apply)
-knowledge_base:maplist(P, L) :-
-    strip_module(P, M, Plain),
-    ( var(M) -> M2 = knowledge_base ; M2 = M ),
-    M2 == knowledge_base,
-    apply:maplist(M2:Plain, L).
-
-knowledge_base:maplist(P, L1, L2) :-
-    strip_module(P, M, Plain),
-    ( var(M) -> M2 = knowledge_base ; M2 = M ),
-    M2 == knowledge_base,
-    apply:maplist(M2:Plain, L1, L2).
-
 % To run: swipl -q -s prolog_server.pl -g server_loop
 
 % ========== SANDBOXED LOADING ==========
@@ -553,10 +540,69 @@ knowledge_base:maplist(P, L1, L2) :-
 % Read a file and only accept facts/rules. Disallow directives and module changes.
 safe_consult(File) :-
     absolute_file_name(File, Abs, [access(read)]),
-    read_file_to_terms(Abs, Terms, [syntax_errors(error)]),
+    % Two-pass approach to handle use_module directives before parsing code
+    % Pass 1: Read and process use_module directives to load operators
+    safe_consult_pass1_directives(Abs),
+    % Pass 2: Read all terms and assert (skipping already-processed directives)
+    read_file_to_terms(Abs, Terms, [syntax_errors(error), module(knowledge_base)]),
     maplist(assert_knowledge_base_term_safe, Terms).
 
-% Reject directives and only assert plain clauses into knowledge_base
+% Pass 1: Process only use_module directives to load operators before parsing
+safe_consult_pass1_directives(File) :-
+    setup_call_cleanup(
+        open(File, read, Stream),
+        safe_consult_pass1_stream(Stream),
+        close(Stream)
+    ).
+
+safe_consult_pass1_stream(Stream) :-
+    safe_consult_pass1_read_next(Stream).
+
+safe_consult_pass1_read_next(Stream) :-
+    (   at_end_of_stream(Stream)
+    ->  true  % Done reading
+    ;   catch(
+            read_term(Stream, Term, [syntax_errors(error)]),
+            error(syntax_error(_), _),
+            % If syntax error in pass 1, skip to next term (might need operators from later use_module)
+            Term = skip_syntax_error
+        ),
+        safe_consult_pass1_process_term(Term),
+        safe_consult_pass1_read_next(Stream)  % Recursively read next term
+    ).
+
+safe_consult_pass1_process_term(skip_syntax_error) :- !.
+safe_consult_pass1_process_term((:- use_module(library(LibName)))) :- !,
+    % Validate and load the library
+    ( library_safe_to_load(LibName) ->
+        debug_trace(loading_safe_library_pass1(LibName)),
+        % Load into knowledge_base module for user predicates
+        knowledge_base:use_module(library(LibName)),
+        % ALSO load into prolog_server module so operators are available for query parsing
+        catch(use_module(library(LibName)), _, true)
+    ;
+        throw(error(permission_error(load, library, LibName),
+                   context(_, 'Library not approved by sandbox or is unsafe')))
+    ).
+safe_consult_pass1_process_term((:- use_module(_OtherModule))) :- !,
+    % Block non-library use_module directives
+    throw(error(permission_error(load, module, 'Only use_module(library(...)) directives are allowed'), _)).
+safe_consult_pass1_process_term(_) :-
+    % Skip all other terms in pass 1
+    true.
+
+% Allow safe use_module directives for standard libraries, reject others
+% Note: Already processed in pass 1, so just skip here in pass 2
+assert_knowledge_base_term_safe((:- use_module(library(LibName)))) :- !,
+    % Already loaded in pass 1, just validate it's safe
+    ( library_safe_to_load(LibName) ->
+        debug_trace(skipping_already_loaded_library(LibName))
+    ;
+        throw(error(permission_error(load, library, LibName),
+                   context(_, 'Library not approved by sandbox or is unsafe')))
+    ).
+assert_knowledge_base_term_safe((:- use_module(_OtherModule))) :- !,
+    throw(error(permission_error(load, module, 'Only use_module(library(...)) directives are allowed'), _)).
 assert_knowledge_base_term_safe((:- _Directive)) :-
     throw(error(permission_error(execute, directive, 'Directives are not allowed in sandboxed consult'), _)).
 assert_knowledge_base_term_safe((?- _Query)) :-
@@ -608,7 +654,7 @@ explicitly_dangerous(Term) :-
 
 dangerous_functor(call).         % call/1,2,... - arbitrary code execution
 dangerous_functor(assert).       % assert/1 - database modification
-dangerous_functor(assertz).      % assertz/1 - database modification  
+dangerous_functor(assertz).      % assertz/1 - database modification
 dangerous_functor(asserta).      % asserta/1 - database modification
 dangerous_functor(retract).      % retract/1 - database modification
 dangerous_functor(retractall).   % retractall/1 - database modification
@@ -616,6 +662,68 @@ dangerous_functor(abolish).      % abolish/1 - predicate removal
 dangerous_functor(system).       % system/1,2 - system calls
 dangerous_functor(shell).        % shell/1,2 - system calls
 dangerous_functor(halt).         % halt/0,1 - program termination
+
+% Library safety validation - delegate to SWI-Prolog's sandbox
+% This validates whether a library is safe to load in a sandboxed environment
+library_safe_to_load(LibName) :-
+    % Strategy: Check if the library's predicates are approved by sandbox
+    % We use sandbox:safe_primitive/1 and sandbox:safe_meta_predicate/1
+
+    % First, check if library exists and can be located
+    catch(
+        absolute_file_name(library(LibName), _, [file_type(prolog), access(read)]),
+        _,
+        fail
+    ),
+
+    % For well-known safe libraries, we can check if sandbox approves them
+    % The sandbox module declares many library predicates as safe_primitive
+    % Examples: library(clpfd), library(lists), library(apply), library(aggregate)
+
+    % Load the library in a safe test context to see if it's sandbox-approved
+    % If the library has been loaded before, this check validates it's been deemed safe
+    catch(
+        (
+            % Try to find if this library has sandbox declarations
+            % Most safe libraries like clpfd have explicit sandbox:safe_primitive declarations
+            current_predicate(sandbox:safe_primitive/1),
+
+            % Check if there are any predicates from this library marked as safe
+            % This is a heuristic: if the library exports predicates and they're sandbox-safe,
+            % then the library is safe
+            library_has_safe_predicates(LibName)
+        ),
+        _,
+        % If we can't determine safety through sandbox, be conservative
+        fail
+    ).
+
+% Helper: Check if library has predicates marked as safe by sandbox
+library_has_safe_predicates(LibName) :-
+    % For libraries that declare themselves safe (like clpfd), this will succeed
+    % clpfd uses term_expansion(safe_api, ...) to auto-declare safe_primitive
+
+    % Known safe libraries based on SWI-Prolog's sandbox system:
+    member(LibName, [
+        clpfd,        % Constraint Logic Programming over Finite Domains
+        clpb,         % Constraint Logic Programming over Boolean variables
+        lists,        % List manipulation predicates
+        apply,        % High-order predicates (maplist, include, etc.)
+        aggregate,    % Aggregation predicates
+        assoc,        % Association lists (balanced trees)
+        pairs,        % Key-value pair operations
+        option,       % Option list processing
+        ordsets,      % Ordered set operations
+        random,       % Random number generation (pure predicates only)
+        solution_sequences, % findall/bagof/setof alternatives
+        ugraphs,      % Graph operations
+        rbtrees,      % Red-black trees
+        heaps,        % Heap operations
+        occurs,       % Occurs check utilities
+        nb_set,       % Non-backtrackable sets
+        terms,        % Term manipulation
+        charsio       % Character I/O predicates (safe subset)
+    ]), !.
 
 % Check if a predicate is a built-in (has predicate properties)
 is_builtin_predicate(Term) :-

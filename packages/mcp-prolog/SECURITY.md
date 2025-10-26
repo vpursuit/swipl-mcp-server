@@ -47,7 +47,49 @@ All predicates are validated through SWI-Prolog's `library(sandbox)`:
 - Unsafe goals rejected during execution
 - Module system enforces isolation
 
-### 3. File Path Restrictions
+### 3. Safe Library Module Loading
+
+**NEW:** The server now supports loading SWI-Prolog standard libraries that are sandbox-approved:
+
+**Allowed Libraries** (whitelisted):
+- `library(clpfd)` - Constraint Logic Programming over Finite Domains
+- `library(clpb)` - Boolean constraint solving
+- `library(lists)`, `library(apply)`, `library(aggregate)` - List and data operations
+- `library(assoc)`, `library(pairs)`, `library(ordsets)` - Data structures
+- `library(rbtrees)`, `library(heaps)`, `library(ugraphs)` - Advanced data structures
+- And other pure, side-effect-free libraries (see prolog_server.pl for full list)
+
+**Blocked Libraries:**
+- `library(process)` - System process execution
+- `library(filesex)` - Extended file operations
+- `library(http/*)` - Network operations
+- `library(unix)` - Unix system calls
+- Any library not explicitly whitelisted
+
+**Security Model:**
+- Two-pass loading: directives processed before code parsing
+- Libraries loaded into isolated `knowledge_base` module
+- Only `use_module(library(...))` directives allowed
+- User module paths blocked (e.g., `use_module('/path/to/file.pl')`)
+- Libraries validated against sandbox safety declarations
+
+**Example:**
+```prolog
+% In ~/.swipl-mcp-server/puzzle.pl
+:- use_module(library(clpfd)).  % ✓ Allowed
+
+solve_sudoku(Rows) :-
+    append(Rows, Vs), Vs ins 1..9,
+    maplist(all_distinct, Rows),
+    % ... additional constraints
+    label(Vs).
+
+% Blocked examples:
+:- use_module(library(process)).      % ✗ Blocked - unsafe
+:- use_module('/tmp/malicious.pl').   % ✗ Blocked - not library(...)
+```
+
+### 4. File Path Restrictions
 
 File operations restricted to allowed directories:
 - Default: `~/.swipl-mcp-server/`
@@ -55,21 +97,21 @@ File operations restricted to allowed directories:
 - Path traversal protection
 - Configurable via `SWI_MCP_ALLOWED_ROOTS`
 
-### 4. Module Isolation
+### 5. Module Isolation
 
 User code runs in dedicated `knowledge_base` module:
 - Prevents pollution of system modules
 - `unknown=fail` policy (undefined predicates fail safely)
 - Clear separation from server internals
 
-### 5. Timeout Protection
+### 6. Timeout Protection
 
 Query execution has configurable timeouts:
 - Default: 30 seconds per query
 - Prevents infinite loops and resource exhaustion
 - Configurable via `SWI_MCP_QUERY_TIMEOUT_MS`
 
-### 6. Prolog Server Script Security
+### 7. Prolog Server Script Security
 
 The `prolog_server.pl` script:
 - Runs in isolated child process

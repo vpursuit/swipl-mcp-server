@@ -662,7 +662,15 @@ export class PrologInterface {
     const absolutePath = path.resolve(filename);
     // Escape backslashes first (Windows paths) then single quotes for Prolog atom
     const escaped = absolutePath.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-    return this.query(`consult('${escaped}')`);
+    const result = await this.query(`consult('${escaped}')`);
+
+    // Check if result is an error and throw
+    if (typeof result === "string" && result.startsWith(TERM_ERROR)) {
+      const parsedError = PrologInterface.parsePrologError(result);
+      throw new Error(PrologInterface.formatPrologError(parsedError));
+    }
+
+    return result;
   }
 
   /**
