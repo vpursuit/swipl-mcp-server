@@ -27,7 +27,7 @@ import {
 } from "./schemas.js";
 import { resolvePackageVersion, findNearestFile } from "./meta.js";
 import { validateStringInput } from "./utils/validation.js";
-import { createErrorResponse, createSuccessResponse } from "./utils/response.js";
+import { createErrorResponse, createSuccessResponse, formatClauseResults, type ClauseOperationResult } from "./utils/response.js";
 
 // Security: Only allow files within the designated directory
 const ALLOWED_DIR = path.join(os.homedir(), '.swipl-mcp-server');
@@ -644,37 +644,36 @@ export const tools: ToolDefinitions = {
         const { outcomes } = await knowledgeBaseAssertClauses([fact]);
         const [{ clause, result, ok, threw }] = outcomes;
         const processingTimeMs = Date.now() - startTime;
-        if (threw) {
-          const details = `✗ ${clause}: ${result}`;
-          const summary = `Asserted 0/1 clauses successfully`;
-          const text = `Error: ${result}\n\nDetails:\n${details}\n${summary}\nProcessing time: ${processingTimeMs}ms`;
-          return {
-            content: [{ type: "text", text }],
-            structuredContent: {
-              error: result,
-              success: 0,
-              total: 1,
-              details: [details],
-              processing_time_ms: processingTimeMs,
-            },
-            isError: true,
-          };
-        }
+
+        // Convert to ClauseOperationResult format
+        const clauseResult: ClauseOperationResult = {
+          clause,
+          status: (ok && !threw) ? "success" : "error",
+          message: result,
+        };
+
+        const formatted = formatClauseResults("assert", [clauseResult], processingTimeMs);
 
         return {
-          content: [{ type: "text", text: `Asserted fact: ${clause}\nResult: ${result}\nProcessing time: ${processingTimeMs}ms` }],
-          structuredContent: { fact: clause, result, processing_time_ms: processingTimeMs },
-          isError: !ok,
+          content: [{ type: "text", text: formatted.text }],
+          structuredContent: formatted.structured,
+          isError: !ok || threw,
         };
       } catch (error) {
         const processingTimeMs = Date.now() - startTime;
         const errMsg = error instanceof Error ? error.message : String(error);
-        const details = `✗ ${fact}: ${errMsg}`;
-        const summary = `Asserted 0/1 clauses successfully`;
-        const text = `Error: ${errMsg}\n\nDetails:\n${details}\n${summary}\nProcessing time: ${processingTimeMs}ms`;
+
+        const clauseResult: ClauseOperationResult = {
+          clause: fact,
+          status: "error",
+          message: errMsg,
+        };
+
+        const formatted = formatClauseResults("assert", [clauseResult], processingTimeMs);
+
         return {
-          content: [{ type: "text", text }],
-          structuredContent: { error: errMsg, success: 0, total: 1, details: [details], processing_time_ms: processingTimeMs },
+          content: [{ type: "text", text: formatted.text }],
+          structuredContent: formatted.structured,
           isError: true,
         };
       }
@@ -714,15 +713,21 @@ export const tools: ToolDefinitions = {
       }
 
       try {
-        const { outcomes, successCount, errorCount } = await knowledgeBaseAssertClauses(facts, { ignoreStartErrors: true });
-        const results = outcomes.map(({ clause, result, ok }) => `${ok ? "✓" : "✗"} ${clause}: ${result}`);
+        const { outcomes, errorCount } = await knowledgeBaseAssertClauses(facts, { ignoreStartErrors: true });
         const processingTimeMs = Date.now() - startTime;
-        const summary = `Asserted ${successCount}/${facts.length} clauses successfully`;
-        const content = `${summary}\n\nDetails:\n${results.join("\n")}\nProcessing time: ${processingTimeMs}ms`;
+
+        // Convert outcomes to ClauseOperationResult format
+        const clauseResults: ClauseOperationResult[] = outcomes.map(({ clause, result, ok, threw }) => ({
+          clause,
+          status: (ok && !threw) ? "success" : "error",
+          message: result,
+        }));
+
+        const formatted = formatClauseResults("assert", clauseResults, processingTimeMs);
 
         return {
-          content: [{ type: "text", text: content }],
-          structuredContent: { success: successCount, total: facts.length, details: results, processing_time_ms: processingTimeMs },
+          content: [{ type: "text", text: formatted.text }],
+          structuredContent: formatted.structured,
           isError: errorCount > 0,
         };
       } catch (error) {
@@ -768,20 +773,35 @@ export const tools: ToolDefinitions = {
         const single = fact.trim().replace(/\.$/, "");
         const result = await prologInterface.query(`retract(${single})`);
         const processingTimeMs = Date.now() - startTime;
+
+        const clauseResult: ClauseOperationResult = {
+          clause: single,
+          status: result === "ok" ? "success" : "error",
+          message: result,
+        };
+
+        const formatted = formatClauseResults("retract", [clauseResult], processingTimeMs);
+
         return {
-          content: [{ type: "text", text: `Retracted fact: ${single}\nResult: ${result}\nProcessing time: ${processingTimeMs}ms` }],
-          structuredContent: { fact: single, result, processing_time_ms: processingTimeMs },
+          content: [{ type: "text", text: formatted.text }],
+          structuredContent: formatted.structured,
           isError: result !== "ok",
         };
       } catch (error) {
         const processingTimeMs = Date.now() - startTime;
         const errMsg = error instanceof Error ? error.message : String(error);
-        const details = `✗ ${fact}: ${errMsg}`;
-        const summary = `Retracted 0/1 clauses successfully`;
-        const text = `Error: ${errMsg}\n\nDetails:\n${details}\n${summary}\nProcessing time: ${processingTimeMs}ms`;
+
+        const clauseResult: ClauseOperationResult = {
+          clause: fact,
+          status: "error",
+          message: errMsg,
+        };
+
+        const formatted = formatClauseResults("retract", [clauseResult], processingTimeMs);
+
         return {
-          content: [{ type: "text", text }],
-          structuredContent: { error: errMsg, success: 0, total: 1, details: [details], processing_time_ms: processingTimeMs },
+          content: [{ type: "text", text: formatted.text }],
+          structuredContent: formatted.structured,
           isError: true,
         };
       }
@@ -823,8 +843,7 @@ export const tools: ToolDefinitions = {
       try { await prologInterface.start(); } catch { }
 
       try {
-        const results: string[] = [];
-        let successCount = 0;
+        const clauseResults: ClauseOperationResult[] = [];
         let errorCount = 0;
 
         for (const singleRaw of facts) {
@@ -832,27 +851,29 @@ export const tools: ToolDefinitions = {
           try {
             const result = await prologInterface.query(`retract(${singleFact})`);
             const isOk = result === "ok";
-            if (isOk) {
-              results.push(`✓ ${singleFact}: ${result}`);
-              successCount++;
-            } else {
-              results.push(`✗ ${singleFact}: ${result}`);
-              errorCount++;
-            }
+            clauseResults.push({
+              clause: singleFact,
+              status: isOk ? "success" : "error",
+              message: result,
+            });
+            if (!isOk) errorCount++;
           } catch (error) {
             const errMsg = error instanceof Error ? error.message : String(error);
-            results.push(`✗ ${singleFact}: ${errMsg}`);
+            clauseResults.push({
+              clause: singleFact,
+              status: "error",
+              message: errMsg,
+            });
             errorCount++;
           }
         }
 
         const processingTimeMs = Date.now() - startTime;
-        const summary = `Retracted ${successCount}/${facts.length} clauses successfully`;
-        const content = `${summary}\n\nDetails:\n${results.join("\n")}\nProcessing time: ${processingTimeMs}ms`;
+        const formatted = formatClauseResults("retract", clauseResults, processingTimeMs);
 
         return {
-          content: [{ type: "text", text: content }],
-          structuredContent: { success: successCount, total: facts.length, details: results, processing_time_ms: processingTimeMs },
+          content: [{ type: "text", text: formatted.text }],
+          structuredContent: formatted.structured,
           isError: errorCount > 0,
         };
       } catch (error) {

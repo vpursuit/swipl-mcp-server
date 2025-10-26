@@ -118,7 +118,7 @@ class NPXIntegrationTest {
           if (responseText.includes('Prolog server script not found')) {
             throw new Error('prolog_server.pl not found - path resolution failed');
           }
-          if (!responseText.includes('Result: ok') && !responseText.includes('Asserted 1/1 clauses successfully')) {
+          if (!responseText.includes('Result: ok') && !responseText.includes('Asserted 1/1 clauses successfully') && !responseText.includes('ASSERT RESULTS: 1/1 successful')) {
             throw new Error(`knowledge_base_assert did not succeed. Response: ${responseText}`);
           }
         }
@@ -178,7 +178,7 @@ class NPXIntegrationTest {
         },
         validate: (result) => {
           const text = result.result?.content?.[0]?.text || '';
-          if (!text.includes('Retracted')) {
+          if (!text.includes('Retracted') && !text.includes('RETRACT RESULTS')) {
             throw new Error(`Expected retraction response, got: ${text}`);
           }
         }
