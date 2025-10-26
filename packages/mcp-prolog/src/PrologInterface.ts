@@ -551,7 +551,15 @@ export class PrologInterface {
    * Send a single command to Prolog server (legacy method for assert/retract/consult)
    */
   async query(query: string): Promise<string> {
-    return this.sendCommand(query);
+    const result = await this.sendCommand(query);
+
+    // Check if result is an error term and throw
+    if (typeof result === "string" && result.startsWith(TERM_ERROR)) {
+      const parsedError = PrologInterface.parsePrologError(result);
+      throw new Error(PrologInterface.formatPrologError(parsedError));
+    }
+
+    return result;
   }
 
   /**

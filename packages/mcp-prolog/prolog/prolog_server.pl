@@ -148,14 +148,46 @@ dispatch(load_safe_library(LibName), _) :- !,
 
 % Dynamic database commands
 dispatch(assert(Fact), _) :- !,
-    ( catch(assert_knowledge_base_term_safe(Fact), E, (reply(error(E)), fail)) -> reply(ok) ; true ).
+    ( catch(
+        assert_knowledge_base_term_safe(Fact),
+        E,
+        ( format_assertion_error(E, ErrMsg),
+          reply(error(ErrMsg)),
+          fail
+        )
+      ) ->
+        reply(ok)
+    ; % Validation failed but error already sent, don't send ok
+        true
+    ).
 
 dispatch(assertz(Fact), _) :- !,
-    ( catch(assert_knowledge_base_term_safe(Fact), E, (reply(error(E)), fail)) -> reply(ok) ; true ).
+    ( catch(
+        assert_knowledge_base_term_safe(Fact),
+        E,
+        ( format_assertion_error(E, ErrMsg),
+          reply(error(ErrMsg)),
+          fail
+        )
+      ) ->
+        reply(ok)
+    ; % Validation failed but error already sent
+        true
+    ).
 
 % Helper to extract predicate functor/arity from a fact or rule
 head_of_clause((Head :- _Body), Name, Arity) :- !, functor(Head, Name, Arity).
 head_of_clause(Fact, Name, Arity) :- functor(Fact, Name, Arity).
+
+% Format assertion errors into simple string messages
+format_assertion_error(unsafe_goal(Functor), Msg) :- !,
+    atom_string(Functor, FStr),
+    string_concat('Dangerous predicate in clause body: ', FStr, Msg).
+format_assertion_error(clause_validation_failed, 'Clause safety check failed') :- !.
+format_assertion_error(assertion_failed, 'Failed to assert term into knowledge base') :- !.
+format_assertion_error(E, Msg) :-
+    % Fallback: convert error term to string
+    with_output_to(string(Msg), write(E)).
 
 dispatch(retract(Fact), _) :- !,
     ( catch(retract(knowledge_base:Fact), _, fail) -> reply(ok) ; reply(error(nothing_to_retract)) ).
@@ -623,17 +655,30 @@ assert_knowledge_base_term_safe((:- _Directive)) :-
 assert_knowledge_base_term_safe((?- _Query)) :-
     throw(error(permission_error(execute, directive, 'Queries are not allowed in sandboxed consult'), _)).
 assert_knowledge_base_term_safe(Term) :-
-    % Validate clause body is safe before asserting
-    clause_safe(Term),
+    % Validate clause body is safe before asserting (wrap to prevent silent failures)
+    ( clause_safe(Term)
+    -> true
+    ; throw(clause_validation_failed)
+    ),
     % Ensure target predicate is dynamic in knowledge_base
     head_of_clause(Term, Name, Arity),
     ( catch(dynamic(knowledge_base:Name/Arity), _, true) ; true ),
-    assertz(knowledge_base:Term).
+    % Assert the term (wrap to prevent silent failures)
+    ( assertz(knowledge_base:Term)
+    -> true
+    ; throw(assertion_failed)
+    ).
 
 % Validate a clause/fact has a safe body
 clause_safe((Head :- Body)) :- !,
     callable(Head),
-    body_safe(Body).
+    ( body_safe(Body)
+    -> true
+    ; % Extract functor safely for error message
+      ( catch(functor(Body, F, _), _, F = unknown),
+        throw(unsafe_goal(F))
+      )
+    ).
 clause_safe(Fact) :-
     callable(Fact).
 
@@ -647,7 +692,7 @@ body_safe(\+ A) :- !, body_safe(A).
 body_safe(Term) :-
     strip_module(Term, M, Plain),
     callable(Plain),
-    % Either explicitly knowledge_base: module or user module (default for clauses)  
+    % Either explicitly knowledge_base: module or user module (default for clauses)
     ( M == knowledge_base ; M == user ),
     % Reject explicitly dangerous operations even if sandbox allows them
     \+ explicitly_dangerous(Plain),
