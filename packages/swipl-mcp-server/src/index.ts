@@ -83,13 +83,13 @@ async function main(): Promise<void> {
 
   // Setup graceful shutdown
   let shuttingDown = false;
-  const shutdown = (reason: string) => {
+  const shutdown = async (reason: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
     console.error(`[swipl-mcp-server] Shutting down (${reason})...`);
 
     try {
-      prologInterface.stop();
+      await prologInterface.stop();
     } catch {
       // Ignore errors during shutdown
     }
@@ -98,12 +98,12 @@ async function main(): Promise<void> {
   };
 
   // Handle termination signals
-  process.on("SIGTERM", () => shutdown("SIGTERM"));
-  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  process.on("SIGINT", () => void shutdown("SIGINT"));
 
   // Handle stdin close (client disconnect)
   process.stdin.on("close", () => {
-    const timer = setTimeout(() => shutdown("stdin_close"), 25);
+    const timer = setTimeout(() => void shutdown("stdin_close"), 25);
     (timer as any).unref?.();
   });
 }

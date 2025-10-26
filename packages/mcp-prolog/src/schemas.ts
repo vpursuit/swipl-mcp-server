@@ -89,32 +89,58 @@ export const licenseSchema = {} as const;
 
 // Output schemas for structured tool responses
 export const capabilitiesOutputSchema = {
-  version: z.string().describe("Server version"),
-  branding: z.object({
+  server: z.object({
     name: z.string(),
+    version: z.string(),
+  }),
+  branding: z.object({
     logo: z.object({
-      svg_path: z.string(),
-      emoji: z.string(),
+      uri: z.string(),
+      format: z.string(),
+      description: z.string(),
     }),
-  }).optional(),
+  }),
+  modes: z.array(z.string()),
   predicates: z.object({
-    total: z.number(),
-    categories: z.array(z.string()),
-  }).optional(),
-  tools: z.record(z.string(), z.string()).optional(),
-  prompts: z.record(z.string(), z.string()).optional(),
+    standard_prolog: z.string(),
+    clpfd_available: z.boolean(),
+    clpfd_note: z.string(),
+  }),
+  tools: z.object({
+    core: z.array(z.string()),
+    knowledge_base: z.array(z.string()),
+    query: z.array(z.string()),
+    symbols: z.array(z.string()),
+  }),
+  prompts: z.object({
+    expert_guidance: z.array(z.string()),
+    knowledge_base: z.array(z.string()),
+    orientation: z.array(z.string()),
+  }),
   security: z.object({
+    module: z.string(),
     file_restrictions: z.object({
       allowed_directory: z.string(),
+      blocked_directories: z.array(z.string()),
       validation: z.string(),
-    }).optional(),
+    }),
+    consult: z.string(),
+    model: z.string(),
     dangerous_predicate_blocking: z.object({
+      detection: z.string(),
       blocked_predicates: z.array(z.string()),
-      validation_method: z.string(),
-    }).optional(),
-    allowed_categories: z.array(z.string()).optional(),
-    blocked_categories: z.array(z.string()).optional(),
-  }).optional(),
+      error_format: z.string(),
+    }),
+    sandbox_validation: z.string(),
+    user_predicates: z.string(),
+    safe_categories: z.array(z.string()),
+    blocked_categories: z.array(z.string()),
+  }),
+  available_libraries: z.object({
+    note: z.string(),
+    safe_libraries: z.array(z.string()),
+    description: z.string(),
+  }),
 } as const;
 
 export const symbolsListOutputSchema = {
