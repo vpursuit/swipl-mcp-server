@@ -6,12 +6,14 @@ import { getPrologScriptPath, prologScriptCandidates } from "./meta.js";
 import {
   DEFAULT_QUERY_TIMEOUT_MS,
   DEFAULT_READY_TIMEOUT_MS,
+  CLEANUP_TIMEOUT_MS,
   STOP_KILL_DELAY_MS,
   READY_MARK,
   TERM_SOLUTION,
   TERM_ERROR,
   NO_MORE_SOLUTIONS,
-  MAX_BUFFER_SIZE
+  MAX_BUFFER_SIZE,
+  MAX_QUERY_PROMISES
 } from "./constants.js";
 
 // Error type system
@@ -142,6 +144,10 @@ export class PrologInterface {
   private commandQueue: Promise<void> = Promise.resolve();
   // Session state guard to avoid races across transitions
   private sessionState: SessionState = "idle";
+  // Health monitoring and circuit breaker
+  private lastSuccessfulResponse: number | null = null;
+  private consecutiveTimeouts: number = 0;
+  private circuitState: 'closed' | 'open' | 'half-open' = 'closed';
 
   // Centralized state transition helper; logs invalid transitions for diagnostics
   private setSessionState(next: SessionState): void {
@@ -181,6 +187,14 @@ export class PrologInterface {
 
     // Reset readiness before starting
     this.isReady = false;
+
+    // Reset circuit breaker if this is a fresh start (not recovery)
+    // Recovery will set to half-open after calling start()
+    if (this.circuitState !== 'half-open') {
+      this.circuitState = 'closed';
+      this.consecutiveTimeouts = 0;
+      this.lastSuccessfulResponse = null;
+    }
 
     const args = [
       "-q",
@@ -535,9 +549,19 @@ export class PrologInterface {
 
     try {
       this.setSessionState("closing_query");
-      await this.sendCommand("close_query");
-    } catch (_error) {
-      // Ignore errors when closing
+      // Use cleanup timeout for close operations
+      await this.sendCommand("close_query", { isCleanup: true });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      // If cleanup times out, process may be stuck - trigger recovery
+      if (errorMsg.includes("Cleanup operation timeout")) {
+        logger.error("Query cleanup timeout detected - process may be stuck. Triggering recovery...");
+        // Don't await - let recovery happen in background
+        this.attemptRecovery().catch(err => {
+          logger.error(`Recovery after cleanup timeout failed: ${err instanceof Error ? err.message : String(err)}`);
+        });
+      }
+      // Continue with state cleanup even if command failed
     }
 
     this.queryActive = false;
@@ -565,10 +589,22 @@ export class PrologInterface {
   /**
    * Internal method to send commands to Prolog server
    */
-  private async sendCommand(command: string): Promise<string> {
+  private async sendCommand(command: string, options?: { isCleanup?: boolean }): Promise<string> {
     this.assertRunning();
 
     const run = (): Promise<string> => {
+      // Enforce queue depth limit to prevent memory exhaustion
+      if (this.queryPromises.size >= MAX_QUERY_PROMISES) {
+        logger.error(`Queue overflow: ${this.queryPromises.size} pending commands`);
+        return Promise.reject(new Error(`Queue is full (${MAX_QUERY_PROMISES} pending queries). Server may be overloaded or unresponsive.`));
+      }
+
+      // Circuit breaker: fast-fail if circuit is open
+      if (this.circuitState === 'open') {
+        logger.warn('Circuit breaker is open - rejecting query fast');
+        return Promise.reject(new Error('Service temporarily unavailable. Server is recovering from errors.'));
+      }
+
       const queryIdNum = this.queryCounter++;
       const queryId = String(queryIdNum);
 
@@ -591,6 +627,19 @@ export class PrologInterface {
         };
 
         const resolveAndFinish = (value: string) => {
+          // Track successful response for health monitoring
+          this.lastSuccessfulResponse = Date.now();
+          // Reset circuit breaker on successful query (unless in half-open test phase)
+          if (this.circuitState === 'closed' || this.circuitState === 'half-open') {
+            if (this.consecutiveTimeouts > 0) {
+              logger.info(`Resetting timeout counter (was ${this.consecutiveTimeouts}) after successful query`);
+            }
+            this.consecutiveTimeouts = 0;
+            if (this.circuitState === 'half-open') {
+              this.circuitState = 'closed';
+              logger.info('Circuit breaker closed - service recovered');
+            }
+          }
           finish();
           resolve(value);
         };
@@ -636,20 +685,41 @@ export class PrologInterface {
         }
 
         // Timeout after configurable duration
+        // Use shorter timeout for cleanup operations, normal timeout for queries
         // Query timeout hierarchy: env SWI_MCP_QUERY_TIMEOUT_MS -> DEFAULT_QUERY_TIMEOUT_MS
         const queryTimeoutMs = Number.parseInt(
           process.env['SWI_MCP_QUERY_TIMEOUT_MS'] ?? "",
           10,
         );
-        const qTimeout =
+        const baseTimeout =
           Number.isFinite(queryTimeoutMs) && queryTimeoutMs > 0 ? queryTimeoutMs : DEFAULT_QUERY_TIMEOUT_MS;
+        const qTimeout = options?.isCleanup ? CLEANUP_TIMEOUT_MS : baseTimeout;
+
         timer = setTimeout(() => {
           if (this.queryPromises.has(queryId)) {
             this.queryPromises.delete(queryId);
+
+            // Track consecutive timeouts for circuit breaker
+            this.consecutiveTimeouts++;
+
             // Avoid logging full command payloads (may contain sensitive data)
-            logger.warn(`Query timeout after ${qTimeout}ms (id:${queryId}).`);
+            logger.warn(`Query timeout after ${qTimeout}ms (id:${queryId}). Consecutive timeouts: ${this.consecutiveTimeouts}`);
             logger.info(`Cleaned up timed-out promise for id:${queryId}. Active promises: ${this.queryPromises.size}`);
-            rejectAndFinish(new Error(`Query timeout after ${qTimeout}ms. Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.`));
+
+            // Open circuit breaker after 3 consecutive timeouts
+            if (this.consecutiveTimeouts >= 3 && this.circuitState === 'closed') {
+              this.circuitState = 'open';
+              logger.error(`Circuit breaker opened after ${this.consecutiveTimeouts} consecutive timeouts. Attempting recovery...`);
+              // Trigger recovery attempt in background
+              this.attemptRecovery().catch(err => {
+                logger.error(`Recovery attempt failed: ${err instanceof Error ? err.message : String(err)}`);
+              });
+            }
+
+            const errorMsg = options?.isCleanup
+              ? `Cleanup operation timeout after ${qTimeout}ms. Process may be stuck.`
+              : `Query timeout after ${qTimeout}ms. Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.`;
+            rejectAndFinish(new Error(errorMsg));
           }
         }, qTimeout);
         timer.unref?.();
@@ -815,9 +885,19 @@ export class PrologInterface {
 
     try {
       this.setSessionState("closing_engine");
-      await this.sendCommand("close_engine");
-    } catch (_error) {
-      // Ignore errors when closing
+      // Use cleanup timeout for close operations
+      await this.sendCommand("close_engine", { isCleanup: true });
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      // If cleanup times out, process may be stuck - trigger recovery
+      if (errorMsg.includes("Cleanup operation timeout")) {
+        logger.error("Engine cleanup timeout detected - process may be stuck. Triggering recovery...");
+        // Don't await - let recovery happen in background
+        this.attemptRecovery().catch(err => {
+          logger.error(`Recovery after cleanup timeout failed: ${err instanceof Error ? err.message : String(err)}`);
+        });
+      }
+      // Continue with state cleanup even if command failed
     }
 
     this.engineActive = false;
@@ -825,6 +905,57 @@ export class PrologInterface {
     this.setSessionState("idle");
 
     return { status: "closed" };
+  }
+
+  /**
+   * Attempt to recover from stuck/unresponsive state by restarting the Prolog process
+   * @private
+   */
+  private async attemptRecovery(): Promise<void> {
+    logger.warn('Attempting recovery: restarting Prolog process...');
+
+    try {
+      // Force stop the process
+      await this.stop();
+
+      // Wait a bit before restarting
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Start fresh process
+      await this.start();
+
+      // Enter half-open circuit state to test if recovery worked
+      this.circuitState = 'half-open';
+      this.consecutiveTimeouts = 0;
+
+      logger.info('Recovery complete - process restarted. Circuit breaker in half-open state.');
+    } catch (error) {
+      logger.error(`Recovery failed: ${error instanceof Error ? error.message : String(error)}`);
+      // Keep circuit open if recovery fails
+      this.circuitState = 'open';
+      throw error;
+    }
+  }
+
+  /**
+   * Get health status information for diagnostics
+   */
+  getHealthStatus(): {
+    circuitState: 'closed' | 'open' | 'half-open';
+    consecutiveTimeouts: number;
+    lastSuccessfulResponse: number | null;
+    pendingQueries: number;
+    isReady: boolean;
+    sessionState: SessionState;
+  } {
+    return {
+      circuitState: this.circuitState,
+      consecutiveTimeouts: this.consecutiveTimeouts,
+      lastSuccessfulResponse: this.lastSuccessfulResponse,
+      pendingQueries: this.queryPromises.size,
+      isReady: this.isReady,
+      sessionState: this.sessionState,
+    };
   }
 
   /**
@@ -911,6 +1042,8 @@ export class PrologInterface {
     this.readyResolver = null;
     this.readyRejecter = null;
     this.setSessionState("idle");
+    // Don't reset circuit breaker state here - let attemptRecovery() manage it
+    // This allows circuit to stay open if stop() is called manually vs recovery
   }
 
   /**

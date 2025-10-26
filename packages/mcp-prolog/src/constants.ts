@@ -13,6 +13,7 @@ export const MAX_FACT_LENGTH = 5000;
 // Timeout configurations (in milliseconds)
 export const DEFAULT_QUERY_TIMEOUT_MS = 30000; // 30 seconds
 export const DEFAULT_READY_TIMEOUT_MS = 5000;  // 5 seconds
+export const CLEANUP_TIMEOUT_MS = 5000;        // 5 seconds for cleanup operations
 
 // Buffer management
 export const MAX_BUFFER_SIZE = 1024 * 1024; // 1MB
