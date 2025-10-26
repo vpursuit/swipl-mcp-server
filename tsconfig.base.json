@@ -12,6 +12,12 @@
     "declarationMap": true,
     "sourceMap": true,
     "composite": true,
-    "incremental": true
+    "incremental": true,
+    // Ultra-strict type checking (Phase 2 - some require codebase-wide fixes)
+    // "noUncheckedIndexedAccess": true,        // TODO: Enable after fixing array/object access
+    // "noImplicitOverride": true,              // Safe to enable
+    // "exactOptionalPropertyTypes": true,      // TODO: Enable after fixing optional properties
+    // "noPropertyAccessFromIndexSignature": true,  // TODO: Enable after fixing process.env accesses
+    "noFallthroughCasesInSwitch": true           // ✓ Enabled (no violations found)
   }
 }

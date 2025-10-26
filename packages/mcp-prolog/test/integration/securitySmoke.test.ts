@@ -3,12 +3,12 @@ import { toolHandlers, prologInterface } from "@vpursuit/mcp-prolog";
 
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 maybeDescribe("Security Smoke Tests", () => {
-  beforeEach(() => {
-    prologInterface.stop();
+  beforeEach(async () => {
+    await prologInterface.stop();
   });
 
-  afterEach(() => {
-    prologInterface.stop();
+  afterEach(async () => {
+    await prologInterface.stop();
   });
 
   test("arithmetic filter with between + is/2 via findall", async () => {

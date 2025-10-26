@@ -8,12 +8,12 @@ maybeDescribe("Ancestor Rules Test", () => {
   beforeEach(async () => {
     // Use normal timeout for this test
     delete process.env.SWI_MCP_QUERY_TIMEOUT_MS;
-    prologInterface.stop();
+    await prologInterface.stop();
     await prologInterface.start();
   });
 
   afterEach(async () => {
-    prologInterface.stop();
+    await prologInterface.stop();
   });
 
   it("should handle complete ancestor rules correctly", async () => {

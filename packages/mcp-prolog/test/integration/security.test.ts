@@ -8,11 +8,11 @@ import { mkdirSync, existsSync, writeFileSync, unlinkSync } from "fs";
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
 maybeDescribe("Security: block non-whitelisted system predicates", () => {
-  beforeEach(() => {
-    prologInterface.stop();
+  beforeEach(async () => {
+    await prologInterface.stop();
   });
-  afterEach(() => {
-    prologInterface.stop();
+  afterEach(async () => {
+    await prologInterface.stop();
   });
 
   test("directory_files/2 is rejected as unsafe", async () => {
@@ -40,12 +40,12 @@ maybeDescribe("Security: block non-whitelisted system predicates", () => {
 });
 
 maybeDescribe("Security: File Path Restrictions", () => {
-  beforeEach(() => {
-    prologInterface.stop();
+  beforeEach(async () => {
+    await prologInterface.stop();
   });
 
-  afterEach(() => {
-    prologInterface.stop();
+  afterEach(async () => {
+    await prologInterface.stop();
   });
 
   test("should block loading /etc/passwd with clear security error", async () => {
@@ -146,12 +146,12 @@ maybeDescribe("Security: File Path Restrictions", () => {
 });
 
 maybeDescribe("Security: Dangerous Operation Detection", () => {
-  beforeEach(() => {
-    prologInterface.stop();
+  beforeEach(async () => {
+    await prologInterface.stop();
   });
 
-  afterEach(() => {
-    prologInterface.stop();
+  afterEach(async () => {
+    await prologInterface.stop();
   });
 
   test("should return security error for dangerous shell operation", async () => {
@@ -201,12 +201,12 @@ maybeDescribe("Security: Dangerous Operation Detection", () => {
 });
 
 maybeDescribe("Security: Error Message Quality", () => {
-  beforeEach(() => {
-    prologInterface.stop();
+  beforeEach(async () => {
+    await prologInterface.stop();
   });
 
-  afterEach(() => {
-    prologInterface.stop();
+  afterEach(async () => {
+    await prologInterface.stop();
   });
 
   test("security errors should be clear and actionable", async () => {

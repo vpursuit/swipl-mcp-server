@@ -17,6 +17,7 @@ export { prologInterface, toolHandlers, getCapabilitiesSummary } from "./tools.j
 export { PrologInterface } from "./PrologInterface.js";
 export { zodSchemas, jsonSchemas } from "./schemas.js";
 export { serverRef, logger } from "./logger.js";
+export type { CapabilitiesSummary, SessionState } from "./types.js";
 
 /**
  * Convert internal prompt format to Plugin PromptDefinitions format
@@ -52,6 +53,7 @@ function convertPromptsToDefinitions(): PromptDefinitions {
  *
  * TOOLS:
  * - knowledge_base_load: Load Prolog files from filesystem
+ * - knowledge_base_load_library: Load safe Prolog library without file operations
  * - knowledge_base_assert: Add single fact/rule to knowledge base
  * - knowledge_base_assert_many: Batch add facts/rules
  * - knowledge_base_retract: Remove single fact/rule
@@ -81,6 +83,7 @@ function convertPromptsToDefinitions(): PromptDefinitions {
  * - prolog_analyze_knowledge_base: Analyze current knowledge base
  * - prolog_knowledge_base_builder: Build knowledge base from requirements
  * - prolog_query_optimizer: Optimize Prolog query performance
+ * - prolog_logic_puzzle_solver: Solve logic puzzles using CLP(FD)
  *
  * SECURITY:
  * - File operations restricted to allowed directories
@@ -117,7 +120,7 @@ export const plugin: Plugin = {
     logger.info("Shutting down Prolog interface...");
 
     try {
-      prologInterface.stop();
+      await prologInterface.stop();
     } catch (error) {
       logger.warn("Warning during shutdown", { error: error instanceof Error ? error.message : String(error) });
     }

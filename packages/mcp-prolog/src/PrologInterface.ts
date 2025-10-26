@@ -148,13 +148,18 @@ export class PrologInterface {
     const prev = this.sessionState;
     const allowed = ALLOWED_TRANSITIONS[prev] || [];
     if (!allowed.includes(next)) {
-      const traceEnabled = isOn(process.env.SWI_MCP_TRACE);
+      const traceEnabled = isOn(process.env['SWI_MCP_TRACE']);
       const msg = `Invalid session state transition: ${prev} -> ${next}`;
       if (traceEnabled) {
         logger.warn(msg);
       }
     }
     this.sessionState = next;
+  }
+
+  // Public getter for session state (read-only access)
+  public getSessionState(): SessionState {
+    return this.sessionState;
   }
 
   /**
@@ -165,13 +170,13 @@ export class PrologInterface {
       return;
     }
 
-    const traceOn = isOn(process.env.SWI_MCP_TRACE);
+    const traceOn = isOn(process.env['SWI_MCP_TRACE']);
     if (traceOn) {
       logger.debug(`cwd: ${process.cwd()}`);
     }
 
     // Resolve Prolog server script: env override, cwd, and paths relative to module/entry
-    const envPath = process.env.SWI_MCP_PROLOG_PATH;
+    const envPath = process.env['SWI_MCP_PROLOG_PATH'];
     const serverScript = findPrologServerScript(envPath, traceOn);
 
     // Reset readiness before starting
@@ -204,7 +209,7 @@ export class PrologInterface {
 
     if (!this.process.stdout || !this.process.stdin) {
       const e = new Error("Failed to create SWI-Prolog server process streams");
-      this.stop();
+      await this.stop();
       throw e;
     }
 
@@ -256,7 +261,7 @@ export class PrologInterface {
     try {
       await this.waitForReady();
     } catch (e) {
-      this.stop();
+      await this.stop();
       throw e;
     }
   }
@@ -276,7 +281,7 @@ export class PrologInterface {
     }
 
     if (!this.readyPromise) {
-      const readyTimeoutMs = Number.parseInt(process.env.SWI_MCP_READY_TIMEOUT_MS || String(DEFAULT_READY_TIMEOUT_MS), 10);
+      const readyTimeoutMs = Number.parseInt(process.env['SWI_MCP_READY_TIMEOUT_MS'] || String(DEFAULT_READY_TIMEOUT_MS), 10);
       const timeout = Number.isFinite(readyTimeoutMs) && readyTimeoutMs > 0 ? readyTimeoutMs : DEFAULT_READY_TIMEOUT_MS;
       this.readyPromise = new Promise((resolve, reject) => {
         this.readyResolver = resolve;
@@ -367,14 +372,14 @@ export class PrologInterface {
   private processResponseLine(response: string): void {
     // Ignore internal debug markers from the Prolog server
     if (response.startsWith("@@DEBUG@@")) {
-      const traceEnabled = isOn(process.env.SWI_MCP_TRACE);
+      const traceEnabled = isOn(process.env['SWI_MCP_TRACE']);
       if (traceEnabled) logger.debug(`Prolog debug: ${response.slice(9).trim()}`);
       return;
     }
     // Avoid logging sensitive response bodies in normal operation
     // Log a summary at debug level only
     {
-      const traceEnabled = isOn(process.env.SWI_MCP_TRACE);
+      const traceEnabled = isOn(process.env['SWI_MCP_TRACE']);
       if (traceEnabled) {
         const tag =
           response === READY_MARK
@@ -412,7 +417,7 @@ export class PrologInterface {
         return;
       } else {
         // Unknown or late response for an ID we no longer track; drop to avoid misrouting
-        const traceEnabled = isOn(process.env.SWI_MCP_TRACE);
+        const traceEnabled = isOn(process.env['SWI_MCP_TRACE']);
         if (traceEnabled) logger.debug(`Dropping late or unknown id(${id}, ...) response`);
         return;
       }
@@ -589,7 +594,7 @@ export class PrologInterface {
         this.queryPromises.set(queryId, { resolve: resolveAndFinish, reject: rejectAndFinish });
 
         // Send command to server
-        const traceEnabled = isOn(process.env.SWI_MCP_TRACE);
+        const traceEnabled = isOn(process.env['SWI_MCP_TRACE']);
         const envelope = `cmd(${queryIdNum}, ${command})`;
         if (traceEnabled) logger.debug(`Send command: ${envelope}`);
         try {
@@ -625,7 +630,7 @@ export class PrologInterface {
         // Timeout after configurable duration
         // Query timeout hierarchy: env SWI_MCP_QUERY_TIMEOUT_MS -> DEFAULT_QUERY_TIMEOUT_MS
         const queryTimeoutMs = Number.parseInt(
-          process.env.SWI_MCP_QUERY_TIMEOUT_MS ?? "",
+          process.env['SWI_MCP_QUERY_TIMEOUT_MS'] ?? "",
           10,
         );
         const qTimeout =
@@ -663,6 +668,30 @@ export class PrologInterface {
     // Escape backslashes first (Windows paths) then single quotes for Prolog atom
     const escaped = absolutePath.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     const result = await this.query(`consult('${escaped}')`);
+
+    // Check if result is an error and throw
+    if (typeof result === "string" && result.startsWith(TERM_ERROR)) {
+      const parsedError = PrologInterface.parsePrologError(result);
+      throw new Error(PrologInterface.formatPrologError(parsedError));
+    }
+
+    return result;
+  }
+
+  /**
+   * Load a safe Prolog library using use_module
+   * This loads the library into both knowledge_base (for execution) and prolog_server (for parsing)
+   * The library will be validated by SWI-Prolog's sandbox for safety
+   */
+  async loadLibrary(libraryName: string): Promise<string> {
+    // Validate library name format (alphanumeric, underscore, slash for paths like http/http_client)
+    if (!/^[a-z0-9_/]+$/i.test(libraryName)) {
+      throw new Error(`Invalid library name: ${libraryName}. Library names must contain only letters, numbers, underscores, and slashes.`);
+    }
+
+    // Use the load_safe_library command which loads into both modules
+    // This ensures operators are available for both query parsing and execution
+    const result = await this.query(`load_safe_library(${libraryName})`);
 
     // Check if result is an error and throw
     if (typeof result === "string" && result.startsWith(TERM_ERROR)) {
@@ -791,52 +820,79 @@ export class PrologInterface {
   }
 
   /**
-   * Stop the Prolog process
+   * Stop the Prolog process and wait for complete cleanup
+   *
+   * IMPORTANT: This method is now async to ensure proper cleanup.
+   * All callers must await this method to prevent race conditions.
    */
-  stop(): void {
+  async stop(): Promise<void> {
     const proc = this.process;
-    if (proc) {
-      try {
-        // Ask server to exit cleanly
-        if (proc.stdin && !proc.killed) {
-          try {
-            // Swallow potential EPIPE on closed pipe
-            (proc.stdin as NodeJS.WritableStream).once?.("error", () => { });
-            proc.stdin.write("__EXIT__\n");
-          } catch { }
-          try {
-            (proc.stdin as NodeJS.WritableStream).once?.("error", () => { });
-            proc.stdin.end();
-          } catch { }
-        }
-        // Remove listeners to avoid leaks
-        try {
-          proc.removeAllListeners("error");
-        } catch { }
-        try {
-          proc.removeAllListeners("exit");
-        } catch { }
-        try {
-          proc.stdout?.removeAllListeners("data");
-        } catch { }
-        try {
-          proc.stderr?.removeAllListeners("data");
-        } catch { }
-      } catch { }
-      // Best-effort terminate after a short delay
-      const timer: NodeJS.Timeout = setTimeout(() => {
-        try {
-          if (!proc.killed) proc.kill("SIGTERM");
-        } catch { }
-      }, STOP_KILL_DELAY_MS);
-      timer.unref?.();
+    if (!proc) {
+      // Already stopped - just cleanup state
+      this.cleanupState();
+      return;
     }
+
+    // Create promise that resolves when process exits
+    const exitPromise = new Promise<void>((resolve) => {
+      if (proc.exitCode !== null) {
+        resolve();  // Already exited
+        return;
+      }
+
+      // Listen for exit - DON'T remove existing listeners yet!
+      proc.once('exit', () => {
+        resolve();
+      });
+    });
+
+    // Send graceful exit command
+    if (proc.stdin && !proc.killed) {
+      try {
+        (proc.stdin as NodeJS.WritableStream).once?.("error", () => {});
+        proc.stdin.write("__EXIT__\n");
+        proc.stdin.end();
+      } catch {}
+    }
+
+    // Force kill after delay if still alive
+    const killTimer = setTimeout(() => {
+      if (!proc.killed && proc.exitCode === null) {
+        try {
+          proc.kill("SIGTERM");
+        } catch {}
+      }
+    }, STOP_KILL_DELAY_MS);
+
+    try {
+      // ✅ WAIT for process to actually exit
+      await exitPromise;
+    } finally {
+      clearTimeout(killTimer);
+    }
+
+    // ✅ NOW remove listeners (process is dead)
+    try {
+      proc.removeAllListeners("error");
+      proc.removeAllListeners("exit");
+      proc.stdout?.removeAllListeners("data");
+      proc.stderr?.removeAllListeners("data");
+    } catch {}
+
+    // Clear instance state
     this.process = null;
-    // Reject and clear any pending queries to prevent leaks
+    this.cleanupState();
+  }
+
+  /**
+   * Clean up internal state (called by stop())
+   */
+  private cleanupState(): void {
+    // Reject and clear pending queries
     for (const [_id, promise] of this.queryPromises) {
       try {
         promise.reject(new Error("Prolog server stopped"));
-      } catch { }
+      } catch {}
     }
     this.queryPromises.clear();
     this.queryActive = false;
@@ -845,6 +901,7 @@ export class PrologInterface {
     this.currentQuery = null;
     this.readyPromise = null;
     this.readyResolver = null;
+    this.readyRejecter = null;
     this.setSessionState("idle");
   }
 

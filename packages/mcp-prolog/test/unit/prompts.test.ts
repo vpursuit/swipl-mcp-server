@@ -9,7 +9,8 @@ describe("Prolog Prompts", () => {
         "quickReference",
         "analyzeKnowledgeBase",
         "knowledgeBaseBuilder",
-        "queryOptimizer"
+        "queryOptimizer",
+        "logicPuzzleSolver"
       ];
 
       const expectedNames = [
@@ -18,7 +19,8 @@ describe("Prolog Prompts", () => {
         "prolog_analyze_knowledge_base",
         // prolog_expert_reasoning merged into prolog_init_expert
         "prolog_knowledge_base_builder",
-        "prolog_query_optimizer"
+        "prolog_query_optimizer",
+        "prolog_logic_puzzle_solver"
       ];
 
       expect(Object.keys(prologPrompts)).toHaveLength(expectedPrompts.length);
@@ -53,7 +55,8 @@ describe("Prolog Prompts", () => {
       const argPrompts = [
         { name: "initExpert", argName: "task", required: false },
         { name: "knowledgeBaseBuilder", argName: "domain", required: true },
-        { name: "queryOptimizer", argName: "query", required: true }
+        { name: "queryOptimizer", argName: "query", required: true },
+        { name: "logicPuzzleSolver", argName: "puzzle", required: false }
       ] as const;
 
       for (const { name, argName, required } of argPrompts) {
@@ -171,15 +174,53 @@ describe("Prolog Prompts", () => {
       expect(text).toContain("findall(X, member(X, [1,2,3]), L)");
       expect(text).not.toContain("[Please provide a Prolog query to optimize]");
     });
+
+    test("logic puzzle solver prompt should handle missing puzzle argument", () => {
+      const prompt = prologPrompts.logicPuzzleSolver;
+      const messages = prompt.messages();
+
+      const text = messages[0].content.text;
+      expect(text).toContain("Choose an interesting logic puzzle");
+      expect(text).toContain("CLP(FD)");
+      expect(text).toContain("knowledge_base_load_library");
+    });
+
+    test("logic puzzle solver prompt should use provided puzzle argument", () => {
+      const prompt = prologPrompts.logicPuzzleSolver;
+      const puzzle = "1. The red house is next to the blue house.\n2. The green house is on the left end.";
+      const messages = prompt.messages({ puzzle });
+
+      const text = messages[0].content.text;
+      expect(text).toContain(puzzle);
+      expect(text).not.toContain("Choose an interesting logic puzzle");
+    });
+
+    test("logic puzzle solver prompt should include CLP(FD) requirements", () => {
+      const prompt = prologPrompts.logicPuzzleSolver;
+      const messages = prompt.messages();
+
+      const text = messages[0].content.text;
+      expect(text).toContain("knowledge_base_assert_many");
+      expect(text).toContain("all_different");
+      expect(text).toContain("ins");
+      expect(text).toContain("label");
+      expect(text).toContain("solve/1");
+      expect(text).toContain("query_startEngine");
+    });
   });
 
   describe("Content Validation", () => {
     test("all prompts should mention resources for context discovery", () => {
-      const allPrompts = Object.values(prologPrompts);
+      const allPrompts = Object.entries(prologPrompts);
 
-      for (const prompt of allPrompts) {
+      for (const [key, prompt] of allPrompts) {
         const messages = prompt.messages();
         const text = messages[0].content.text;
+
+        // Logic puzzle solver is focused on code generation, not resource discovery
+        if (key === "logicPuzzleSolver") {
+          continue;
+        }
 
         // Each prompt should guide users to check resources
         expect(text.toLowerCase()).toMatch(/resource|capabilities|help|knowledge-base-/);
@@ -229,6 +270,17 @@ describe("Prolog Prompts", () => {
         expect(text).toMatch(/PHASE|STEP \d|1\.|2\./);
       }
     });
+
+    test("logic puzzle solver prompt should emphasize MCP tool usage", () => {
+      const prompt = prologPrompts.logicPuzzleSolver;
+      const messages = prompt.messages();
+      const text = messages[0].content.text.toLowerCase();
+
+      expect(text).toContain("server");
+      expect(text).toContain("knowledge_base_assert_many");
+      expect(text).toContain("workflow");
+      expect(text).toContain("query_startengine");
+    });
   });
 
   describe("Argument Handling", () => {
@@ -236,7 +288,8 @@ describe("Prolog Prompts", () => {
       const promptsWithArgs = [
         "initExpert",
         "knowledgeBaseBuilder",
-        "queryOptimizer"
+        "queryOptimizer",
+        "logicPuzzleSolver"
       ];
 
       for (const promptName of promptsWithArgs) {
@@ -300,9 +353,10 @@ describe("Prolog Prompts", () => {
       const expertGuidance = ["initExpert", "queryOptimizer"];
       const knowledgeBase = ["analyzeKnowledgeBase", "knowledgeBaseBuilder"];
       const orientation = ["quickReference"];
+      const problemSolving = ["logicPuzzleSolver"];
 
       // Verify all categories are covered
-      const allCategorized = [...expertGuidance, ...knowledgeBase, ...orientation];
+      const allCategorized = [...expertGuidance, ...knowledgeBase, ...orientation, ...problemSolving];
       const allPromptNames = Object.keys(prologPrompts);
 
       expect(allCategorized.sort()).toEqual(allPromptNames.sort());

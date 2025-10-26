@@ -128,8 +128,23 @@ cleanup_all_sessions :-
 dispatch(consult(File), _) :- !,
     ( catch(safe_consult(File), E, (reply(error(E)), fail)) -> reply(ok) ; true ).
 
-dispatch(consult_file(File), VN) :- !, 
+dispatch(consult_file(File), VN) :- !,
     dispatch(consult(File), VN).
+
+% Library loading command
+% Load library into both knowledge_base and prolog_server modules
+% This ensures operators are available for both execution and query parsing
+dispatch(load_safe_library(LibName), _) :- !,
+    ( library_safe_to_load(LibName) ->
+        debug_trace(loading_library_both_modules(LibName)),
+        % Load into knowledge_base module for execution
+        knowledge_base:use_module(library(LibName)),
+        % ALSO load into prolog_server module so operators are available for query parsing
+        catch(use_module(library(LibName)), _, true),
+        reply(ok)
+    ;
+        reply(error(permission_error(load, library, LibName)))
+    ).
 
 % Dynamic database commands
 dispatch(assert(Fact), _) :- !,

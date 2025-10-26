@@ -75,6 +75,14 @@ export const knowledgeBaseRetractManySchema = {
 
 export const knowledgeBaseClearSchema = {} as const;
 
+export const knowledgeBaseLoadLibrarySchema = {
+  library: z
+    .string()
+    .describe(
+      "Name of the safe library to load (e.g., 'clpfd', 'lists', 'apply'). Only sandbox-approved libraries are allowed.",
+    ),
+} as const;
+
 export const capabilitiesSchema = {} as const;
 
 export const licenseSchema = {} as const;
@@ -138,6 +146,10 @@ export const prologQueryOptimizerSchema = {
   query: z.string().describe("The Prolog query to analyze and optimize"),
 } as const;
 
+export const prologLogicPuzzleSolverSchema = {
+  puzzle: z.string().optional().describe("The logic puzzle to solve (with numbered clues). If empty, agent chooses an interesting puzzle."),
+} as const;
+
 /**
  * Aggregate Zod schemas object (for backward compatibility with tests)
  * These are now the raw shapes themselves since that's what we export
@@ -156,6 +168,7 @@ export const zodSchemas = {
   knowledgeBaseAssertMany: knowledgeBaseAssertManySchema,
   knowledgeBaseRetractMany: knowledgeBaseRetractManySchema,
   knowledgeBaseClear: knowledgeBaseClearSchema,
+  knowledgeBaseLoadLibrary: knowledgeBaseLoadLibrarySchema,
   capabilities: capabilitiesSchema,
   license: licenseSchema,
   prologInitExpert: prologInitExpertSchema,
@@ -163,6 +176,7 @@ export const zodSchemas = {
   prologAnalyzeKnowledgeBase: prologAnalyzeKnowledgeBaseSchema,
   prologKnowledgeBaseBuilder: prologKnowledgeBaseBuilderSchema,
   prologQueryOptimizer: prologQueryOptimizerSchema,
+  prologLogicPuzzleSolver: prologLogicPuzzleSolverSchema,
 } as const;
 
 /**
@@ -184,6 +198,7 @@ export const jsonSchemas = {
   knowledgeBaseAssertMany: zodToJsonSchema(z.object(knowledgeBaseAssertManySchema)),
   knowledgeBaseRetractMany: zodToJsonSchema(z.object(knowledgeBaseRetractManySchema)),
   knowledgeBaseClear: zodToJsonSchema(z.object(knowledgeBaseClearSchema)),
+  knowledgeBaseLoadLibrary: zodToJsonSchema(z.object(knowledgeBaseLoadLibrarySchema)),
   capabilities: zodToJsonSchema(z.object(capabilitiesSchema)),
   license: zodToJsonSchema(z.object(licenseSchema)),
   prologInitExpert: zodToJsonSchema(z.object(prologInitExpertSchema)),
@@ -191,4 +206,5 @@ export const jsonSchemas = {
   prologAnalyzeKnowledgeBase: zodToJsonSchema(z.object(prologAnalyzeKnowledgeBaseSchema)),
   prologKnowledgeBaseBuilder: zodToJsonSchema(z.object(prologKnowledgeBaseBuilderSchema)),
   prologQueryOptimizer: zodToJsonSchema(z.object(prologQueryOptimizerSchema)),
+  prologLogicPuzzleSolver: zodToJsonSchema(z.object(prologLogicPuzzleSolverSchema)),
 } as const;

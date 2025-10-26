@@ -245,7 +245,7 @@ maybeDescribe("Prolog Interface Edge Cases", () => {
       await prolog.startQuery("parent(X, Y)");
 
       // Stop and restart
-      prolog.stop();
+      await prolog.stop();
       await prolog.start();
 
       // Should be able to start new query (state should be reset)
@@ -264,7 +264,7 @@ maybeDescribe("Prolog Interface Edge Cases", () => {
       await prolog.startEngine("parent(X, Y)");
 
       // Stop and restart
-      prolog.stop();
+      await prolog.stop();
       await prolog.start();
 
       // Should be able to start new engine (state should be reset)
@@ -330,7 +330,7 @@ maybeDescribe("Prolog Interface Edge Cases", () => {
         await prolog.startEngine("parent(X, Y)");
         await prolog.closeEngine();
 
-        prolog.stop();
+        await prolog.stop();
       }
 
       // If we get here without hanging, resource cleanup is working

@@ -4,13 +4,13 @@ import { toolHandlers, prologInterface } from "@vpursuit/mcp-prolog";
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
 maybeDescribe("Standard Query Mode Tools", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset any existing state
-    prologInterface.stop();
+    await prologInterface.stop();
   });
 
-  afterEach(() => {
-    prologInterface.stop();
+  afterEach(async () => {
+    await prologInterface.stop();
   });
 
   describe("queryStart → queryNext → queryClose workflow", () => {

@@ -15,8 +15,8 @@ const DEFAULT_VERSION = '0.0.0';
 
 // Debug logging
 function debugLog(message: string): void {
-  const shouldLog = process.env.DEBUG?.includes('swipl-mcp-server') || 
-                    process.env.SWI_MCP_TRACE === '1';
+  const shouldLog = process.env['DEBUG']?.includes('swipl-mcp-server') ||
+                    process.env['SWI_MCP_TRACE'] === '1';
   
   if (shouldLog) {
     console.error(`[META DEBUG] ${message}`);

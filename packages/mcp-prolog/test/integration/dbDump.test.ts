@@ -9,13 +9,13 @@ import { toolHandlers, prologInterface } from "@vpursuit/mcp-prolog";
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
 maybeDescribe("Database Dump Tool", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset any existing state
-    prologInterface.stop();
+    await prologInterface.stop();
   });
 
-  afterEach(() => {
-    prologInterface.stop();
+  afterEach(async () => {
+    await prologInterface.stop();
   });
 
   describe("knowledge_base_dump tool", () => {

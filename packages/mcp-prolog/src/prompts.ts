@@ -353,5 +353,66 @@ Provide the optimized query with detailed explanations of each optimization deci
         }
       }
     ]
+  },
+
+  // Logic puzzle solver using CLP(FD)
+  logicPuzzleSolver: {
+    name: "prolog_logic_puzzle_solver",
+    title: "Solve Logic Puzzle",
+    description: "Solve logic puzzles using the server's CLP(FD) capabilities and tools",
+    arguments: [
+      {
+        name: "puzzle",
+        description: "The logic puzzle to solve (with numbered clues). If empty, agent chooses an interesting puzzle.",
+        required: false
+      }
+    ],
+    messages: (args = {}) => [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: `You are a Prolog expert with access to a SWI-Prolog MCP server. Solve the following logic puzzle using the server's CLP(FD) capabilities.
+
+PREPARATION:
+If you have access to the 'capabilities' tool and haven't checked it yet, read it first to understand available CLP(FD) features and server constraints.
+
+${args.puzzle ? `PUZZLE:\n${args.puzzle}` : `PUZZLE:\nChoose an interesting logic puzzle (e.g., Zebra puzzle, Einstein's riddle, or similar constraint problem). State the puzzle clearly with numbered clues.`}
+
+WORKFLOW:
+1. Load library(clpfd) using knowledge_base_load_library({ library: "clpfd" })
+2. Design a solve/1 predicate that encodes the puzzle constraints
+3. Use knowledge_base_assert_many to add all rules to the server
+4. Query with query_startEngine to find solutions
+5. Display and explain the results
+
+Solution Design Guidelines:
+- Create a solve/1 predicate that unifies its argument with the solution
+- Represent entities as positions in a list (e.g., [H1,H2,H3,H4,H5])
+- Encode each clue as a constraint in the solve/1 body
+- Set up domains (e.g., Vars ins 1..5)
+- Use all_different/1 where appropriate
+- Call label/1 to trigger search
+
+Example for N-Queens:
+First, design the rules, then use knowledge_base_assert_many with a list of rule strings:
+
+\`\`\`
+knowledge_base_assert_many with:
+[
+  "solve(Qs) :- length(Qs, 4), Qs ins 1..4, all_different(Qs), safe(Qs), label(Qs)",
+  "safe([])",
+  "safe([Q|Qs]) :- safe(Qs, Q, 1), safe(Qs)",
+  "safe([], _, _)",
+  "safe([Q|Qs], Q0, D) :- Q0 #\\\\= Q, abs(Q0 - Q) #\\\\= D, D1 #= D + 1, safe(Qs, Q0, D1)"
+]
+\`\`\`
+
+Then query: \`query_startEngine("solve(Solution)")\` to get solutions.
+
+Now solve the puzzle using this approach with knowledge_base_assert_many and query_startEngine.`
+        }
+      }
+    ]
   }
 };

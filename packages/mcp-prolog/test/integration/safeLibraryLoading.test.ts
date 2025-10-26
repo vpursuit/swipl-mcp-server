@@ -15,8 +15,8 @@ maybeDescribe("Safe Library Loading: library(clpfd)", () => {
   const allowedDir = path.join(homeDir, '.swipl-mcp-server');
   const testFile = path.join(allowedDir, "test_clpfd.pl");
 
-  beforeEach(() => {
-    prologInterface.stop();
+  beforeEach(async () => {
+    await prologInterface.stop();
 
     // Ensure directory exists
     if (!existsSync(allowedDir)) {
@@ -24,8 +24,8 @@ maybeDescribe("Safe Library Loading: library(clpfd)", () => {
     }
   });
 
-  afterEach(() => {
-    prologInterface.stop();
+  afterEach(async () => {
+    await prologInterface.stop();
 
     // Clean up test file
     try {
@@ -180,16 +180,16 @@ maybeDescribe("Safe Library Loading: Other Safe Libraries", () => {
   const allowedDir = path.join(homeDir, '.swipl-mcp-server');
   const testFile = path.join(allowedDir, "test_safe_libs.pl");
 
-  beforeEach(() => {
-    prologInterface.stop();
+  beforeEach(async () => {
+    await prologInterface.stop();
 
     if (!existsSync(allowedDir)) {
       mkdirSync(allowedDir, { recursive: true });
     }
   });
 
-  afterEach(() => {
-    prologInterface.stop();
+  afterEach(async () => {
+    await prologInterface.stop();
 
     try {
       if (existsSync(testFile)) {
@@ -307,16 +307,16 @@ maybeDescribe("Unsafe Library Blocking", () => {
   const allowedDir = path.join(homeDir, '.swipl-mcp-server');
   const testFile = path.join(allowedDir, "test_unsafe_libs.pl");
 
-  beforeEach(() => {
-    prologInterface.stop();
+  beforeEach(async () => {
+    await prologInterface.stop();
 
     if (!existsSync(allowedDir)) {
       mkdirSync(allowedDir, { recursive: true });
     }
   });
 
-  afterEach(() => {
-    prologInterface.stop();
+  afterEach(async () => {
+    await prologInterface.stop();
 
     try {
       if (existsSync(testFile)) {
@@ -408,16 +408,16 @@ maybeDescribe("Edge Cases: Library Loading", () => {
   const allowedDir = path.join(homeDir, '.swipl-mcp-server');
   const testFile = path.join(allowedDir, "test_edge_cases.pl");
 
-  beforeEach(() => {
-    prologInterface.stop();
+  beforeEach(async () => {
+    await prologInterface.stop();
 
     if (!existsSync(allowedDir)) {
       mkdirSync(allowedDir, { recursive: true });
     }
   });
 
-  afterEach(() => {
-    prologInterface.stop();
+  afterEach(async () => {
+    await prologInterface.stop();
 
     try {
       if (existsSync(testFile)) {

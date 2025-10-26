@@ -1,8 +1,9 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import os from "os";
-import type { ToolDefinitions, CallToolResult } from "@vpursuit/mcp-core";
+import type { ToolDefinitions, CallToolResult, ToolDefinition } from "@vpursuit/mcp-core";
 import { PrologInterface } from "./PrologInterface.js";
+import type { CapabilitiesSummary } from "./types.js";
 import {
   MAX_FILENAME_LENGTH,
   MAX_QUERY_LENGTH,
@@ -25,6 +26,7 @@ import {
   knowledgeBaseRetractSchema,
   knowledgeBaseRetractManySchema,
   knowledgeBaseClearSchema,
+  knowledgeBaseLoadLibrarySchema,
   queryStartEngineSchema,
   knowledgeBaseDumpSchema,
 } from "./schemas.js";
@@ -116,9 +118,9 @@ async function knowledgeBaseAssertClauses(
 }
 
 // Build a machine-readable summary of capabilities
-export function getCapabilitiesSummary(): Record<string, unknown> {
+export function getCapabilitiesSummary(): CapabilitiesSummary {
   const version = resolvePackageVersion();
-  const caps = {
+  const caps: CapabilitiesSummary = {
     server: { name: "swipl-mcp-server", version },
     branding: {
       logo: {
@@ -137,6 +139,7 @@ export function getCapabilitiesSummary(): Record<string, unknown> {
       core: ["help", "license", "capabilities"],
       knowledge_base: [
         "knowledge_base_load",
+        "knowledge_base_load_library",
         "knowledge_base_assert",
         "knowledge_base_assert_many",
         "knowledge_base_retract",
@@ -212,8 +215,30 @@ export function getCapabilitiesSummary(): Record<string, unknown> {
         "system files",
       ],
     },
-  } as const;
-  return caps as unknown as Record<string, unknown>;
+    available_libraries: {
+      note: "Load libraries using knowledge_base_load_library tool or via :- use_module(library(...)) in .pl files",
+      safe_libraries: [
+        "clpfd",
+        "lists",
+        "apply",
+        "aggregate",
+        "assoc",
+        "pairs",
+        "ordsets",
+        "clpb",
+        "solution_sequences",
+        "yall",
+        "nb_set",
+        "rbtrees",
+        "ugraphs",
+        "heaps",
+        "terms",
+        "random",
+      ],
+      description: "Sandbox-approved libraries for constraint solving, list manipulation, data structures, and more",
+    },
+  };
+  return caps;
 }
 
 /**
@@ -335,7 +360,12 @@ export const tools: ToolDefinitions = {
         "roots",
       ] as const;
 
-      const selected = topic && includeOrder.includes(topic as any) ? [topic] : includeOrder;
+      type HelpTopic = typeof includeOrder[number];
+      const isValidTopic = (t: string | undefined): t is HelpTopic => {
+        return (includeOrder as readonly string[]).includes(t ?? '');
+      };
+
+      const selected = topic && isValidTopic(topic) ? [topic] : includeOrder;
 
       const parts: string[] = [];
       for (const key of selected) {
@@ -357,7 +387,7 @@ export const tools: ToolDefinitions = {
     title: "License",
     description: "Get the license text for this software",
     inputSchema: licenseSchema,
-    handler: async (_extra): Promise<CallToolResult> => {
+    handler: async (_args, _extra): Promise<CallToolResult> => {
       try {
         const licensePath = findNearestFile("LICENSE");
         if (!licensePath) {
@@ -387,7 +417,7 @@ export const tools: ToolDefinitions = {
     description: "Get a machine-readable summary of tools, modes, env, and safety",
     inputSchema: capabilitiesSchema,
     outputSchema: capabilitiesOutputSchema,
-    handler: async (_extra): Promise<CallToolResult> => {
+    handler: async (_args, _extra): Promise<CallToolResult> => {
       const caps = getCapabilitiesSummary();
       const json = JSON.stringify(caps, null, 2);
       return {
@@ -404,7 +434,7 @@ export const tools: ToolDefinitions = {
     handler: async ({ filename }: { filename: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
 
-      const v = validateStringInput("filename", filename as any, MAX_FILENAME_LENGTH);
+      const v = validateStringInput("filename", filename, MAX_FILENAME_LENGTH);
       if (!v.ok) {
         return createErrorResponse(v.error, startTime, { error_code: v.code });
       }
@@ -464,7 +494,7 @@ export const tools: ToolDefinitions = {
     handler: async ({ query }: { query: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
 
-      const v = validateStringInput("query", query as any, MAX_QUERY_LENGTH);
+      const v = validateStringInput("query", query, MAX_QUERY_LENGTH);
       if (!v.ok) {
         return createErrorResponse(v.error, startTime, { error_code: v.code });
       }
@@ -491,12 +521,12 @@ export const tools: ToolDefinitions = {
     description: "Get the next solution from the current query (unified for both modes)",
     inputSchema: queryNextSchema,
     outputSchema: queryNextOutputSchema,
-    handler: async (_extra): Promise<CallToolResult> => {
+    handler: async (_args, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
       try {
         await prologInterface.start();
 
-        const sessionState = (prologInterface as any).sessionState;
+        const sessionState = prologInterface.getSessionState();
         let result;
 
         if (sessionState === "query" || sessionState === "query_completed") {
@@ -557,9 +587,9 @@ export const tools: ToolDefinitions = {
     title: "Close Query",
     description: "Close the current query session (unified for both modes)",
     inputSchema: queryCloseSchema,
-    handler: async (_extra): Promise<CallToolResult> => {
+    handler: async (_args, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
-      const sessionState = (prologInterface as any).sessionState;
+      const sessionState = prologInterface.getSessionState();
       if (sessionState !== "query" && sessionState !== "query_completed" &&
           sessionState !== "engine" && sessionState !== "engine_completed") {
         const processingTimeMs = Date.now() - startTime;
@@ -596,7 +626,7 @@ export const tools: ToolDefinitions = {
     description: "List predicates available in the knowledge base",
     inputSchema: symbolsListSchema,
     outputSchema: symbolsListOutputSchema,
-    handler: async (_extra): Promise<CallToolResult> => {
+    handler: async (_args, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
       try {
         await prologInterface.start();
@@ -916,7 +946,7 @@ export const tools: ToolDefinitions = {
     title: "Clear Knowledge Base",
     description: "Remove ALL user-defined facts and rules from the knowledge base",
     inputSchema: knowledgeBaseClearSchema,
-    handler: async (_extra): Promise<CallToolResult> => {
+    handler: async (_args, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
       try {
         await prologInterface.start();
@@ -955,6 +985,53 @@ export const tools: ToolDefinitions = {
     },
   },
 
+  knowledge_base_load_library: {
+    title: "Load Safe Library",
+    description: "Load a sandbox-approved Prolog library (e.g., clpfd, lists, apply) into the knowledge base module without requiring file operations",
+    inputSchema: knowledgeBaseLoadLibrarySchema,
+    handler: async ({ library }: { library: string }, _extra): Promise<CallToolResult> => {
+      const startTime = Date.now();
+
+      const v = validateStringInput("library", library, 100);
+      if (!v.ok) {
+        return createErrorResponse(v.error, startTime, { error_code: v.code });
+      }
+
+      try {
+        await prologInterface.start();
+        await prologInterface.loadLibrary(library);
+        const processingTimeMs = Date.now() - startTime;
+
+        return {
+          content: [{
+            type: "text",
+            text: `Successfully loaded library(${library}) into knowledge_base module\nProcessing time: ${processingTimeMs}ms`
+          }],
+          structuredContent: {
+            library,
+            processing_time_ms: processingTimeMs
+          },
+          isError: false
+        };
+      } catch (error) {
+        const processingTimeMs = Date.now() - startTime;
+        const errMsg = error instanceof Error ? error.message : String(error);
+        return {
+          content: [{
+            type: "text",
+            text: `Error loading library(${library}): ${errMsg}\nProcessing time: ${processingTimeMs}ms`
+          }],
+          structuredContent: {
+            library,
+            error: errMsg,
+            processing_time_ms: processingTimeMs
+          },
+          isError: true
+        };
+      }
+    },
+  },
+
   query_startEngine: {
     title: "Start Query (Engine Mode)",
     description: "Start a new Prolog query session using SWI-Prolog engines for true backtracking",
@@ -962,7 +1039,7 @@ export const tools: ToolDefinitions = {
     handler: async ({ query }: { query: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
 
-      const v = validateStringInput("query", query as any, MAX_QUERY_LENGTH);
+      const v = validateStringInput("query", query, MAX_QUERY_LENGTH);
       if (!v.ok) {
         return createErrorResponse(v.error, startTime, { error_code: v.code });
       }
@@ -1003,7 +1080,7 @@ export const tools: ToolDefinitions = {
     title: "Dump Knowledge Base",
     description: "Export current knowledge base as Prolog facts",
     inputSchema: knowledgeBaseDumpSchema,
-    handler: async (_extra): Promise<CallToolResult> => {
+    handler: async (_args, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
       try {
         await prologInterface.start();
@@ -1041,10 +1118,14 @@ function snakeToCamel(str: string): string {
 /**
  * Extract handlers from tools for direct access (used by integration tests)
  * Converts snake_case tool names to camelCase for backward compatibility
+ *
+ * Type-safe export: No type assertions, enforces correct handler signatures
  */
-export const toolHandlers = Object.fromEntries(
+type ToolHandler = ToolDefinition['handler'];
+
+export const toolHandlers: Record<string, ToolHandler> = Object.fromEntries(
   Object.entries(tools).map(([key, def]) => [snakeToCamel(key), def.handler])
-) as Record<string, (...args: any[]) => Promise<CallToolResult>>;
+);
 
 export { prologInterface };
 

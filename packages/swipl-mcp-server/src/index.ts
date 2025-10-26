@@ -24,6 +24,7 @@ import { resolvePackageVersion } from "./meta.js";
  *
  * FROM @vpursuit/mcp-prolog:
  * - knowledge_base_load: Load Prolog files
+ * - knowledge_base_load_library: Load safe Prolog library
  * - knowledge_base_assert: Add facts/rules
  * - knowledge_base_assert_many: Batch add facts/rules
  * - knowledge_base_retract: Remove facts/rules
@@ -53,6 +54,7 @@ import { resolvePackageVersion } from "./meta.js";
  * - prolog_analyze_knowledge_base: Analyze knowledge base
  * - prolog_knowledge_base_builder: Build knowledge base from requirements
  * - prolog_query_optimizer: Optimize query performance
+ * - prolog_logic_puzzle_solver: Solve logic puzzles using CLP(FD)
  */
 
 /**

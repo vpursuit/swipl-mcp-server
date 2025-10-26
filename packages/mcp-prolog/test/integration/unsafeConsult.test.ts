@@ -4,12 +4,12 @@ import { toolHandlers, prologInterface } from "@vpursuit/mcp-prolog";
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
 maybeDescribe("Unsafe File Consultation", () => {
-  beforeEach(() => {
-    prologInterface.stop();
+  beforeEach(async () => {
+    await prologInterface.stop();
   });
 
-  afterEach(() => {
-    prologInterface.stop();
+  afterEach(async () => {
+    await prologInterface.stop();
   });
 
   test("should detect and reject unsafe directives during file consultation", async () => {
