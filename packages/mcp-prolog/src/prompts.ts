@@ -60,9 +60,10 @@ EXPERT KNOWLEDGE - You are an expert in:
 
 IMPORTANT - AVAILABLE PREDICATES:
 - All standard SWI-Prolog predicates are available
-- CLP(FD) library(clpfd) is NOT available (security restriction)
-- Use standard alternatives: between/3 for domains, is/2 for arithmetic, permutation/2 for uniqueness
-- Use generate-and-test pattern instead of constraint propagation
+- library(clpfd) available: Constraint Logic Programming over Finite Domains
+- Load with :- use_module(library(clpfd)) in .pl files
+- Standard alternatives also work: between/3 for domains, is/2 for arithmetic, permutation/2 for uniqueness
+- Both constraint propagation (CLP(FD)) and generate-and-test patterns supported
 - Check 'capabilities' resource for full details
 
 SECURITY AWARENESS (from capabilities resource):
@@ -218,8 +219,9 @@ PREPARATION PHASE:
 
 IMPORTANT - Predicate Availability:
 - All standard SWI-Prolog predicates are available (member/2, append/3, between/3, etc.)
-- CLP(FD) is NOT available - use standard alternatives (between/3, is/2, permutation/2)
-- For constraint problems, use generate-and-test pattern
+- library(clpfd) available: Load with :- use_module(library(clpfd)) for constraint programming
+- Standard alternatives: between/3, is/2, permutation/2 for generate-and-test pattern
+- Choose approach based on problem size: CLP(FD) for complex constraints, standard predicates for simpler cases
 
 DESIGN PHASE:
 1. Domain Analysis:
@@ -301,9 +303,9 @@ First, check the current knowledge base state:
 
 IMPORTANT - Predicate Availability:
 - All standard SWI-Prolog predicates are available for optimization
-- CLP(FD) is NOT available - suggest standard alternatives if user is trying to use it
-- Recommend between/3 for domain generation, is/2 for arithmetic, permutation/2 for uniqueness
-- Use generate-and-test pattern instead of constraint propagation
+- library(clpfd) available: Load with :- use_module(library(clpfd)) for constraint optimization
+- Standard alternatives: between/3 for domain generation, is/2 for arithmetic, permutation/2 for uniqueness
+- Consider both constraint propagation (CLP(FD)) and generate-and-test patterns based on problem characteristics
 
 OPTIMIZATION STRATEGY:
 1. Goal Ordering Analysis:

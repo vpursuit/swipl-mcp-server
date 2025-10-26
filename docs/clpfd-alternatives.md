@@ -2,9 +2,9 @@
 
 ## Overview
 
-The swipl-mcp-server **does NOT include CLP(FD)** (`library(clpfd)`) for security reasons. However, **most constraint problems can be solved** using standard Prolog predicates that ARE available.
+The swipl-mcp-server **includes CLP(FD)** (`library(clpfd)`) via safe library loading. This document provides guidance on when to use CLP(FD) versus standard Prolog predicates, and shows how constraint problems can be solved with either approach.
 
-This document explains the differences and shows you how to convert CLP(FD) code to standard Prolog.
+**Note**: CLP(FD) is available by loading `:- use_module(library(clpfd)).` in your Prolog files. This document serves as a reference for understanding both approaches and choosing the appropriate one for your use case.
 
 ## What's Available vs. What's Not
 
@@ -23,24 +23,24 @@ This document explains the differences and shows you how to convert CLP(FD) code
 | `append/3` | List concatenation | `append([1,2], [3,4], X)` |
 | `length/2` | List length | `length([1,2,3], N)` |
 
-### ❌ **Not Available** (CLP(FD))
+### ✅ **Also Available** (CLP(FD))
 
-| CLP(FD) Feature | Standard Prolog Alternative |
-|-----------------|----------------------------|
-| `X in 1..10` | `between(1, 10, X)` |
-| `X #= Y + 1` | `X is Y + 1` |
-| `X #\= Y` | `X =\= Y` (or `\+ X = Y` for unification) |
-| `X #< Y` | `X < Y` (requires instantiated values) |
-| `all_different/1` | Custom predicate (see below) |
-| `all_distinct/1` | Custom predicate (see below) |
-| `label/1` | `member/2` or `permutation/2` |
-| Constraint propagation | Generate-and-test |
+| CLP(FD) Feature | Standard Prolog Alternative | When to Use Each |
+|-----------------|----------------------------|------------------|
+| `X in 1..10` | `between(1, 10, X)` | CLP(FD): complex constraints; Standard: simple iteration |
+| `X #= Y + 1` | `X is Y + 1` | CLP(FD): bidirectional; Standard: when right side known |
+| `X #\= Y` | `X =\= Y` (or `\+ X = Y` for unification) | CLP(FD): constraint propagation; Standard: direct test |
+| `X #< Y` | `X < Y` (requires instantiated values) | CLP(FD): constraints; Standard: comparisons |
+| `all_different/1` | Custom predicate (see below) | CLP(FD): efficiency; Standard: small domains |
+| `all_distinct/1` | Custom predicate (see below) | CLP(FD): efficiency; Standard: small domains |
+| `label/1` | `member/2` or `permutation/2` | CLP(FD): with constraints; Standard: simple search |
+| Constraint propagation | Generate-and-test | CLP(FD): large search spaces; Standard: small problems |
 
 ## Key Differences
 
-### CLP(FD) Advantage: Constraint Propagation
+### CLP(FD) Approach: Constraint Propagation
 ```prolog
-% CLP(FD) - NOT AVAILABLE
+% CLP(FD) - Available with :- use_module(library(clpfd))
 queens_clpfd(N, Qs) :-
     length(Qs, N),
     Qs ins 1..N,          % Domain constraint
@@ -49,49 +49,49 @@ queens_clpfd(N, Qs) :-
     label(Qs).            % Search with propagation
 ```
 
-### Standard Prolog: Generate-and-Test
+### Standard Prolog Approach: Generate-and-Test
 ```prolog
-% Standard Prolog - WORKS in swipl-mcp-server
+% Standard Prolog - Works without library loading
 queens(N, Qs) :-
     numlist(1, N, Domain),
     permutation(Domain, Qs),  % Generate candidate
     safe_queens(Qs).          % Test if valid
 ```
 
-**Trade-off**: CLP(FD) is faster for large N, but standard Prolog works fine for small to medium problems.
+**Trade-off**: CLP(FD) is more efficient for large N and complex constraints. Standard Prolog is simpler for small to medium problems and when CLP(FD) features aren't needed.
 
 ## Common Patterns & Conversions
 
 ### Pattern 1: Domain Declaration
 
 ```prolog
-% ❌ CLP(FD) (not available)
+% CLP(FD) approach (requires :- use_module(library(clpfd)))
 X in 1..10
 
-% ✅ Standard Prolog (works!)
+% Standard Prolog approach (no library needed)
 between(1, 10, X)
 
-% ✅ Or for multiple variables:
+% Alternative for multiple variables:
 member(X, [1,2,3,4,5,6,7,8,9,10])
 ```
 
 ### Pattern 2: All Different Constraint
 
 ```prolog
-% ❌ CLP(FD) (not available)
+% CLP(FD) approach (requires :- use_module(library(clpfd)))
 all_different([X, Y, Z])
 
-% ✅ Standard Prolog - Option 1: Explicit constraints
+% Standard Prolog - Option 1: Explicit constraints
 all_different([X, Y, Z]) :-
     X =\= Y, X =\= Z, Y =\= Z.
 
-% ✅ Standard Prolog - Option 2: General predicate
+% Standard Prolog - Option 2: General predicate
 all_different([]).
 all_different([H|T]) :-
     \+ member(H, T),
     all_different(T).
 
-% ✅ Standard Prolog - Option 3: Use permutation
+% Standard Prolog - Option 3: Use permutation
 % If you need unique values from a fixed set:
 permutation([1,2,3,4], [X, Y, Z, W])  % Automatically all different
 ```
@@ -99,11 +99,11 @@ permutation([1,2,3,4], [X, Y, Z, W])  % Automatically all different
 ### Pattern 3: Arithmetic Constraints
 
 ```prolog
-% ❌ CLP(FD) (not available)
+% CLP(FD) approach (requires :- use_module(library(clpfd)))
 X #= Y + 1,
 Z #< X * 2
 
-% ✅ Standard Prolog (works!)
+% Standard Prolog approach
 X is Y + 1,
 Z < X * 2
 ```
@@ -124,10 +124,10 @@ between(1, 10, Y)
 ### Pattern 4: Global Constraints
 
 ```prolog
-% ❌ CLP(FD) (not available)
+% CLP(FD) approach (requires :- use_module(library(clpfd)))
 element(I, List, X)
 
-% ✅ Standard Prolog (works!)
+% Standard Prolog approach
 nth1(I, List, X)     % 1-indexed
 % or
 nth0(I, List, X)     % 0-indexed
@@ -135,18 +135,19 @@ nth0(I, List, X)     % 0-indexed
 
 ## Real Example: 4-Queens Problem
 
-### CLP(FD) Version (NOT available)
+### CLP(FD) Version
 ```prolog
+% Requires :- use_module(library(clpfd))
 queens_clpfd(Queens) :-
     Queens = [Q1, Q2, Q3, Q4],
-    Queens ins 1..4,                    % ❌ Not available
-    all_distinct(Queens),               % ❌ Not available
-    Q1 #\= Q2 + 1, Q1 #\= Q2 - 1,     % ❌ Not available
+    Queens ins 1..4,
+    all_distinct(Queens),
+    Q1 #\= Q2 + 1, Q1 #\= Q2 - 1,
     % ... more constraints
-    label(Queens).                      % ❌ Not available
+    label(Queens).
 ```
 
-### Standard Prolog Version (WORKS!)
+### Standard Prolog Version
 ```prolog
 queens_4(Solution) :-
     % Generate candidates
@@ -189,21 +190,25 @@ queens_4_fast(Solution) :-
 
 | Problem Size | Standard Prolog | CLP(FD) |
 |--------------|-----------------|---------|
-| N ≤ 8 | ✅ Fast enough | Faster but overkill |
+| N ≤ 8 | ✅ Fast enough | Faster with propagation |
 | 8 < N ≤ 12 | ⚠️ Slower but works | Much faster |
 | N > 12 | ❌ Too slow | Recommended |
 
-**For swipl-mcp-server**: Stick to problems with N ≤ 8 using standard Prolog.
+**Guidance**: Use CLP(FD) for complex constraints and larger problem sizes. Standard Prolog is simpler for small problems where constraint propagation isn't needed.
 
 ## Common Mistakes
 
-### Mistake 1: Using CLP(FD) Syntax
+### Mistake 1: Using CLP(FD) Without Loading Library
 
 ```prolog
-% ❌ WRONG - This will error
+% ❌ WRONG - Will error if library not loaded
 X in 1..10, Y in 1..10, X #< Y
 
-% ✅ CORRECT
+% ✅ CORRECT - Add to .pl file before loading
+:- use_module(library(clpfd)).
+solve :- X in 1..10, Y in 1..10, X #< Y.
+
+% ✅ ALTERNATIVE - Use standard predicates
 between(1, 10, X),
 between(1, 10, Y),
 X < Y
@@ -235,11 +240,13 @@ Y < Z               % Test explicitly
 
 ## Best Practices for swipl-mcp-server
 
-1. **Use `permutation/2`** for "all different" constraints on small domains
-2. **Generate before testing**: Use `between/3` or `member/2` to instantiate variables before testing arithmetic constraints
-3. **Use `findall/3`** to collect all solutions efficiently
-4. **Write helper predicates** to make code readable
-5. **Test incrementally**: Start with simple constraints, add complexity gradually
+1. **Choose the right approach**: Use CLP(FD) for complex constraints, standard predicates for simple problems
+2. **Load libraries properly**: Add `:- use_module(library(clpfd)).` at the top of .pl files
+3. **Use `permutation/2`** for "all different" constraints on small domains (standard approach)
+4. **Generate before testing**: With standard predicates, use `between/3` or `member/2` to instantiate variables before testing
+5. **Use `findall/3`** to collect all solutions efficiently
+6. **Write helper predicates** to make code readable
+7. **Test incrementally**: Start with simple constraints, add complexity gradually
 
 ## Useful Helper Predicates
 
@@ -270,10 +277,18 @@ n_between(N, Low, High, [X|Xs]) :-
 
 ## Summary
 
-**The server CAN solve constraint problems** - just use:
-- `between/3` instead of `X in Low..High`
-- `=\=` instead of `#\=`
-- `permutation/2` for all-different constraints
-- Generate-and-test pattern instead of constraint propagation
+**The server supports both approaches to constraint problems**:
 
-See `~/.swipl-mcp-server/queens.pl` for a complete working example!
+**CLP(FD) approach** (load `:- use_module(library(clpfd))` in .pl files):
+- `X in Low..High` for domain constraints
+- `#=`, `#\=`, `#<`, etc. for constraint arithmetic
+- `all_distinct/1` for uniqueness constraints
+- Constraint propagation reduces search space
+
+**Standard Prolog approach** (no library loading needed):
+- `between/3` for generating integer ranges
+- `=\=`, `<`, `>` for arithmetic comparisons
+- `permutation/2` for all-different on small domains
+- Generate-and-test pattern
+
+Choose based on problem complexity and performance requirements. See SECURITY.md for complete list of allowed libraries.

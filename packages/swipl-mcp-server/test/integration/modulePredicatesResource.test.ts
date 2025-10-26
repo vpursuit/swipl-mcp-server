@@ -87,8 +87,8 @@ maybeDescribe("Module Predicates Resource", () => {
     const readResp = await send("resources/read", { uri: "prolog://knowledge_base/predicates" });
     console.log("Read response:", JSON.stringify(readResp, null, 2));
 
-    // Extract text correctly from result.text
-    const text = readResp?.result?.text || "";
+    // Extract text from MCP SDK ReadResourceResult format (contents array)
+    const text = readResp?.result?.contents?.[0]?.text || "";
     console.log("Extracted text:", text);
 
     // If the assertion worked, we expect parent/2 to be listed

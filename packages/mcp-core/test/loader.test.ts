@@ -116,20 +116,22 @@ describe("Plugin Loader", () => {
       await loadPlugin(mockServer, plugin);
 
       expect(mockServer.registerPrompt).toHaveBeenCalledTimes(1);
-      expect(mockServer.registerPrompt).toHaveBeenCalledWith(
-        "test-prompt",
-        expect.objectContaining({
-          title: "test-prompt",
-          description: "A test prompt",
-          argsSchema: {
-            task: {
-              type: "string",
-              description: "Task description",
-            },
-          },
-        }),
-        expect.any(Function)
-      );
+
+      // Verify the call was made with correct parameters
+      const [[promptName, config, handler]] = mockServer.registerPrompt.mock.calls;
+      expect(promptName).toBe("test-prompt");
+      expect(config.title).toBe("test-prompt");
+      expect(config.description).toBe("A test prompt");
+
+      // Verify argsSchema is a proper Zod schema object
+      expect(config.argsSchema).toBeDefined();
+      expect(config.argsSchema.task).toBeDefined();
+
+      // Verify the task schema has Zod schema properties
+      expect(config.argsSchema.task._def).toBeDefined(); // Zod schemas have _def
+      expect(config.argsSchema.task._def.description).toBe("Task description");
+
+      expect(handler).toBeTypeOf("function");
     });
 
     it("should throw error if plugin fails to load by default", async () => {

@@ -8,7 +8,7 @@
  */
 
 import { promises as fs } from "fs";
-import type { ResourceDefinitions } from "@vpursuit/mcp-core";
+import type { ResourceDefinitions, ReadResourceResult } from "@vpursuit/mcp-core";
 import { findNearestFile } from "./meta.js";
 import { prologInterface, getCapabilitiesSummary, tools } from "./tools.js";
 
@@ -42,17 +42,17 @@ export const resources: ResourceDefinitions = {
     name: "Knowledge Base Predicates",
     description: "List predicates defined in the knowledge_base module",
     mimeType: "text/plain",
-    handler: async () => {
+    handler: async (uri, _extra): Promise<ReadResourceResult> => {
       await prologInterface.start();
       const preds = await prologInterface.query("list_module_predicates(knowledge_base)");
       const text = formatPrologList(preds);
 
       return {
-        uri: "prolog://knowledge_base/predicates",
-        name: "Knowledge Base Predicates",
-        description: "List predicates defined in the knowledge_base module",
-        mimeType: "text/plain",
-        text,
+        contents: [{
+          uri: uri.toString(),
+          mimeType: "text/plain",
+          text,
+        }]
       };
     },
   },
@@ -65,16 +65,16 @@ export const resources: ResourceDefinitions = {
     name: "Knowledge Base Dump",
     description: "Export current knowledge base as Prolog clauses",
     mimeType: "text/prolog",
-    handler: async () => {
+    handler: async (uri, _extra): Promise<ReadResourceResult> => {
       await prologInterface.start();
       const dump = await prologInterface.query("dump_knowledge_base");
 
       return {
-        uri: "prolog://knowledge_base/dump",
-        name: "Knowledge Base Dump",
-        description: "Export current knowledge base as Prolog clauses",
-        mimeType: "text/prolog",
-        text: dump,
+        contents: [{
+          uri: uri.toString(),
+          mimeType: "text/prolog",
+          text: dump,
+        }]
       };
     },
   },
@@ -87,18 +87,18 @@ export const resources: ResourceDefinitions = {
     name: "Help",
     description: "Usage guidelines and tips for this server",
     mimeType: "text/plain",
-    handler: async () => {
-      const res = await tools.help.handler({});
-      const text = Array.isArray(res.content) && res.content[0]?.text
+    handler: async (uri, _extra): Promise<ReadResourceResult> => {
+      const res = await tools.help.handler({}, _extra);
+      const text = (Array.isArray(res.content) && res.content[0]?.text
         ? res.content[0].text
-        : "Help unavailable";
+        : "Help unavailable") as string;
 
       return {
-        uri: "reference://help",
-        name: "Help",
-        description: "Usage guidelines and tips for this server",
-        mimeType: "text/plain",
-        text,
+        contents: [{
+          uri: uri.toString(),
+          mimeType: "text/plain",
+          text,
+        }]
       };
     },
   },
@@ -111,18 +111,18 @@ export const resources: ResourceDefinitions = {
     name: "License",
     description: "License text for this software",
     mimeType: "text/plain",
-    handler: async () => {
-      const res = await tools.license.handler({} as any);
-      const text = Array.isArray(res.content) && res.content[0]?.text
+    handler: async (uri, _extra): Promise<ReadResourceResult> => {
+      const res = await tools.license.handler({}, _extra);
+      const text = (Array.isArray(res.content) && res.content[0]?.text
         ? res.content[0].text
-        : "License unavailable";
+        : "License unavailable") as string;
 
       return {
-        uri: "reference://license",
-        name: "License",
-        description: "License text for this software",
-        mimeType: "text/plain",
-        text,
+        contents: [{
+          uri: uri.toString(),
+          mimeType: "text/plain",
+          text,
+        }]
       };
     },
   },
@@ -135,27 +135,26 @@ export const resources: ResourceDefinitions = {
     name: "Server Logo",
     description: "Official swipl-mcp-server logo (SVG)",
     mimeType: "image/svg+xml",
-    handler: async () => {
+    handler: async (uri, _extra): Promise<ReadResourceResult> => {
       const logoPath = findNearestFile("images/logo.svg");
 
       if (!logoPath) {
-        const fallback = "Logo unavailable";
         return {
-          uri: "reference://logo",
-          name: "Server Logo",
-          description: "Official swipl-mcp-server logo (SVG)",
-          mimeType: "image/svg+xml",
-          text: fallback,
+          contents: [{
+            uri: uri.toString(),
+            mimeType: "text/plain",
+            text: "Logo unavailable",
+          }]
         };
       }
 
       const svg = await fs.readFile(logoPath, "utf8");
       return {
-        uri: "reference://logo",
-        name: "Server Logo",
-        description: "Official swipl-mcp-server logo (SVG)",
-        mimeType: "image/svg+xml",
-        text: svg,
+        contents: [{
+          uri: uri.toString(),
+          mimeType: "image/svg+xml",
+          text: svg,
+        }]
       };
     },
   },
@@ -168,16 +167,16 @@ export const resources: ResourceDefinitions = {
     name: "Capabilities",
     description: "Machine-readable summary of tools, modes, env, and safety",
     mimeType: "application/json",
-    handler: async () => {
+    handler: async (uri, _extra): Promise<ReadResourceResult> => {
       const caps = getCapabilitiesSummary();
       const json = JSON.stringify(caps, null, 2);
 
       return {
-        uri: "reference://capabilities",
-        name: "Capabilities",
-        description: "Machine-readable summary of tools, modes, env, and safety",
-        mimeType: "application/json",
-        text: json,
+        contents: [{
+          uri: uri.toString(),
+          mimeType: "application/json",
+          text: json,
+        }]
       };
     },
   },

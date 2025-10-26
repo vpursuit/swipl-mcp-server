@@ -130,8 +130,8 @@ export function getCapabilitiesSummary(): Record<string, unknown> {
     modes: ["standard", "engine"],
     predicates: {
       standard_prolog: "All standard SWI-Prolog predicates available",
-      clpfd_available: false,
-      clpfd_note: "library(clpfd) not available for security reasons - use between/3, is/2, permutation/2",
+      clpfd_available: true,
+      clpfd_note: "library(clpfd) available via safe library loading - see SECURITY.md for whitelist",
     },
     tools: {
       core: ["help", "license", "capabilities"],
@@ -295,7 +295,7 @@ export const tools: ToolDefinitions = {
           "Available Predicates:",
           "- All standard SWI-Prolog built-in predicates are available",
           "- Safe libraries can be loaded via :- use_module(library(...)) directives",
-          "- library(clpfd) NOW AVAILABLE: Constraint Logic Programming over Finite Domains",
+          "- library(clpfd) available: Constraint Logic Programming over Finite Domains",
           "- Other safe libraries: lists, apply, aggregate, assoc, pairs, ordsets, clpb, and more",
           "- See SECURITY.md for complete list of allowed libraries",
           "- Load libraries in Prolog files before loading into knowledge base",

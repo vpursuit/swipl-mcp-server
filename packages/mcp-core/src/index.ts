@@ -17,6 +17,13 @@ export type {
   PromptDefinition,
   PromptDefinitions,
   PromptArgument,
+  // Re-export SDK types for plugins
+  CallToolResult,
+  ReadResourceResult,
+  GetPromptResult,
+  RequestHandlerExtra,
+  ServerRequest,
+  ServerNotification,
 } from "./types.js";
 
 // Export loader functions

@@ -20,6 +20,7 @@ export { serverRef, logger } from "./logger.js";
 
 /**
  * Convert internal prompt format to Plugin PromptDefinitions format
+ * Handlers now match SDK's PromptCallback signature with extra parameter
  */
 function convertPromptsToDefinitions(): PromptDefinitions {
   const promptDefs: PromptDefinitions = {};
@@ -29,7 +30,7 @@ function convertPromptsToDefinitions(): PromptDefinitions {
       name: prompt.name,
       description: prompt.description,
       arguments: prompt.arguments,
-      handler: async (args: Record<string, string>) => {
+      handler: async (args: Record<string, string | undefined>, _extra) => {
         const messages = prompt.messages(args);
         return {
           messages: messages.map((msg) => ({
