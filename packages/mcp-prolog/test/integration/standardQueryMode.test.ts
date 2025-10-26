@@ -186,13 +186,40 @@ maybeDescribe("Standard Query Mode Tools", () => {
       await toolHandlers.queryClose();
     });
 
-    test("should handle malformed solution terms gracefully", async () => {
-      // This tests the fallback parsing when solution format is unexpected
+    test("should handle various solution formats gracefully", async () => {
+      // Test that solution parsing handles edge cases with safe operations
       await prologInterface.start();
 
-      // Mock a malformed response by directly testing the interface
-      const mockResult = await prologInterface.query("write('solution(malformed)')");
-      expect(typeof mockResult).toBe("string"); // Should handle gracefully
+      // Test 1: Query with no variables - should return "ok" for assertions
+      const result1 = await prologInterface.query("assert(edge_case_fact)");
+      expect(typeof result1).toBe("string");
+      expect(result1).toBe("ok");
+
+      // Test 2: Simple fact query returns through standard query mechanism
+      await toolHandlers.queryStart({ query: "edge_case_fact" });
+      const result2 = await toolHandlers.queryNext();
+      expect(result2.isError).toBeFalsy();
+      expect(result2.content[0].text).toContain("Solution:");
+      expect(result2.content[0].text).toContain("true");
+      await toolHandlers.queryClose();
+
+      // Test 3: Complex nested structure in solution
+      await prologInterface.query("assert(complex_structure([a, [b, c], 42, atom]))");
+      await toolHandlers.queryStart({ query: "complex_structure(X)" });
+      const result3 = await toolHandlers.queryNext();
+      expect(result3.isError).toBeFalsy();
+      expect(result3.content[0].text).toContain("X=");
+      await toolHandlers.queryClose();
+
+      // Test 4: Multiple variables with different types
+      await prologInterface.query("assert(multi_var(atom_value, 123, [1,2,3]))");
+      await toolHandlers.queryStart({ query: "multi_var(A, B, C)" });
+      const result4 = await toolHandlers.queryNext();
+      expect(result4.isError).toBeFalsy();
+      expect(result4.content[0].text).toContain("A=");
+      expect(result4.content[0].text).toContain("B=");
+      expect(result4.content[0].text).toContain("C=");
+      await toolHandlers.queryClose();
     });
   });
 
