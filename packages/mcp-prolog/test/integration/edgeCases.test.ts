@@ -296,9 +296,10 @@ maybeDescribe("Prolog Interface Edge Cases", () => {
       // Start query session
       await prolog.startQuery("parent(X, Y)");
 
-      // Try to send start_engine command directly (should be rejected by server)
-      const result = await prolog.query("start_engine(parent(X, Y))");
-      expect(result).toContain("error(session_conflict");
+      // Try to send start_engine command directly - should be rejected by server
+      await expect(prolog.query("start_engine(parent(X, Y))")).rejects.toThrow(
+        /Session conflict.*query.*engine/i
+      );
 
       // Cleanup
       await prolog.closeQuery();

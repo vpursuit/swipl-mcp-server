@@ -156,45 +156,50 @@ maybeDescribe("Security: Dangerous Operation Detection", () => {
 
   test("should return security error for dangerous shell operation", async () => {
     await prologInterface.start();
-    
-    const result = await toolHandlers.knowledgeBaseAssert({ 
-      fact: "test_system :- shell('echo test')." 
+
+    const result = await toolHandlers.knowledgeBaseAssert({
+      fact: "test_system :- shell('echo test')."
     });
-    
+
     expect(result.isError).toBeTruthy();
-    // Dangerous operations should timeout (security mechanism)
-    expect(result.content[0].text).toContain("Query timeout");
+    // Dangerous predicates are now detected pre-execution with clear error messages
+    expect(result.content[0].text).toContain("Dangerous predicate");
     expect(result.content[0].text).toContain("shell");
-    // The timeout indicates the dangerous operation was blocked
+    // Pre-execution validation prevents the dangerous operation from running
     expect(result.structuredContent.success).toBe(0);
   });
 
   test("should return security error for dangerous call operation", async () => {
     await prologInterface.start();
-    
-    const result = await toolHandlers.knowledgeBaseAssert({ 
-      fact: "test_call :- call(shell('echo test'))." 
+
+    const result = await toolHandlers.knowledgeBaseAssert({
+      fact: "test_call :- call(shell('echo test'))."
     });
-    
+
     expect(result.isError).toBeTruthy();
-    // Dangerous operations should timeout (security mechanism)
-    expect(result.content[0].text).toContain("Query timeout");
+    // Dangerous predicates are now detected pre-execution with clear error messages
+    expect(result.content[0].text).toContain("Dangerous predicate");
     expect(result.structuredContent.success).toBe(0);
   });
 
   test("should return security error in knowledgeBaseAssertMany for dangerous operations", async () => {
     await prologInterface.start();
-    
-    const result = await toolHandlers.knowledgeBaseAssertMany({ 
+
+    const result = await toolHandlers.knowledgeBaseAssertMany({
       facts: [
         "dangerous_fact1 :- system('rm -rf /').",
         "dangerous_fact2 :- shell('echo test')."
       ]
     });
-    
+
     expect(result.isError).toBeTruthy();
-    // Dangerous operations should timeout (security mechanism)
-    expect(result.content[0].text).toContain("Query timeout");
+    // Dangerous predicates are now detected pre-execution with clear error messages
+    expect(result.content[0].text).toContain("Dangerous predicate");
+    // Should show detailed failure information for both dangerous operations
+    expect(result.content[0].text).toContain("FAILED");
+    expect(result.content[0].text).toContain("system");
+    expect(result.content[0].text).toContain("shell");
+    // Verify both operations were rejected
     expect(result.structuredContent.success).toBe(0);
     expect(result.structuredContent.total).toBe(2);
   });
