@@ -1,27 +1,53 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type {
+  CallToolResult,
+  ReadResourceResult,
+  GetPromptResult,
+  ServerRequest,
+  ServerNotification,
+} from "@modelcontextprotocol/sdk/types.js";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type { z } from "zod";
 
 /**
- * Response from a tool handler (MCP SDK format)
+ * Re-export SDK types for use by plugins
  */
-export interface ToolResponse {
-  content: Array<{
-    type: "text" | "image" | "resource";
-    text?: string;
-    data?: string;
-    mimeType?: string;
-  }>;
-  structuredContent?: Record<string, unknown>;
-  isError?: boolean;
-}
+export type {
+  CallToolResult,
+  ReadResourceResult,
+  GetPromptResult,
+  RequestHandlerExtra,
+  ServerRequest,
+  ServerNotification,
+};
+
+/**
+ * Legacy ToolResponse type for backward compatibility with tests
+ * This is a simplified alias to CallToolResult
+ * @deprecated Use CallToolResult from SDK instead
+ */
+export type ToolResponse = CallToolResult;
 
 /**
  * Definition of a single tool
+ *
+ * Note: inputSchema should be a ZodRawShape (plain object with Zod schemas as values),
+ * not a wrapped ZodObject. Example: { param: z.string() } not z.object({ param: z.string() })
+ *
+ * Handler signature: (args, extra) => Promise<CallToolResult>
+ * - args: Parsed tool arguments (empty object {} for tools with no params)
+ * - extra: Request context from MCP SDK
+ * - Returns: CallToolResult with content array
  */
 export interface ToolDefinition {
+  title?: string;
   description: string;
-  inputSchema: z.ZodSchema;
-  handler: (args: any) => Promise<ToolResponse>;
+  inputSchema: z.ZodRawShape;
+  outputSchema?: z.ZodRawShape;
+  handler: (
+    args: any,
+    extra: RequestHandlerExtra<ServerRequest, ServerNotification>
+  ) => Promise<CallToolResult>;
 }
 
 /**
@@ -33,20 +59,21 @@ export interface ToolDefinitions {
 
 /**
  * Definition of a single resource
+ *
+ * Handler signature: (uri, extra) => Promise<ReadResourceResult>
+ * - uri: URL object of the resource being read
+ * - extra: Request context from MCP SDK
+ * - Returns: ReadResourceResult with contents array
  */
 export interface ResourceDefinition {
   uri: string;
   name: string;
   description?: string;
   mimeType?: string;
-  handler: () => Promise<{
-    uri: string;
-    name: string;
-    description?: string;
-    mimeType?: string;
-    text?: string;
-    blob?: string;
-  }>;
+  handler: (
+    uri: URL,
+    extra: RequestHandlerExtra<ServerRequest, ServerNotification>
+  ) => Promise<ReadResourceResult>;
 }
 
 /**
@@ -67,23 +94,21 @@ export interface PromptArgument {
 
 /**
  * Definition of a single prompt
+ *
+ * Handler signature: (args, extra) => Promise<GetPromptResult>
+ * - args: Prompt arguments (Record<string, string | undefined>)
+ * - extra: Request context from MCP SDK
+ * - Returns: GetPromptResult with messages array
  */
 export interface PromptDefinition {
   name: string;
+  title?: string;
   description?: string;
   arguments?: PromptArgument[];
-  handler: (args: Record<string, string>) => Promise<{
-    description?: string;
-    messages: Array<{
-      role: "user" | "assistant";
-      content: {
-        type: "text" | "image" | "resource";
-        text?: string;
-        data?: string;
-        mimeType?: string;
-      };
-    }>;
-  }>;
+  handler: (
+    args: Record<string, string | undefined>,
+    extra: RequestHandlerExtra<ServerRequest, ServerNotification>
+  ) => Promise<GetPromptResult>;
 }
 
 /**

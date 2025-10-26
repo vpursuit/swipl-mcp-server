@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import os from "os";
-import type { ToolDefinitions, ToolResponse } from "@vpursuit/mcp-core";
+import type { ToolDefinitions, CallToolResult } from "@vpursuit/mcp-core";
 import { PrologInterface } from "./PrologInterface.js";
 import {
   MAX_FILENAME_LENGTH,
@@ -12,6 +12,9 @@ import {
   helpSchema,
   licenseSchema,
   capabilitiesSchema,
+  capabilitiesOutputSchema,
+  symbolsListOutputSchema,
+  queryNextOutputSchema,
   knowledgeBaseLoadSchema,
   queryStartSchema,
   queryNextSchema,
@@ -218,9 +221,10 @@ export function getCapabilitiesSummary(): Record<string, unknown> {
  */
 export const tools: ToolDefinitions = {
   help: {
+    title: "Help",
     description: "Get usage guidelines and tips for this server (optional topic)",
     inputSchema: helpSchema,
-    handler: async ({ topic }: { topic?: string } = {}): Promise<ToolResponse> => {
+    handler: async ({ topic }: { topic?: string } = {}, _extra): Promise<CallToolResult> => {
       const sectionsData: Record<string, string[]> = {
         overview: [
           "SWI‑Prolog MCP Server: tools for loading files, querying, managing the knowledge base, and exploring symbols.",
@@ -350,9 +354,10 @@ export const tools: ToolDefinitions = {
   },
 
   license: {
+    title: "License",
     description: "Get the license text for this software",
     inputSchema: licenseSchema,
-    handler: async (): Promise<ToolResponse> => {
+    handler: async (_extra): Promise<CallToolResult> => {
       try {
         const licensePath = findNearestFile("LICENSE");
         if (!licensePath) {
@@ -378,9 +383,11 @@ export const tools: ToolDefinitions = {
   },
 
   capabilities: {
+    title: "Capabilities",
     description: "Get a machine-readable summary of tools, modes, env, and safety",
     inputSchema: capabilitiesSchema,
-    handler: async (): Promise<ToolResponse> => {
+    outputSchema: capabilitiesOutputSchema,
+    handler: async (_extra): Promise<CallToolResult> => {
       const caps = getCapabilitiesSummary();
       const json = JSON.stringify(caps, null, 2);
       return {
@@ -391,9 +398,10 @@ export const tools: ToolDefinitions = {
   },
 
   knowledge_base_load: {
+    title: "Load Knowledge Base",
     description: "Load a Prolog file into the knowledge base",
     inputSchema: knowledgeBaseLoadSchema,
-    handler: async ({ filename }: { filename: string }): Promise<ToolResponse> => {
+    handler: async ({ filename }: { filename: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
 
       const v = validateStringInput("filename", filename as any, MAX_FILENAME_LENGTH);
@@ -450,9 +458,10 @@ export const tools: ToolDefinitions = {
   },
 
   query_start: {
+    title: "Start Query (Standard Mode)",
     description: "Start a new Prolog query session (call_nth/2 mode)",
     inputSchema: queryStartSchema,
-    handler: async ({ query }: { query: string }): Promise<ToolResponse> => {
+    handler: async ({ query }: { query: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
 
       const v = validateStringInput("query", query as any, MAX_QUERY_LENGTH);
@@ -478,9 +487,11 @@ export const tools: ToolDefinitions = {
   },
 
   query_next: {
+    title: "Get Next Solution",
     description: "Get the next solution from the current query (unified for both modes)",
     inputSchema: queryNextSchema,
-    handler: async (): Promise<ToolResponse> => {
+    outputSchema: queryNextOutputSchema,
+    handler: async (_extra): Promise<CallToolResult> => {
       const startTime = Date.now();
       try {
         await prologInterface.start();
@@ -543,9 +554,10 @@ export const tools: ToolDefinitions = {
   },
 
   query_close: {
+    title: "Close Query",
     description: "Close the current query session (unified for both modes)",
     inputSchema: queryCloseSchema,
-    handler: async (): Promise<ToolResponse> => {
+    handler: async (_extra): Promise<CallToolResult> => {
       const startTime = Date.now();
       const sessionState = (prologInterface as any).sessionState;
       if (sessionState !== "query" && sessionState !== "query_completed" &&
@@ -580,9 +592,11 @@ export const tools: ToolDefinitions = {
   },
 
   symbols_list: {
+    title: "List Predicates",
     description: "List predicates available in the knowledge base",
     inputSchema: symbolsListSchema,
-    handler: async (): Promise<ToolResponse> => {
+    outputSchema: symbolsListOutputSchema,
+    handler: async (_extra): Promise<CallToolResult> => {
       const startTime = Date.now();
       try {
         await prologInterface.start();
@@ -621,9 +635,10 @@ export const tools: ToolDefinitions = {
   },
 
   knowledge_base_assert: {
+    title: "Assert Clause",
     description: "Add a single clause (fact or rule) to the knowledge base",
     inputSchema: knowledgeBaseAssertSchema,
-    handler: async ({ fact }: { fact: string }): Promise<ToolResponse> => {
+    handler: async ({ fact }: { fact: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
 
       if (!fact || typeof fact !== 'string') {
@@ -683,9 +698,10 @@ export const tools: ToolDefinitions = {
   },
 
   knowledge_base_assert_many: {
+    title: "Assert Multiple Clauses",
     description: "Add multiple clauses (facts or rules) to the knowledge base",
     inputSchema: knowledgeBaseAssertManySchema,
-    handler: async ({ facts }: { facts: string[] }): Promise<ToolResponse> => {
+    handler: async ({ facts }: { facts: string[] }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
 
       if (!Array.isArray(facts)) {
@@ -749,9 +765,10 @@ export const tools: ToolDefinitions = {
   },
 
   knowledge_base_retract: {
+    title: "Retract Clause",
     description: "Remove a single clause (fact or rule) from the knowledge base",
     inputSchema: knowledgeBaseRetractSchema,
-    handler: async ({ fact }: { fact: string }): Promise<ToolResponse> => {
+    handler: async ({ fact }: { fact: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
 
       if (!fact || typeof fact !== 'string') {
@@ -811,9 +828,10 @@ export const tools: ToolDefinitions = {
   },
 
   knowledge_base_retract_many: {
+    title: "Retract Multiple Clauses",
     description: "Remove multiple clauses (facts or rules) from the knowledge base",
     inputSchema: knowledgeBaseRetractManySchema,
-    handler: async ({ facts }: { facts: string[] }): Promise<ToolResponse> => {
+    handler: async ({ facts }: { facts: string[] }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
 
       if (!Array.isArray(facts)) {
@@ -895,9 +913,10 @@ export const tools: ToolDefinitions = {
   },
 
   knowledge_base_clear: {
+    title: "Clear Knowledge Base",
     description: "Remove ALL user-defined facts and rules from the knowledge base",
     inputSchema: knowledgeBaseClearSchema,
-    handler: async (): Promise<ToolResponse> => {
+    handler: async (_extra): Promise<CallToolResult> => {
       const startTime = Date.now();
       try {
         await prologInterface.start();
@@ -937,9 +956,10 @@ export const tools: ToolDefinitions = {
   },
 
   query_startEngine: {
+    title: "Start Query (Engine Mode)",
     description: "Start a new Prolog query session using SWI-Prolog engines for true backtracking",
     inputSchema: queryStartEngineSchema,
-    handler: async ({ query }: { query: string }): Promise<ToolResponse> => {
+    handler: async ({ query }: { query: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
 
       const v = validateStringInput("query", query as any, MAX_QUERY_LENGTH);
@@ -980,9 +1000,10 @@ export const tools: ToolDefinitions = {
   },
 
   knowledge_base_dump: {
+    title: "Dump Knowledge Base",
     description: "Export current knowledge base as Prolog facts",
     inputSchema: knowledgeBaseDumpSchema,
-    handler: async (): Promise<ToolResponse> => {
+    handler: async (_extra): Promise<CallToolResult> => {
       const startTime = Date.now();
       try {
         await prologInterface.start();
@@ -1023,7 +1044,7 @@ function snakeToCamel(str: string): string {
  */
 export const toolHandlers = Object.fromEntries(
   Object.entries(tools).map(([key, def]) => [snakeToCamel(key), def.handler])
-) as Record<string, (...args: any[]) => Promise<ToolResponse>>;
+) as Record<string, (...args: any[]) => Promise<CallToolResult>>;
 
 export { prologInterface };
 

@@ -7,6 +7,7 @@ import type {
   PromptDefinition,
 } from "./types.js";
 import { createMcpLogger, type McpLogger } from "./logger.js";
+import { z } from "zod";
 
 /**
  * Default console logger (stderr fallback)
@@ -115,6 +116,10 @@ export async function loadPlugins(
 
 /**
  * Register a tool with the MCP server
+ *
+ * Note: Minimal 'as any' used because SDK's ToolCallback has conditional types
+ * (different signatures for tools with/without args), but our simplified interface
+ * uses consistent (args, extra) signature for all tools. Runtime behavior is correct.
  */
 function registerTool(
   server: McpServer,
@@ -123,13 +128,13 @@ function registerTool(
   logger: PluginLoaderConfig["logger"] = defaultLogger
 ): void {
   try {
-    // MCP SDK expects Zod schemas natively (ZodRawShape), not JSON schemas
-    // Extract the .shape from the Zod object schema to pass to registerTool
     server.registerTool(
       toolName,
       {
+        title: toolDef.title,
         description: toolDef.description,
-        inputSchema: (toolDef.inputSchema as any).shape,
+        inputSchema: toolDef.inputSchema,
+        outputSchema: toolDef.outputSchema,
       },
       toolDef.handler as any
     );
@@ -144,6 +149,9 @@ function registerTool(
 
 /**
  * Register a resource with the MCP server
+ *
+ * Note: Minimal 'as any' used for handler because SDK signature expects specific
+ * RequestHandlerExtra type complexity. Runtime behavior is correct.
  */
 function registerResource(
   server: McpServer,
@@ -172,6 +180,11 @@ function registerResource(
 
 /**
  * Register a prompt with the MCP server
+ *
+ * Uses SDK's PromptCallback type. Note: We use 'as any' for the handler because
+ * PromptCallback has complex conditional types based on whether arguments exist,
+ * making it impractical to type perfectly without significant complexity.
+ * The runtime behavior is correct.
  */
 function registerPrompt(
   server: McpServer,
@@ -182,15 +195,20 @@ function registerPrompt(
     server.registerPrompt(
       promptDef.name,
       {
-        title: promptDef.name,
+        title: promptDef.title || promptDef.name,
         description: promptDef.description,
         argsSchema: promptDef.arguments?.reduce((acc, arg) => {
-          acc[arg.name] = {
-            type: "string" as const,
-            description: arg.description,
-          };
+          // Create Zod string schema, make optional if not required
+          const zodSchema = arg.required ? z.string() : z.string().optional();
+
+          // Add description if provided
+          const schemaWithDesc = arg.description
+            ? zodSchema.describe(arg.description)
+            : zodSchema;
+
+          acc[arg.name] = schemaWithDesc;
           return acc;
-        }, {} as Record<string, any>),
+        }, {} as Record<string, z.ZodString | z.ZodOptional<z.ZodString>>),
       },
       promptDef.handler as any
     );

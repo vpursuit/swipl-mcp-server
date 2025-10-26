@@ -24,13 +24,14 @@ export interface PrologPrompt {
   title?: string;
   description: string;
   arguments: PromptArgument[];
-  messages: (args?: Record<string, string>) => PromptMessage[];
+  messages: (args?: Record<string, string | undefined>) => PromptMessage[];
 }
 
 export const prologPrompts: Record<string, PrologPrompt> = {
   // Initialize expert mode (optionally focused on a task)
   initExpert: {
     name: "prolog_init_expert",
+    title: "Initialize Expert Context",
     description: "Set up expert context; optionally focus on a specific task",
     arguments: [
       { name: "task", description: "Optional task to focus expert setup and reasoning", required: false },
@@ -87,6 +88,7 @@ Always check resources first for context, then use tools based on discovered cap
   // Knowledge base analysis - uses resources
   analyzeKnowledgeBase: {
     name: "prolog_analyze_knowledge_base",
+    title: "Analyze Knowledge Base",
     description: "Analyze the current Prolog knowledge base using resources and provide insights",
     arguments: [],
     messages: () => [
@@ -130,6 +132,7 @@ Provide example queries that demonstrate the KB's capabilities and suggest new o
   // Quick reference prompt
   quickReference: {
     name: "prolog_quick_reference",
+    title: "Quick Reference Guide",
     description: "Get a comprehensive overview of all server resources, tools, and capabilities",
     arguments: [],
     messages: () => [
@@ -191,6 +194,7 @@ This will serve as a complete orientation to the server's capabilities.`
   // Knowledge base builder with resource awareness
   knowledgeBaseBuilder: {
     name: "prolog_knowledge_base_builder",
+    title: "Build Knowledge Base",
     description: "Build a comprehensive knowledge base for a domain using server resources",
     arguments: [
       {
@@ -273,6 +277,7 @@ Create a robust, well-structured knowledge base following Prolog best practices.
   // Query optimization expert
   queryOptimizer: {
     name: "prolog_query_optimizer",
+    title: "Optimize Query",
     description: "Optimize Prolog queries for maximum performance and correctness",
     arguments: [
       {

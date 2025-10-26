@@ -3,11 +3,14 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 /**
  * Zod schemas for Prolog plugin tools and prompts
- * These will be converted to JSON schemas by the plugin loader using zodToJsonSchema
+ *
+ * NOTE: These are now defined as ZodRawShape (plain objects with Zod schemas as values)
+ * to match MCP SDK expectations. This provides better type safety and eliminates the need
+ * for .shape extraction during registration.
  */
 
-// Tool schemas
-export const helpSchema = z.object({
+// Tool schemas (raw shapes for direct use with MCP SDK)
+export const helpSchema = {
   topic: z
     .enum([
       "overview",
@@ -24,125 +27,168 @@ export const helpSchema = z.object({
     .describe(
       "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, prompts, roots, troubleshooting)",
     ),
-});
+} as const;
 
-export const knowledgeBaseLoadSchema = z.object({
+export const knowledgeBaseLoadSchema = {
   filename: z.string().describe("Path to the Prolog file to load"),
-});
+} as const;
 
-export const queryStartSchema = z.object({
+export const queryStartSchema = {
   query: z.string().min(1).describe("Prolog query to start"),
-});
+} as const;
 
-export const queryNextSchema = z.object({});
+export const queryNextSchema = {} as const;
 
-export const queryCloseSchema = z.object({});
+export const queryCloseSchema = {} as const;
 
-export const queryStartEngineSchema = z.object({
+export const queryStartEngineSchema = {
   query: z.string().min(1).describe("Prolog query to start with engine-based iteration"),
-});
+} as const;
 
-export const knowledgeBaseDumpSchema = z.object({});
+export const knowledgeBaseDumpSchema = {} as const;
 
-export const symbolsListSchema = z.object({});
+export const symbolsListSchema = {} as const;
 
-export const knowledgeBaseAssertSchema = z.object({
+export const knowledgeBaseAssertSchema = {
   fact: z
     .string()
     .describe(
       "Single Prolog clause to assert (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
     ),
-});
+} as const;
 
-export const knowledgeBaseRetractSchema = z.object({
+export const knowledgeBaseRetractSchema = {
   fact: z
     .string()
     .describe(
       "Single Prolog clause to retract (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
     ),
-});
+} as const;
 
-export const knowledgeBaseAssertManySchema = z.object({
+export const knowledgeBaseAssertManySchema = {
   facts: z.array(z.string()).describe("List of Prolog clauses to assert"),
-});
+} as const;
 
-export const knowledgeBaseRetractManySchema = z.object({
+export const knowledgeBaseRetractManySchema = {
   facts: z.array(z.string()).describe("List of Prolog clauses to retract"),
-});
+} as const;
 
-export const knowledgeBaseClearSchema = z.object({});
+export const knowledgeBaseClearSchema = {} as const;
 
-export const capabilitiesSchema = z.object({});
+export const capabilitiesSchema = {} as const;
 
-export const licenseSchema = z.object({});
+export const licenseSchema = {} as const;
 
-// Prompt schemas
-export const prologInitExpertSchema = z.object({
+// Output schemas for structured tool responses
+export const capabilitiesOutputSchema = {
+  version: z.string().describe("Server version"),
+  branding: z.object({
+    name: z.string(),
+    logo: z.object({
+      svg_path: z.string(),
+      emoji: z.string(),
+    }),
+  }).optional(),
+  predicates: z.object({
+    total: z.number(),
+    categories: z.array(z.string()),
+  }).optional(),
+  tools: z.record(z.string(), z.string()).optional(),
+  prompts: z.record(z.string(), z.string()).optional(),
+  security: z.object({
+    file_restrictions: z.object({
+      allowed_directory: z.string(),
+      validation: z.string(),
+    }).optional(),
+    dangerous_predicate_blocking: z.object({
+      blocked_predicates: z.array(z.string()),
+      validation_method: z.string(),
+    }).optional(),
+    allowed_categories: z.array(z.string()).optional(),
+    blocked_categories: z.array(z.string()).optional(),
+  }).optional(),
+} as const;
+
+export const symbolsListOutputSchema = {
+  predicates: z.array(z.string()).describe("List of available predicates"),
+  raw: z.string().describe("Raw Prolog list string"),
+  processing_time_ms: z.number(),
+} as const;
+
+export const queryNextOutputSchema = {
+  solution: z.string().nullable().describe("The solution or null if no more"),
+  more_solutions: z.boolean().describe("Whether more solutions are available"),
+  processing_time_ms: z.number(),
+} as const;
+
+// Prompt schemas (raw shapes for direct use with MCP SDK)
+export const prologInitExpertSchema = {
   task: z.string().optional().describe("Optional task to focus expert setup and reasoning"),
-});
+} as const;
 
-export const prologQuickReferenceSchema = z.object({});
+export const prologQuickReferenceSchema = {} as const;
 
-export const prologAnalyzeKnowledgeBaseSchema = z.object({});
+export const prologAnalyzeKnowledgeBaseSchema = {} as const;
 
-export const prologKnowledgeBaseBuilderSchema = z.object({
+export const prologKnowledgeBaseBuilderSchema = {
   domain: z.string().describe("The domain to model (e.g., family relationships, expert system, planning)"),
-});
+} as const;
 
-export const prologQueryOptimizerSchema = z.object({
+export const prologQueryOptimizerSchema = {
   query: z.string().describe("The Prolog query to analyze and optimize"),
-});
+} as const;
 
 /**
  * Aggregate Zod schemas object (for backward compatibility with tests)
- * These are plain shape objects (not wrapped in z.object()) for use in tests
+ * These are now the raw shapes themselves since that's what we export
  */
 export const zodSchemas = {
-  help: helpSchema.shape,
-  knowledgeBaseLoad: knowledgeBaseLoadSchema.shape,
-  queryStart: queryStartSchema.shape,
-  queryNext: queryNextSchema.shape,
-  queryClose: queryCloseSchema.shape,
-  queryStartEngine: queryStartEngineSchema.shape,
-  knowledgeBaseDump: knowledgeBaseDumpSchema.shape,
-  symbolsList: symbolsListSchema.shape,
-  knowledgeBaseAssert: knowledgeBaseAssertSchema.shape,
-  knowledgeBaseRetract: knowledgeBaseRetractSchema.shape,
-  knowledgeBaseAssertMany: knowledgeBaseAssertManySchema.shape,
-  knowledgeBaseRetractMany: knowledgeBaseRetractManySchema.shape,
-  knowledgeBaseClear: knowledgeBaseClearSchema.shape,
-  capabilities: capabilitiesSchema.shape,
-  license: licenseSchema.shape,
-  prologInitExpert: prologInitExpertSchema.shape,
-  prologQuickReference: prologQuickReferenceSchema.shape,
-  prologAnalyzeKnowledgeBase: prologAnalyzeKnowledgeBaseSchema.shape,
-  prologKnowledgeBaseBuilder: prologKnowledgeBaseBuilderSchema.shape,
-  prologQueryOptimizer: prologQueryOptimizerSchema.shape,
+  help: helpSchema,
+  knowledgeBaseLoad: knowledgeBaseLoadSchema,
+  queryStart: queryStartSchema,
+  queryNext: queryNextSchema,
+  queryClose: queryCloseSchema,
+  queryStartEngine: queryStartEngineSchema,
+  knowledgeBaseDump: knowledgeBaseDumpSchema,
+  symbolsList: symbolsListSchema,
+  knowledgeBaseAssert: knowledgeBaseAssertSchema,
+  knowledgeBaseRetract: knowledgeBaseRetractSchema,
+  knowledgeBaseAssertMany: knowledgeBaseAssertManySchema,
+  knowledgeBaseRetractMany: knowledgeBaseRetractManySchema,
+  knowledgeBaseClear: knowledgeBaseClearSchema,
+  capabilities: capabilitiesSchema,
+  license: licenseSchema,
+  prologInitExpert: prologInitExpertSchema,
+  prologQuickReference: prologQuickReferenceSchema,
+  prologAnalyzeKnowledgeBase: prologAnalyzeKnowledgeBaseSchema,
+  prologKnowledgeBaseBuilder: prologKnowledgeBaseBuilderSchema,
+  prologQueryOptimizer: prologQueryOptimizerSchema,
 } as const;
 
 /**
  * JSON schemas for MCP tool registration
  * Converted from Zod schemas for backward compatibility
+ * We wrap raw shapes in z.object() for JSON schema conversion
  */
 export const jsonSchemas = {
-  help: zodToJsonSchema(helpSchema),
-  knowledgeBaseLoad: zodToJsonSchema(knowledgeBaseLoadSchema),
-  queryStart: zodToJsonSchema(queryStartSchema),
-  queryNext: zodToJsonSchema(queryNextSchema),
-  queryClose: zodToJsonSchema(queryCloseSchema),
-  queryStartEngine: zodToJsonSchema(queryStartEngineSchema),
-  knowledgeBaseDump: zodToJsonSchema(knowledgeBaseDumpSchema),
-  symbolsList: zodToJsonSchema(symbolsListSchema),
-  knowledgeBaseAssert: zodToJsonSchema(knowledgeBaseAssertSchema),
-  knowledgeBaseRetract: zodToJsonSchema(knowledgeBaseRetractSchema),
-  knowledgeBaseAssertMany: zodToJsonSchema(knowledgeBaseAssertManySchema),
-  knowledgeBaseRetractMany: zodToJsonSchema(knowledgeBaseRetractManySchema),
-  knowledgeBaseClear: zodToJsonSchema(knowledgeBaseClearSchema),
-  capabilities: zodToJsonSchema(capabilitiesSchema),
-  license: zodToJsonSchema(licenseSchema),
-  prologInitExpert: zodToJsonSchema(prologInitExpertSchema),
-  prologQuickReference: zodToJsonSchema(prologQuickReferenceSchema),
-  prologAnalyzeKnowledgeBase: zodToJsonSchema(prologAnalyzeKnowledgeBaseSchema),
-  prologKnowledgeBaseBuilder: zodToJsonSchema(prologKnowledgeBaseBuilderSchema),
-  prologQueryOptimizer: zodToJsonSchema(prologQueryOptimizerSchema),
+  help: zodToJsonSchema(z.object(helpSchema)),
+  knowledgeBaseLoad: zodToJsonSchema(z.object(knowledgeBaseLoadSchema)),
+  queryStart: zodToJsonSchema(z.object(queryStartSchema)),
+  queryNext: zodToJsonSchema(z.object(queryNextSchema)),
+  queryClose: zodToJsonSchema(z.object(queryCloseSchema)),
+  queryStartEngine: zodToJsonSchema(z.object(queryStartEngineSchema)),
+  knowledgeBaseDump: zodToJsonSchema(z.object(knowledgeBaseDumpSchema)),
+  symbolsList: zodToJsonSchema(z.object(symbolsListSchema)),
+  knowledgeBaseAssert: zodToJsonSchema(z.object(knowledgeBaseAssertSchema)),
+  knowledgeBaseRetract: zodToJsonSchema(z.object(knowledgeBaseRetractSchema)),
+  knowledgeBaseAssertMany: zodToJsonSchema(z.object(knowledgeBaseAssertManySchema)),
+  knowledgeBaseRetractMany: zodToJsonSchema(z.object(knowledgeBaseRetractManySchema)),
+  knowledgeBaseClear: zodToJsonSchema(z.object(knowledgeBaseClearSchema)),
+  capabilities: zodToJsonSchema(z.object(capabilitiesSchema)),
+  license: zodToJsonSchema(z.object(licenseSchema)),
+  prologInitExpert: zodToJsonSchema(z.object(prologInitExpertSchema)),
+  prologQuickReference: zodToJsonSchema(z.object(prologQuickReferenceSchema)),
+  prologAnalyzeKnowledgeBase: zodToJsonSchema(z.object(prologAnalyzeKnowledgeBaseSchema)),
+  prologKnowledgeBaseBuilder: zodToJsonSchema(z.object(prologKnowledgeBaseBuilderSchema)),
+  prologQueryOptimizer: zodToJsonSchema(z.object(prologQueryOptimizerSchema)),
 } as const;
