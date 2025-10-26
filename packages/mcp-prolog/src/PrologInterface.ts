@@ -148,6 +148,8 @@ export class PrologInterface {
   private lastSuccessfulResponse: number | null = null;
   private consecutiveTimeouts: number = 0;
   private circuitState: 'closed' | 'open' | 'half-open' = 'closed';
+  private recoveryInProgress: Promise<void> | null = null;
+  private intentionalStop: boolean = false;
 
   // Centralized state transition helper; logs invalid transitions for diagnostics
   private setSessionState(next: SessionState): void {
@@ -261,14 +263,31 @@ export class PrologInterface {
       this.handleResponse(data.toString("utf8"));
     });
 
-    this.process.on("exit", () => {
+    this.process.on("exit", (code, signal) => {
       this.process = null;
       // Reject any pending queries
       for (const [_id, promise] of this.queryPromises) {
         try { promise.reject(new Error("Prolog server exited")); } catch { }
       }
       this.queryPromises.clear();
-      failStartOnce(new Error("Prolog server exited before ready"));
+
+      // If process exited unexpectedly (not during startup, explicit stop, or recovery), attempt auto-restart
+      // Only auto-restart on crashes (non-zero exit or signals), not clean exits (code 0)
+      // Disable auto-restart in test environments to avoid interfering with tests
+      const isCleanExit = code === 0 && !signal;
+      const isTestEnv = process.env.NODE_ENV === 'test' || typeof (globalThis as any).vitest !== 'undefined';
+      const shouldAutoRestart = !isTestEnv && this.isReady && !this.recoveryInProgress && !this.intentionalStop && !isCleanExit;
+
+      if (shouldAutoRestart) {
+        const exitMsg = signal ? `signal ${signal}` : `code ${code}`;
+        logger.warn(`Prolog server exited unexpectedly (${exitMsg}). Triggering auto-restart...`);
+        // Trigger recovery in background to restart the process
+        this.attemptRecovery().catch(err => {
+          logger.error(`Auto-restart after unexpected exit failed: ${err instanceof Error ? err.message : String(err)}`);
+        });
+      } else {
+        failStartOnce(new Error("Prolog server exited before ready"));
+      }
     });
 
     // Wait for READY signal from Prolog server, clean up on failure
@@ -593,6 +612,13 @@ export class PrologInterface {
     this.assertRunning();
 
     const run = (): Promise<string> => {
+      // Wait for recovery to complete if in progress
+      const recovery = this.recoveryInProgress;
+      if (recovery) {
+        logger.info('Waiting for recovery to complete before processing query...');
+        return recovery.then(() => this.sendCommand(command, options));
+      }
+
       // Enforce queue depth limit to prevent memory exhaustion
       if (this.queryPromises.size >= MAX_QUERY_PROMISES) {
         logger.error(`Queue overflow: ${this.queryPromises.size} pending commands`);
@@ -706,8 +732,8 @@ export class PrologInterface {
             logger.warn(`Query timeout after ${qTimeout}ms (id:${queryId}). Consecutive timeouts: ${this.consecutiveTimeouts}`);
             logger.info(`Cleaned up timed-out promise for id:${queryId}. Active promises: ${this.queryPromises.size}`);
 
-            // Open circuit breaker after 3 consecutive timeouts
-            if (this.consecutiveTimeouts >= 3 && this.circuitState === 'closed') {
+            // Open circuit breaker after 1 consecutive timeout for immediate recovery
+            if (this.consecutiveTimeouts >= 1 && this.circuitState === 'closed') {
               this.circuitState = 'open';
               logger.error(`Circuit breaker opened after ${this.consecutiveTimeouts} consecutive timeouts. Attempting recovery...`);
               // Trigger recovery attempt in background
@@ -912,29 +938,43 @@ export class PrologInterface {
    * @private
    */
   private async attemptRecovery(): Promise<void> {
-    logger.warn('Attempting recovery: restarting Prolog process...');
-
-    try {
-      // Force stop the process
-      await this.stop();
-
-      // Wait a bit before restarting
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Start fresh process
-      await this.start();
-
-      // Enter half-open circuit state to test if recovery worked
-      this.circuitState = 'half-open';
-      this.consecutiveTimeouts = 0;
-
-      logger.info('Recovery complete - process restarted. Circuit breaker in half-open state.');
-    } catch (error) {
-      logger.error(`Recovery failed: ${error instanceof Error ? error.message : String(error)}`);
-      // Keep circuit open if recovery fails
-      this.circuitState = 'open';
-      throw error;
+    // Prevent multiple concurrent recovery attempts
+    if (this.recoveryInProgress) {
+      logger.info('Recovery already in progress, waiting for it to complete...');
+      return this.recoveryInProgress;
     }
+
+    const recoveryPromise = (async () => {
+      logger.warn('Attempting recovery: restarting Prolog process...');
+
+      try {
+        // Force stop the process
+        await this.stop();
+
+        // Wait a bit before restarting
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Start fresh process
+        await this.start();
+
+        // Enter half-open circuit state to test if recovery worked
+        this.circuitState = 'half-open';
+        this.consecutiveTimeouts = 0;
+
+        logger.info('Recovery complete - process restarted. Circuit breaker in half-open state.');
+      } catch (error) {
+        logger.error(`Recovery failed: ${error instanceof Error ? error.message : String(error)}`);
+        // Keep circuit open if recovery fails
+        this.circuitState = 'open';
+        throw error;
+      } finally {
+        // Clear recovery state
+        this.recoveryInProgress = null;
+      }
+    })();
+
+    this.recoveryInProgress = recoveryPromise;
+    return recoveryPromise;
   }
 
   /**
@@ -959,16 +999,40 @@ export class PrologInterface {
   }
 
   /**
+   * Check if the Prolog server is healthy and responsive
+   * @returns true if process is running and ready, false otherwise
+   */
+  isHealthy(): boolean {
+    return (
+      this.process !== null &&
+      this.isReady &&
+      this.circuitState !== 'open' &&
+      this.recoveryInProgress === null
+    );
+  }
+
+  /**
    * Stop the Prolog process and wait for complete cleanup
    *
    * IMPORTANT: This method is now async to ensure proper cleanup.
    * All callers must await this method to prevent race conditions.
    */
   async stop(): Promise<void> {
+    // Mark as intentional stop to prevent auto-restart
+    this.intentionalStop = true;
+    const traceEnabled = isOn(process.env['SWI_MCP_TRACE']);
+    if (traceEnabled) {
+      logger.debug('stop() called - intentionalStop flag set');
+    }
+
     const proc = this.process;
     if (!proc) {
       // Already stopped - just cleanup state
+      if (traceEnabled) {
+        logger.debug('stop() called but process is null - cleaning up state');
+      }
       this.cleanupState();
+      this.intentionalStop = false;
       return;
     }
 
@@ -1021,6 +1085,9 @@ export class PrologInterface {
     // Clear instance state
     this.process = null;
     this.cleanupState();
+
+    // Reset intentional stop flag
+    this.intentionalStop = false;
   }
 
   /**
