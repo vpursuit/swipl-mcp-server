@@ -61,7 +61,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",
-    "zod": "^3.25.76"
+    "zod": "^4.1.12"
   },
   "engines": {
     "node": ">=20.0.0"
