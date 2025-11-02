@@ -13,7 +13,7 @@ This monorepo contains Model Context Protocol (MCP) packages and products that e
 An MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It supports loading Prolog files, adding/removing facts and rules, listing symbols, and running queries with two modes: deterministic pagination and true engine backtracking.
 
 - 📦 **NPM**: [`@vpursuit/swipl-mcp-server`](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server)
-- 📖 **Documentation**: [packages/swipl-mcp-server](./packages/swipl-mcp-server)
+- 📖 **Documentation**: [products/swipl-mcp-server](./products/swipl-mcp-server)
 - 🎯 **Quick Start**: `npx @vpursuit/swipl-mcp-server`
 
 **Features:**
@@ -24,17 +24,28 @@ An MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It s
 - Dynamic filesystem roots
 - Plugin-based architecture
 
-## 🧱 Reusable Libraries
+## 🧩 Architecture
 
-Build your own MCP servers using these composable packages:
+This repository follows a **products/plugins** architecture:
 
-| Package | Description | Version | NPM |
-|---------|-------------|---------|-----|
-| [`@vpursuit/mcp-server-core`](./packages/mcp-core) | Plugin system for MCP servers | 1.0.0 | [npm](https://www.npmjs.com/package/@vpursuit/mcp-server-core) |
-| [`@vpursuit/mcp-server-prolog`](./packages/mcp-prolog) | SWI-Prolog integration plugin | 3.0.0 | [npm](https://www.npmjs.com/package/@vpursuit/mcp-server-prolog) |
-| [`@vpursuit/mcp-server-roots`](./packages/mcp-roots) | Dynamic filesystem roots management | 1.0.0 | [npm](https://www.npmjs.com/package/@vpursuit/mcp-server-roots) |
+- **Products** (`products/`): Published packages that end-users install (e.g., `@vpursuit/swipl-mcp-server`)
+- **Plugins** (`plugins/`): Internal, reusable components bundled within products (not published separately)
 
-### Using the Libraries
+### Internal Plugin System
+
+The MCP server is built with a modular plugin architecture. These plugins are **internal dependencies** bundled into the main product:
+
+| Plugin | Description | Location |
+|--------|-------------|----------|
+| `@vpursuit/mcp-server-core` | Plugin system foundation | [plugins/server/core](./plugins/server/core) |
+| `@vpursuit/mcp-server-prolog` | SWI-Prolog integration | [plugins/server/prolog](./plugins/server/prolog) |
+| `@vpursuit/mcp-server-roots` | Filesystem roots discovery | [plugins/server/roots](./plugins/server/roots) |
+
+**Note:** These plugins are marked as `private` in their `package.json` and are bundled into `@vpursuit/swipl-mcp-server`. They are not published separately to npm.
+
+### Plugin System for Developers
+
+If you're developing within this monorepo, you can use the plugin system directly:
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -57,14 +68,16 @@ This is a monorepo managed with **npm workspaces**. Each package can be develope
 
 ```
 swipl-mcp-server/
-├── packages/
-│   ├── swipl-mcp-server/    # Main MCP server product (orchestrator)
-│   ├── mcp-core/            # Plugin system for MCP servers
-│   ├── mcp-prolog/          # SWI-Prolog integration plugin
-│   └── mcp-roots/           # Filesystem roots discovery plugin
+├── products/
+│   └── swipl-mcp-server/    # Main MCP server (published to npm)
+├── plugins/
+│   └── server/
+│       ├── core/            # Plugin system foundation (internal)
+│       ├── prolog/          # SWI-Prolog integration (internal)
+│       └── roots/           # Filesystem roots discovery (internal)
 ├── docs/                    # Monorepo-level documentation
 ├── .archive/                # Historical strategy documents
-└── package.json            # Workspace configuration
+└── package.json             # Workspace configuration
 ```
 
 Each package has:
@@ -102,10 +115,10 @@ npm test
 
 ```bash
 # Build specific package
-npm run build -w packages/mcp-core
+npm run build -w plugins/server/core
 
 # Test specific package
-npm test -w packages/mcp-prolog
+npm test -w plugins/server/prolog
 
 # Clean all build artifacts
 npm run clean
@@ -122,12 +135,12 @@ Each package supports:
 ## 📝 Documentation
 
 ### Product Documentation (swipl-mcp-server)
-- **[Installation Guide](./packages/swipl-mcp-server/docs/installation.md)** — Complete setup for all MCP clients
-- **[Features Reference](./packages/swipl-mcp-server/docs/features.md)** — Detailed prompts, resources, and tools documentation
-- **[Examples](./packages/swipl-mcp-server/docs/examples.md)** — Copy-paste usage examples
-- **[Architecture](./packages/swipl-mcp-server/docs/architecture.md)** — Components, modes, and wire protocol
-- **[Lifecycle](./packages/swipl-mcp-server/docs/lifecycle.md)** — Server lifecycle, state, and persistence patterns
-- **[Deployment](./packages/swipl-mcp-server/docs/deployment.md)** — Release, packaging, and install from source
+- **[Installation Guide](./products/swipl-mcp-server/docs/installation.md)** — Complete setup for all MCP clients
+- **[Features Reference](./products/swipl-mcp-server/docs/features.md)** — Detailed prompts, resources, and tools documentation
+- **[Examples](./products/swipl-mcp-server/docs/examples.md)** — Copy-paste usage examples
+- **[Architecture](./products/swipl-mcp-server/docs/architecture.md)** — Components, modes, and wire protocol
+- **[Lifecycle](./products/swipl-mcp-server/docs/lifecycle.md)** — Server lifecycle, state, and persistence patterns
+- **[Deployment](./products/swipl-mcp-server/docs/deployment.md)** — Release, packaging, and install from source
 
 ### Monorepo Documentation
 - **[Publishing Guide](./PUBLISHING.md)** — How to publish packages to npm
@@ -147,12 +160,13 @@ For security issues, see [SECURITY.md](./SECURITY.md).
 
 ## 📦 Publishing
 
-Each package is published independently to NPM under the `@vpursuit` scope:
+Only **products** are published to npm under the `@vpursuit` scope:
 
-- Packages use semantic versioning independently
-- Releases are tagged as `v<version>` for main product, `<package-name>-v<version>` for libraries
+- **Products** (e.g., `@vpursuit/swipl-mcp-server`) are published to npm for end users
+- **Plugins** are internal dependencies bundled within products (not published separately)
+- Releases use semantic versioning: `v<version>` (e.g., `v3.0.0`)
 - Automated publishing via GitHub Actions
-- See [PUBLISHING.md](./PUBLISHING.md) for details
+- See [PUBLISHING.md](./PUBLISHING.md) for complete details
 
 ## 🔒 Security
 
@@ -185,9 +199,12 @@ See [LICENSE](./LICENSE) file for details.
 npx @vpursuit/swipl-mcp-server
 ```
 
-**For developers**: Build custom MCP servers using the plugin libraries
+**For monorepo developers**: Work with the plugin system
 ```bash
-npm install @vpursuit/mcp-server-core @vpursuit/mcp-server-prolog @vpursuit/mcp-server-roots
+git clone https://github.com/vpursuit/swipl-mcp-server.git
+cd swipl-mcp-server
+npm install
+npm run build
 ```
 
 **For contributors**: Set up the development environment
@@ -201,4 +218,4 @@ npm test
 
 ---
 
-**Questions?** Open an [issue](https://github.com/vpursuit/swipl-mcp-server/issues) or see our [documentation](./packages/swipl-mcp-server#readme).
+**Questions?** Open an [issue](https://github.com/vpursuit/swipl-mcp-server/issues) or see our [documentation](./products/swipl-mcp-server#readme).

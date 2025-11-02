@@ -1,6 +1,8 @@
 # @vpursuit/mcp-server-core
 
-Plugin system for Model Context Protocol (MCP) servers.
+**Internal plugin system for Model Context Protocol (MCP) servers.**
+
+> ⚠️ **Internal Package**: This plugin is private to the [@vpursuit/swipl-mcp-server](https://github.com/vpursuit/swipl-mcp-server) monorepo and is bundled into the main product. It is not published separately to npm.
 
 ## Overview
 
@@ -8,9 +10,17 @@ Plugin system for Model Context Protocol (MCP) servers.
 
 ## Installation
 
+**For monorepo development only:**
+
 ```bash
-npm install @vpursuit/mcp-server-core
+# Clone the monorepo
+git clone https://github.com/vpursuit/swipl-mcp-server.git
+cd swipl-mcp-server
+npm install
+npm run build
 ```
+
+This package is available as a workspace dependency within the monorepo.
 
 ## Core Concepts
 
@@ -119,7 +129,7 @@ Both loader functions accept an optional `PluginLoaderConfig`:
 
 ## Examples
 
-See the [@vpursuit/mcp-server-roots](../mcp-roots) and [@vpursuit/mcp-server-prolog](../mcp-prolog) packages for real-world plugin examples.
+See the [mcp-server-roots](../roots) and [mcp-server-prolog](../prolog) plugins in this monorepo for real-world plugin examples.
 
 ## License
 

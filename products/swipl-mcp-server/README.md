@@ -105,7 +105,7 @@ If you cloned the repo, you may use this configuration. Note: change <path to yo
   "mcpServers": {
     "swipl": {
       "command": "node",
-      "args": ["<path to your development directory>/swipl-mcp-server/packages/swipl-mcp-server/dist/index.js"],
+      "args": ["<path to your development directory>/swipl-mcp-server/products/swipl-mcp-server/dist/index.js"],
       "env": {
         "SWI_MCP_READY_TIMEOUT_MS": "10000",
         "SWI_MCP_QUERY_TIMEOUT_MS": "120000",
@@ -249,11 +249,13 @@ See [docs/examples.md](./docs/examples.md) for comprehensive examples including 
 
 ## Architecture
 
-This package uses a plugin-based architecture composed of:
+This package uses a plugin-based architecture with three internal components:
 
-- **[@vpursuit/mcp-server-core](../mcp-core)** - Plugin system for MCP servers
-- **[@vpursuit/mcp-server-roots](../mcp-roots)** - Dynamic filesystem root discovery
-- **[@vpursuit/mcp-server-prolog](../mcp-prolog)** - SWI-Prolog knowledge base and query tools
+- **@vpursuit/mcp-server-core** - Plugin system for MCP servers
+- **@vpursuit/mcp-server-roots** - Dynamic filesystem root discovery
+- **@vpursuit/mcp-server-prolog** - SWI-Prolog knowledge base and query tools
+
+These plugins are bundled within this package and are not published separately.
 
 The Prolog integration uses:
 - Single persistent SWI‑Prolog process with two query modes (standard via `call_nth/2`, engine via SWI engines)
@@ -322,7 +324,7 @@ npm install
 npm run build
 
 # Build this package only
-npm run build -w packages/swipl-mcp-server
+npm run build -w products/swipl-mcp-server
 
 # Run tests
 npm test
@@ -345,12 +347,14 @@ For security practices, reporting, and hardening guidance, see [SECURITY.md](./S
 - **[Lifecycle](./docs/lifecycle.md)** — Server lifecycle, state, and persistence patterns
 - **[Deployment](./docs/deployment.md)** — Release, packaging, and install from source
 
-## Related Packages
+## Internal Architecture
 
-This orchestrator package depends on:
-- [@vpursuit/mcp-server-core](https://npmjs.com/package/@vpursuit/mcp-server-core) - Plugin system for MCP servers
-- [@vpursuit/mcp-server-prolog](https://npmjs.com/package/@vpursuit/mcp-server-prolog) - Prolog integration plugin
-- [@vpursuit/mcp-server-roots](https://npmjs.com/package/@vpursuit/mcp-server-roots) - Filesystem roots management
+This package bundles three internal plugins (not published separately):
+- **@vpursuit/mcp-server-core** - Plugin system for MCP servers
+- **@vpursuit/mcp-server-prolog** - Prolog integration plugin
+- **@vpursuit/mcp-server-roots** - Filesystem roots management
+
+These components are private to the monorepo and bundled into the main package during the build process.
 
 ## License
 

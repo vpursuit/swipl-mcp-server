@@ -35,7 +35,7 @@ Workflow Checklist (Before PR)
 - Changes that need extra attention
   - Tool schemas/protocol
     - Update src/schemas.ts (zod + JSON schemas) and ensure src/index.ts registers JSON schemas
-    - Update README/README-npm.md if inputs/outputs or protocol envelopes change
+    - Update README.md if inputs/outputs or protocol envelopes change
     - Add/adjust tests (e.g., test/jsonSchemas.test.ts, tool tests) to cover new shapes
   - Tool handlers
     - Keep responses text-first and add a JSON content item second (for structured clients)

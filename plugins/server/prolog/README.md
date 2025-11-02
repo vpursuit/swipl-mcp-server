@@ -1,6 +1,8 @@
 # @vpursuit/mcp-server-prolog
 
-SWI-Prolog integration plugin for Model Context Protocol servers.
+**Internal SWI-Prolog integration plugin for Model Context Protocol servers.**
+
+> ⚠️ **Internal Package**: This plugin is private to the [@vpursuit/swipl-mcp-server](https://github.com/vpursuit/swipl-mcp-server) monorepo and is bundled into the main product. It is not published separately to npm.
 
 ## Overview
 
@@ -8,9 +10,17 @@ SWI-Prolog integration plugin for Model Context Protocol servers.
 
 ## Installation
 
+**For monorepo development only:**
+
 ```bash
-npm install @vpursuit/mcp-server-prolog
+# Clone the monorepo
+git clone https://github.com/vpursuit/swipl-mcp-server.git
+cd swipl-mcp-server
+npm install
+npm run build
 ```
+
+This package is available as a workspace dependency within the monorepo.
 
 ## Requirements
 
@@ -120,11 +130,14 @@ await toolHandlers.query_close();
 
 Full documentation available in the [swipl-mcp-server monorepo](https://github.com/vpursuit/swipl-mcp-server).
 
-## Related Packages
+## Related Components
 
-- [@vpursuit/mcp-server-core](https://npmjs.com/package/@vpursuit/mcp-server-core) - Plugin system
-- [@vpursuit/mcp-server-roots](https://npmjs.com/package/@vpursuit/mcp-server-roots) - Filesystem roots
-- [@vpursuit/swipl-mcp-server](https://npmjs.com/package/@vpursuit/swipl-mcp-server) - Complete server
+Internal monorepo plugins:
+- [mcp-server-core](../core) - Plugin system
+- [mcp-server-roots](../roots) - Filesystem roots
+
+Published product:
+- [@vpursuit/swipl-mcp-server](https://npmjs.com/package/@vpursuit/swipl-mcp-server) - Complete server (includes this plugin)
 
 ## License
 
