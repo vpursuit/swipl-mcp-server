@@ -1,6 +1,6 @@
 {
   "name": "@vpursuit/swipl-mcp-server",
-  "version": "3.0.0",
+  "version": "3.0.1-beta.0",
   "type": "module",
   "icon": "./images/logo.svg",
   "description": "SWI-Prolog integration for Model Context Protocol - orchestrator package",
