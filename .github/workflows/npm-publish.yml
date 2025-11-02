@@ -54,6 +54,14 @@ jobs:
           registry-url: ${{ env.NPM_REGISTRY_URL }}
           cache: 'npm'
 
+      - name: Upgrade npm for workspace protocol support
+        run: |
+          echo "Current npm version:"
+          npm --version
+          npm install -g npm@11
+          echo "Upgraded npm version:"
+          npm --version
+
       - name: Install dependencies
         run: npm ci
 
@@ -81,6 +89,14 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: ${{ env.NPM_REGISTRY_URL }}
           cache: 'npm'
+
+      - name: Upgrade npm for workspace protocol support
+        run: |
+          echo "Current npm version:"
+          npm --version
+          npm install -g npm@11
+          echo "Upgraded npm version:"
+          npm --version
 
       - name: Install dependencies
         run: npm ci
