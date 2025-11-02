@@ -5,13 +5,12 @@ on:
     tags:
       - 'v*.*.*'                    # swipl-mcp-server releases (v3.0.0)
       - 'v*.*.*-*'                  # swipl-mcp-server pre-releases
-      - 'client-v*.*.*'             # future client product releases
   release:
     types: [created]
   workflow_dispatch:
     inputs:
       package:
-        description: 'Package to publish (swipl-mcp-server or future products)'
+        description: 'Package to publish (currently only swipl-mcp-server)'
         required: false
         default: 'swipl-mcp-server'
         type: choice
@@ -147,33 +146,34 @@ jobs:
       - name: Detect packages to publish
         id: detect_packages
         run: |
-          # Determine which package(s) to publish based on tag or manual input
-          PACKAGES_TO_PUBLISH=""
-          PACKAGE_DIR=""
+          # Determine publish configuration for swipl-mcp-server only
+          PACKAGE_DIR="products"
+          PACKAGE_NAME="swipl-mcp-server"
+          NPM_TAG="latest"
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # Manual workflow dispatch - only swipl-mcp-server
-            PACKAGES_TO_PUBLISH="${{ inputs.package }}"
-            PACKAGE_DIR="products"
-          else
-            # Tag-based publishing
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
             echo "Processing tag: $TAG"
 
-            if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-              # Main server product release (v3.0.0)
-              PACKAGES_TO_PUBLISH="swipl-mcp-server"
-              PACKAGE_DIR="products"
-            elif [[ "$TAG" =~ ^client-v ]]; then
-              # Future client product release
-              PACKAGES_TO_PUBLISH="swipl-mcp-client"
-              PACKAGE_DIR="products"
+            if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?$ ]]; then
+              echo "Tag does not match release pattern 'v*.*.*' or 'v*.*.*-*'. Halting publish."
+              exit 1
+            fi
+
+            if [[ "$TAG" == *-* ]]; then
+              NPM_TAG="next"
+              echo "Detected pre-release tag. Using npm dist-tag '$NPM_TAG'."
             fi
           fi
 
-          echo "packages=$PACKAGES_TO_PUBLISH" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PACKAGE_NAME="${{ inputs.package }}"
+          fi
+
+          echo "packages=$PACKAGE_NAME" >> $GITHUB_OUTPUT
           echo "package_dir=$PACKAGE_DIR" >> $GITHUB_OUTPUT
-          echo "Publishing packages: $PACKAGES_TO_PUBLISH from $PACKAGE_DIR/"
+          echo "npm_tag=$NPM_TAG" >> $GITHUB_OUTPUT
+          echo "Publishing package: $PACKAGE_NAME from $PACKAGE_DIR/ with dist-tag '$NPM_TAG'"
 
       # Important: Older npm may fail OIDC (ENEEDAUTH). Upgrade explicitly.
       - name: Ensure recent npm (for OIDC/provenance)
@@ -182,6 +182,12 @@ jobs:
           npm --version
           npm install -g npm@11
           npm --version
+
+      - name: Install SWI-Prolog
+        if: inputs.dry_run != true
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y swi-prolog
 
       # OIDC trusted publish: no tokens, provenance enabled.
       - name: Publish packages to NPM
@@ -215,7 +221,8 @@ jobs:
             echo "✅ Version $PACKAGE_VERSION does not exist, publishing..."
 
             # Publish from workspace
-            npm publish --workspace="$PACKAGE_DIR/$pkg" --access public --provenance
+            NPM_TAG="${{ steps.detect_packages.outputs.npm_tag }}"
+            npm publish --workspace="$PACKAGE_DIR/$pkg" --access public --provenance --tag "$NPM_TAG"
 
             echo "✅ Successfully published $PACKAGE_NAME@$PACKAGE_VERSION"
           done
