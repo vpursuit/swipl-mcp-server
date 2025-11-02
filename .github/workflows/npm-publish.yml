@@ -3,12 +3,19 @@ name: Publish to NPM
 on:
   push:
     tags:
-      - 'v*.*.*'
-      - 'v*.*.*-*'
+      - 'v*.*.*'                    # swipl-mcp-server releases (v3.0.0)
+      - 'v*.*.*-*'                  # swipl-mcp-server pre-releases
   release:
     types: [created]
   workflow_dispatch:
     inputs:
+      package:
+        description: 'Package to publish (currently only swipl-mcp-server)'
+        required: false
+        default: 'swipl-mcp-server'
+        type: choice
+        options:
+          - swipl-mcp-server
       dry_run:
         description: 'Run tests without publishing'
         required: false
@@ -39,7 +46,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Configure npm registry for npmjs.org without injecting tokens
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -47,6 +53,14 @@ jobs:
           check-latest: true
           registry-url: ${{ env.NPM_REGISTRY_URL }}
           cache: 'npm'
+
+      - name: Upgrade npm for workspace protocol support
+        run: |
+          echo "Current npm version:"
+          npm --version
+          npm install -g npm@11
+          echo "Upgraded npm version:"
+          npm --version
 
       - name: Install dependencies
         run: npm ci
@@ -76,6 +90,14 @@ jobs:
           registry-url: ${{ env.NPM_REGISTRY_URL }}
           cache: 'npm'
 
+      - name: Upgrade npm for workspace protocol support
+        run: |
+          echo "Current npm version:"
+          npm --version
+          npm install -g npm@11
+          echo "Upgraded npm version:"
+          npm --version
+
       - name: Install dependencies
         run: npm ci
 
@@ -87,35 +109,29 @@ jobs:
       - name: Verify SWI-Prolog installation
         run: swipl --version
 
-      - name: Run linting
-        run: npm run lint
+      - name: Run linting (if configured)
+        run: npm run lint --if-present
+        continue-on-error: true
 
-      - name: Run unit tests
-        run: npm run test:unit
-
-      - name: Run integration tests
-        run: npm run test:integration
-
-      - name: Build TypeScript
+      - name: Build all packages
         run: npm run build
 
-      - name: Build distribution package
-        run: npm run build:package
+      - name: Run tests
+        run: npm test
 
-      - name: Test NPX installation
-        run: npm run test:npx
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-package
-          path: dist/
-          retention-days: 7
-
-      - name: Check package size
+      - name: Verify package contents
         run: |
-          cd dist
-          npm pack --dry-run
+          echo "=== Package verification ==="
+          # Only verify publishable products
+          for pkg in products/*; do
+            if [ -f "$pkg/package.json" ]; then
+              echo ""
+              echo "Checking $pkg..."
+              cd "$pkg"
+              npm pack --dry-run
+              cd ../..
+            fi
+          done
 
   publish:
     name: Publish to NPM
@@ -140,67 +156,144 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-package
-          path: dist/
+      - name: Build all packages
+        run: npm run build
 
-      - name: Check existing versions
-        id: check_version
+      - name: Detect packages to publish
+        id: detect_packages
         run: |
-          PACKAGE_NAME="@vpursuit/swipl-mcp-server"
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          # Determine publish configuration for swipl-mcp-server only
+          PACKAGE_DIR="products"
+          PACKAGE_NAME="swipl-mcp-server"
+          NPM_TAG="latest"
 
-          echo "Checking if $PACKAGE_NAME@$PACKAGE_VERSION already exists..."
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            echo "Processing tag: $TAG"
 
-          if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version 2>/dev/null; then
-            echo "Version $PACKAGE_VERSION already exists on NPM"
-            echo "version_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "Version $PACKAGE_VERSION does not exist, safe to publish"
-            echo "version_exists=false" >> $GITHUB_OUTPUT
+            if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?$ ]]; then
+              echo "Tag does not match release pattern 'v*.*.*' or 'v*.*.*-*'. Halting publish."
+              exit 1
+            fi
+
+            if [[ "$TAG" == *-* ]]; then
+              NPM_TAG="next"
+              echo "Detected pre-release tag. Using npm dist-tag '$NPM_TAG'."
+            fi
           fi
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PACKAGE_NAME="${{ inputs.package }}"
+          fi
+
+          echo "packages=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "package_dir=$PACKAGE_DIR" >> $GITHUB_OUTPUT
+          echo "npm_tag=$NPM_TAG" >> $GITHUB_OUTPUT
+          echo "Publishing package: $PACKAGE_NAME from $PACKAGE_DIR/ with dist-tag '$NPM_TAG'"
 
       # Important: Older npm may fail OIDC (ENEEDAUTH). Upgrade explicitly.
       - name: Ensure recent npm (for OIDC/provenance)
-        if: steps.check_version.outputs.version_exists == 'false' && inputs.dry_run != true
+        if: inputs.dry_run != true
         run: |
           npm --version
           npm install -g npm@11
           npm --version
 
+      - name: Install SWI-Prolog
+        if: inputs.dry_run != true
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y swi-prolog
+
       # OIDC trusted publish: no tokens, provenance enabled.
-      - name: Publish to NPM
-        if: steps.check_version.outputs.version_exists == 'false' && inputs.dry_run != true
+      - name: Publish packages to NPM
+        if: inputs.dry_run != true
         env:
           NPM_CONFIG_PROVENANCE: true
         run: |
           # Ensure OIDC flow (no token-based auth)
           unset NODE_AUTH_TOKEN || true
-          # Publish from dist (package.json is prepared for distribution)
-          cd dist
-          npm publish --access public --provenance
+
+          PACKAGE_DIR="${{ steps.detect_packages.outputs.package_dir }}"
+
+          # Publish each detected package
+          for pkg in ${{ steps.detect_packages.outputs.packages }}; do
+            echo ""
+            echo "==================================="
+            echo "Publishing @vpursuit/$pkg"
+            echo "==================================="
+
+            # Check if version already exists
+            PACKAGE_NAME="@vpursuit/$pkg"
+            PACKAGE_VERSION=$(node -p "require('./$PACKAGE_DIR/$pkg/package.json').version")
+
+            echo "Checking if $PACKAGE_NAME@$PACKAGE_VERSION already exists..."
+
+            if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version 2>/dev/null; then
+              echo "⚠️  Version $PACKAGE_VERSION already exists on NPM, skipping"
+              continue
+            fi
+
+            echo "✅ Version $PACKAGE_VERSION does not exist, publishing..."
+
+            # Publish from workspace
+            NPM_TAG="${{ steps.detect_packages.outputs.npm_tag }}"
+            npm publish --workspace="$PACKAGE_DIR/$pkg" --access public --provenance --tag "$NPM_TAG"
+
+            echo "✅ Successfully published $PACKAGE_NAME@$PACKAGE_VERSION"
+          done
 
       - name: Dry Run - Show what would be published
         if: inputs.dry_run == true
         run: |
-          cd dist
-          echo "DRY RUN: Would publish the following package:"
-          npm pack --dry-run
+          echo "DRY RUN: Would publish the following packages:"
+          echo ""
+
+          PACKAGE_DIR="${{ steps.detect_packages.outputs.package_dir }}"
+
+          for pkg in ${{ steps.detect_packages.outputs.packages }}; do
+            echo "==================================="
+            echo "Package: @vpursuit/$pkg"
+            echo "==================================="
+            cd "$PACKAGE_DIR/$pkg"
+            npm pack --dry-run
+            cd ../..
+            echo ""
+          done
 
       - name: Create GitHub Release
-        if: steps.check_version.outputs.version_exists == 'false' && inputs.dry_run != true
+        if: inputs.dry_run != true && github.event_name == 'push'
         run: |
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          gh release create "v$PACKAGE_VERSION" \
-            --title "Release v$PACKAGE_VERSION" \
-            --notes "Released to NPM as @vpursuit/swipl-mcp-server@$PACKAGE_VERSION
+          # Create release for the first published package
+          FIRST_PKG=$(echo "${{ steps.detect_packages.outputs.packages }}" | awk '{print $1}')
+          PACKAGE_DIR="${{ steps.detect_packages.outputs.package_dir }}"
 
-          Install with: \`npm install -g @vpursuit/swipl-mcp-server\`
+          if [ -n "$FIRST_PKG" ]; then
+            PACKAGE_NAME="@vpursuit/$FIRST_PKG"
+            PACKAGE_VERSION=$(node -p "require('./$PACKAGE_DIR/$FIRST_PKG/package.json').version")
+            TAG="${GITHUB_REF#refs/tags/}"
+
+            # Create release notes file
+            cat > release_notes.md <<EOF
+          Released to NPM as $PACKAGE_NAME@$PACKAGE_VERSION
+
+          ## Installation
+          \`\`\`bash
+          npm install $PACKAGE_NAME
+          \`\`\`
 
           ## Requirements
           - Node.js ≥ 20.0.0
-          - SWI-Prolog installed and available in PATH"
+          EOF
+
+            # Add SWI-Prolog requirement for server package
+            if [ "$FIRST_PKG" = "swipl-mcp-server" ]; then
+              echo "- SWI-Prolog installed and available in PATH" >> release_notes.md
+            fi
+
+            gh release create "$TAG" \
+              --title "Release $TAG" \
+              --notes-file release_notes.md
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

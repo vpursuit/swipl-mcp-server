@@ -1,0 +1,74 @@
+{
+  "name": "@vpursuit/swipl-mcp-server",
+  "version": "3.0.0",
+  "type": "module",
+  "icon": "./images/logo.svg",
+  "description": "SWI-Prolog integration for Model Context Protocol - orchestrator package",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "prolog",
+    "swi-prolog",
+    "ai",
+    "agent",
+    "llm"
+  ],
+  "author": "Peter Trebing",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vpursuit/swipl-mcp-server.git",
+    "directory": "products/swipl-mcp-server"
+  },
+  "homepage": "https://github.com/vpursuit/swipl-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
+  },
+  "bin": {
+    "swipl-mcp-server": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "prolog",
+    "images",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build:plugins": "cd ../.. && npm run build -w @vpursuit/mcp-server-core -w @vpursuit/mcp-server-prolog -w @vpursuit/mcp-server-roots",
+    "build": "npm run build:plugins && rollup -c",
+    "build:full": "npm run build",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "cd ../.. && vitest run --project=swipl-mcp-server",
+    "test:watch": "cd ../.. && vitest --project=swipl-mcp-server",
+    "test:npx": "cd ../.. && vitest run --project=swipl-mcp-server -t 'NPX Integration'",
+    "server": "npm run build && node dist/index.js",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "prepublishOnly": "npm run build:full && npm run test:npx"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "@types/node": "^24.9.1",
+    "@vpursuit/mcp-server-core": "*",
+    "@vpursuit/mcp-server-prolog": "*",
+    "@vpursuit/mcp-server-roots": "*",
+    "rollup": "^4.52.5",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.6"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

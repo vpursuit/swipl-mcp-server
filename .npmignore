@@ -18,7 +18,7 @@ AGENTS.md
 examples.md
 
 # Build artifacts
-build/
+dist/
 *.tsbuildinfo
 
 # Logs and temporary files

@@ -5,7 +5,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Build output
-build/
+dist/
 dist/
 
 # TypeScript

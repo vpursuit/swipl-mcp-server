@@ -1,0 +1,57 @@
+{
+  "name": "@vpursuit/mcp-server-core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Plugin system for Model Context Protocol servers",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "plugin",
+    "server"
+  ],
+  "author": "Peter Trebing",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vpursuit/swipl-mcp-server.git",
+    "directory": "plugins/server/core"
+  },
+  "homepage": "https://github.com/vpursuit/swipl-mcp-server/tree/main/plugins/server/core#readme",
+  "bugs": {
+    "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.2"
+  },
+  "dependencies": {
+    "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.24.1"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

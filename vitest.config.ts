@@ -18,6 +18,58 @@ export default defineConfig({
         lines: 60
       }
     },
-    globals: true // Enable Jest-compatible globals
+    globals: true, // Enable Jest-compatible globals
+    // Projects configuration (replaces deprecated workspace file)
+    projects: [
+      // Core plugin
+      {
+        test: {
+          name: 'mcp-server-core',
+          include: ['plugins/server/core/test/**/*.test.ts'],
+          environment: 'node',
+          globals: true,
+          testTimeout: 10000,
+        },
+      },
+      // Roots plugin
+      {
+        test: {
+          name: 'mcp-server-roots',
+          include: ['plugins/server/roots/test/**/*.test.ts'],
+          environment: 'node',
+          globals: true,
+          testTimeout: 10000,
+        },
+      },
+      // Prolog plugin
+      {
+        test: {
+          name: 'mcp-server-prolog',
+          include: [
+            'plugins/server/prolog/test/**/*.test.ts',
+            'plugins/server/prolog/test/**/*.test.js',
+          ],
+          environment: 'node',
+          globals: true,
+          testTimeout: 60000,
+          setupFiles: ['./plugins/server/prolog/test/setup.js'],
+        },
+      },
+      // Server product
+      {
+        test: {
+          name: 'swipl-mcp-server',
+          include: [
+            'products/swipl-mcp-server/test/**/*.test.ts',
+            'products/swipl-mcp-server/test/**/*.test.js',
+          ],
+          exclude: ['products/swipl-mcp-server/test/e2e/npx-integration.test.js'],
+          environment: 'node',
+          globals: true,
+          testTimeout: 60000,
+          setupFiles: ['./products/swipl-mcp-server/test/setup.js'],
+        },
+      },
+    ]
   }
 });

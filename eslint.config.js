@@ -6,7 +6,7 @@ import prettierConfig from "eslint-config-prettier";
 export default [
   // Ignore build artifacts
   {
-    ignores: ["node_modules/**", "build/**", "dist/**", "coverage/**"],
+    ignores: ["node_modules/**", "dist/**", "coverage/**"],
   },
   // TypeScript files
   {

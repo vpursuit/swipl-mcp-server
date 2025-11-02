@@ -1,160 +1,179 @@
 # Security Policy
 
-## ⚠️ Important Warning
+This monorepo contains multiple Model Context Protocol (MCP) packages with varying security considerations. Each package may have different security requirements based on its functionality.
 
-**Use this tool at your own risk.** This SWI-Prolog MCP Server provides controlled access to a Prolog environment and executes user-provided queries and code. While comprehensive security measures have been implemented including sandboxing and blacklisting, **no security system is perfect**. 
+## Package-Specific Security Policies
 
-**Security Layer:** This server includes an enhanced security framework that:
-- **File Path Restrictions**: Only allows file access within `~/.swipl-mcp-server/` directory
-- **Dangerous Predicate Blocking**: Pre-execution detection and blocking of dangerous operations
-- Validates predicates using SWI-Prolog's `library(sandbox)`
-- Maintains an explicit blacklist of dangerous operations
-- Isolates user code in a dedicated `knowledge_base` module
-- Rejects dangerous directives during file consultation
+For detailed security information specific to each package, please refer to the individual security documentation:
 
-**All usage is at your own risk.** Review and understand any Prolog code before execution, especially from untrusted sources.
+### Products
+- **[@vpursuit/swipl-mcp-server](./packages/swipl-mcp-server/SECURITY.md)** - Comprehensive security policy for Prolog execution, sandboxing, file path restrictions, and dangerous predicate blocking
 
-## Supported Versions
-- Runtime: Node.js ≥ 18, SWI‑Prolog ≥ 9.2.x
-- Project: `main` branch is maintained. Use the latest release for fixes.
+### Libraries
+- **[@vpursuit/mcp-server-prolog](./packages/mcp-prolog/)** - Prolog integration plugin security considerations
+- **[@vpursuit/mcp-server-core](./packages/mcp-core/)** - Plugin system security considerations
+- **[@vpursuit/mcp-server-roots](./packages/mcp-roots/)** - Filesystem access control and path validation security
 
 ## Reporting a Vulnerability
-- Prefer a private report first to avoid exposure.
-- If this repository is on GitHub, use Security Advisories (private) or open a minimal issue and mark it as security‑related.
-- Include: affected version/commit, environment, minimal PoC, expected vs. actual behavior, and any logs (redact secrets, paths, and PII).
 
-## Threat Model (Scope)
-- Untrusted Prolog content provided via file consultation and query execution.
-- Potential risks: arbitrary file/OS access, network calls, long‑running or looping queries, information leakage through logs.
+We take security vulnerabilities seriously. If you discover a security issue in any package within this monorepo:
 
-## Built‑in Protections
+### Preferred Method: Private Disclosure
+1. **GitHub Security Advisories** (Recommended): Use [GitHub's private vulnerability reporting](https://github.com/vpursuit/swipl-mcp-server/security/advisories/new) to report security issues privately
+2. **Issue Tracker**: If you cannot use Security Advisories, open an issue and mark it as security-related (we will move discussion to a private channel)
 
-### File Path Security
-- **Allowed Directory**: Only `~/.swipl-mcp-server/` directory permitted for file operations
-- **System Directory Blocking**: Automatically blocks access to `/etc`, `/usr`, `/bin`, `/var`, `/sys`, `/proc`, `/boot`, `/dev`, `/root`
-- **Pre-validation**: File paths are checked before any Prolog interaction
-- **Clear Error Messages**: `Security Error: Files can only be loaded from ~/.swipl-mcp-server/`
+### What to Include
+Please provide the following information in your report:
+- **Affected package(s)** and version(s)
+- **Environment details** (Node.js version, SWI-Prolog version if applicable, OS)
+- **Minimal reproduction steps** (Proof of Concept)
+- **Expected vs. actual behavior**
+- **Impact assessment** (what can an attacker achieve?)
+- **Relevant logs** (please redact secrets, absolute paths, and PII)
 
-### Dangerous Predicate Detection
-- **Pre-execution Blocking**: Dangerous operations caught before execution, not during timeout
-- **Blocked Predicates**: `shell()`, `system()`, `call()`, `assert()`, `halt()`, `retract()`, `abolish()`
-- **Pattern Detection**: Scans fact/query content for dangerous predicate calls
-- **Clear Error Messages**: `Security Error: Operation blocked - contains dangerous predicate 'X'`
+### Response Timeline
+- **Acknowledgment**: Within 48 hours
+- **Initial Assessment**: Within 7 days
+- **Fix Timeline**: Varies by severity (critical: immediate, high: 1-2 weeks, medium: 2-4 weeks, low: next release)
 
-### Additional Protections
-- **Enhanced Security Model**: Combines `library(sandbox)` validation with explicit blacklist and path restrictions
-  - `library(sandbox)` validates most built-ins as safe/unsafe
-  - Additional blacklist prevents dangerous operations even if sandbox allows them
-  - User-defined predicates in `knowledge_base` module are allowed for recursive definitions
-- **Safe consult**: Only facts/rules are accepted; directives and module‑altering terms are rejected
-- **Isolation**: User data lives in `knowledge_base`; `unknown=fail` to avoid accidental calls
-- **Timeouts**: Node side enforces query timeouts to prevent hangs
-- **Logging hygiene**: Logs go to `stderr`, default to `warn`, and redact absolute paths/PIDs
+## Supported Versions
 
-## Hardening Checklist
-- Run as a non‑privileged user; avoid filesystem write access beyond the working directory.
-- Keep Node.js, SWI‑Prolog, and dependencies up to date.
-- Set conservative logging in production: `MCP_LOG_LEVEL=warn` or `silent`.
-- Do not ingest untrusted `.pl` files from unknown sources without review.
-- Monitor resource usage; consider external CPU/time limits if high‑risk.
+| Package | Version | Supported |
+|---------|---------|-----------|
+| @vpursuit/swipl-mcp-server | 3.x | ✅ Yes |
+| @vpursuit/mcp-server-prolog | 3.x | ✅ Yes |
+| @vpursuit/mcp-server-core | 1.x | ✅ Yes |
+| @vpursuit/mcp-server-roots | 1.x | ✅ Yes |
+
+- **Main branch**: Actively maintained with latest security fixes
+- **Older versions**: Security patches may be backported for critical vulnerabilities
+- **Runtime requirements**: Node.js ≥ 20.0.0, SWI-Prolog ≥ 8.4.0 (for Prolog packages)
+
+## General Security Considerations
+
+### All Packages
+- Keep dependencies up to date
+- Review release notes for security updates
+- Use officially published versions from npm
+- Enable GitHub Dependabot alerts
+
+### MCP Servers (Products)
+- Run as non-privileged users in production
+- Implement network isolation where appropriate
+- Monitor resource usage (CPU, memory, file handles)
+- Set conservative logging levels (`warn` or `silent` in production)
+- Review any code before execution, especially from untrusted sources
+
+### Plugin Libraries
+- Validate all inputs from untrusted sources
+- Implement proper error handling
+- Avoid exposing internal implementation details in error messages
+- Follow principle of least privilege
+
+## NPM Publishing Security
+
+All packages in this monorepo use **OIDC (OpenID Connect) Trusted Publishing** for NPM package distribution, representing the most secure authentication method currently available.
+
+### Security Benefits
+- ✅ **No Long-lived Tokens**: No NPM authentication tokens stored in GitHub secrets
+- ✅ **Temporary Credentials**: Short-lived tokens that automatically expire
+- ✅ **Scoped Access**: Tokens limited to specific packages and organizations
+- ✅ **Provenance Enabled**: Cryptographic proof of build environment included in all packages
+- ✅ **Audit Trail**: Full audit log of all publishing activities
+
+### Why This Matters
+Recent security incidents in the NPM ecosystem have highlighted vulnerabilities in traditional token-based authentication. Our OIDC approach eliminates these risks by:
+- Making token theft ineffective (tokens expire within minutes)
+- Requiring authenticated GitHub Actions workflow execution
+- Preventing unauthorized package publishing
+
+Publishing is exclusively handled through our [GitHub Actions workflow](./.github/workflows/npm-publish.yml) with automatic security validation.
 
 ## Installation Security
 
-For enhanced security and stability, consider **downloading from GitHub** instead of using NPM:
+### NPM Installation (Standard)
+```bash
+npm install @vpursuit/swipl-mcp-server
+# or
+npx @vpursuit/swipl-mcp-server
+```
 
-### Benefits of GitHub Installation:
-- **Version Pinning**: No automatic updates without your explicit consent
-- **Source Verification**: Review complete source code before installation
-- **Supply Chain Security**: Avoid potential NPM package compromise
-- **Offline Operation**: No runtime dependencies on package registries
-- **Audit Trail**: Know exactly which version you're running
+Benefits: Simple, automatic updates, standard workflow
 
-### GitHub Installation:
+### GitHub Installation (Enhanced Security)
+For enhanced security and stability, consider installing from source:
+
 ```bash
 # Clone the repository
 git clone https://github.com/vpursuit/swipl-mcp-server.git
 cd swipl-mcp-server
 
-# Optional: checkout a specific release tag for stability
-# git checkout v2.0.1
+# Optional: checkout a specific release tag
+# git checkout swipl-mcp-server@3.0.0
 
 # Review source code before building
-less README.md SECURITY.md src/
+cat README.md
+cat packages/swipl-mcp-server/SECURITY.md
 
-# Build from source
+# Install and build
 npm install
 npm run build
 
-# The built server is now at: build/index.js
-# Note this full path for Claude Desktop configuration
-pwd  # Shows your current directory path
+# Built packages are in packages/*/dist/
 ```
 
-### Configure Claude Desktop with Local Build:
-```json
-{
-  "mcpServers": {
-    "swipl": {
-      "command": "node",
-      "args": ["/full/path/to/swipl-mcp-server/build/index.js"]
-    }
-  }
-}
-```
-Replace `/full/path/to/` with your actual directory path from the `pwd` command above.
+**Benefits of GitHub Installation:**
+- ✅ Version pinning (no automatic updates)
+- ✅ Source code verification before installation
+- ✅ Supply chain security (avoid potential NPM compromise)
+- ✅ Offline operation capability
+- ✅ Complete audit trail
 
 **Recommended for:**
 - Production environments requiring stability
 - High-security environments
-- Auditing and compliance requirements
+- Compliance and auditing requirements
 - Air-gapped or restricted networks
 
-## NPM Publishing Security
+## Hardening Best Practices
 
-This project uses **OIDC (OpenID Connect) Trusted Publishing** for NPM package distribution, representing the most secure authentication method currently available for NPM packages.
+### For All Packages
+1. **Keep Software Updated**: Regularly update Node.js, dependencies, and OS packages
+2. **Principle of Least Privilege**: Run with minimum required permissions
+3. **Network Isolation**: Isolate MCP servers from untrusted networks when possible
+4. **Resource Limits**: Set memory and CPU limits to prevent DoS
+5. **Logging**: Configure appropriate log levels and ensure logs don't contain secrets
 
-### Security Benefits:
-- **No Long-lived Tokens**: No NPM authentication tokens are stored in GitHub secrets or anywhere else
-- **Temporary Credentials**: Publishing uses short-lived, automatically expiring tokens generated by GitHub's OIDC provider
-- **Scoped Access**: Tokens are automatically scoped to only this specific package and organization
-- **Provenance Enabled**: All published packages include cryptographic proof of their build environment
-
-### Why This Matters:
-Recent security incidents in the NPM ecosystem have highlighted vulnerabilities in traditional token-based authentication. Our OIDC approach eliminates these risks by:
-- Making token theft ineffective (tokens expire within minutes)
-- Requiring authenticated GitHub Actions workflow execution
-- Providing full audit trail of all publishing activities
-
-Publishing is exclusively handled through our [GitHub Actions workflow](/.github/workflows/npm-publish.yml) with automatic security validation.
-
-## Configuration
-- `MCP_LOG_LEVEL`: `debug|info|warn|error|silent` (default `warn`).
-- `DEBUG`: include `swipl-mcp-server` to enable debug logging.
-- `SWI_MCP_PROLOG_PATH`: override path to the Prolog server script.
-- Security is always enabled and cannot be disabled.
+### For Prolog-Related Packages
+6. **File Access**: Restrict file operations to designated directories only
+7. **Code Review**: Never execute untrusted Prolog code without review
+8. **Timeout Configuration**: Set conservative query timeout limits
+9. **Sandboxing**: Leverage built-in security features (enabled by default)
 
 ## Security Testing
 
-### File Path Security Testing
-- Verify system directory blocking:
-  - Example: `knowledge_base_load({ filename: "/etc/passwd" })` → `Security Error: Access to system directories is blocked`
-  - Example: `knowledge_base_load({ filename: "/usr/bin/ls" })` → `Security Error: Access to system directories is blocked`
-- Verify allowed directory works:
-  - Example: `knowledge_base_load({ filename: "~/.swipl-mcp-server/test.pl" })` → should work (if file exists)
+Each package includes its own test suite. To run security-related tests:
 
-### Dangerous Predicate Testing
-- Verify pre-execution blocking:
-  - Example: `knowledge_base_assert({ fact: "malware :- shell('rm -rf /')" })` → `Security Error: Operation blocked - contains dangerous predicate 'shell'`
-  - Example: `knowledge_base_assert({ fact: "bad :- system('cat /etc/passwd')" })` → `Security Error: Operation blocked - contains dangerous predicate 'system'`
-- Verify safe operations work:
-  - Example: `X is 2 + 3` should succeed
-  - Example: `append([1,2], [3], L)` should succeed
-- Verify recursive user predicates work:
-  - Example: `knowledge_base_assert({ fact: "ancestor(X,Y) :- parent(X,Y)" })` should succeed
+```bash
+# Run all tests
+npm test
 
-### Legacy Security Testing
-- Verify sandbox rejects remaining dangerous goals during execution:
-  - Example: `call(true)` should return `error(unsafe_goal(...))`
-  - Example: Direct `assert(malicious)` in query should return `error(unsafe_goal(...))`
-- Confirm consult rejects directives (e.g., `:- initialization(...)`).
-- Run comprehensive test suite: `npm test` (includes end-to-end integration testing).
+# Run tests for specific package
+npm test -w packages/swipl-mcp-server
+```
+
+See individual package SECURITY.md files for package-specific security test examples.
+
+## Acknowledgments
+
+We appreciate responsible disclosure of security vulnerabilities. Contributors who report valid security issues will be acknowledged in:
+- Security advisories
+- Release notes (with permission)
+- CONTRIBUTORS.md (with permission)
+
+## Resources
+
+- [Model Context Protocol Specification](https://modelcontextprotocol.io)
+- [GitHub Security Advisories](https://github.com/vpursuit/swipl-mcp-server/security/advisories)
+- [NPM Security Best Practices](https://docs.npmjs.com/security)
+- [Node.js Security Best Practices](https://nodejs.org/en/docs/guides/security/)

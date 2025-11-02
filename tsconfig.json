@@ -1,16 +1,9 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "Node16",
-    "moduleResolution": "Node16",
-    "outDir": "./build",
-    "rootDir": "./src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "test/**/*"]
+  "files": [],
+  "references": [
+    { "path": "./plugins/server/core" },
+    { "path": "./plugins/server/roots" },
+    { "path": "./plugins/server/prolog" },
+    { "path": "./products/swipl-mcp-server" }
+  ]
 }
