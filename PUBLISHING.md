@@ -102,6 +102,47 @@ npm view @vpursuit/swipl-mcp-server
 npm view @vpursuit/mcp-server-prolog  # Should fail - private package
 ```
 
+### Method 1b: Automated Release Scripts (Recommended)
+
+For convenience, automated npm scripts are provided that handle version bumping, tag creation, and pushing in one command.
+
+#### Available Scripts
+
+```bash
+# Stable releases
+npm run release:patch    # Bump patch version (3.0.0 → 3.0.1)
+npm run release:minor    # Bump minor version (3.0.0 → 3.1.0)
+npm run release:major    # Bump major version (3.0.0 → 4.0.0)
+
+# Pre-releases
+npm run release:prerelease  # Bump prerelease version (3.0.0 → 3.0.1-beta.0)
+```
+
+#### What These Scripts Do
+
+Each script automatically:
+1. Updates version in `products/swipl-mcp-server/package.json`
+2. Creates a git commit with the version change
+3. **Creates an annotated git tag** (e.g., `v3.0.1-beta.0`)
+4. Pushes the commit to `main`
+5. Pushes all tags to trigger the publish workflow
+
+#### Example Usage
+
+```bash
+# Release a beta version
+npm run release:prerelease
+
+# Output:
+# ✓ Version bumped to 3.0.1-beta.0
+# ✓ Commit created
+# ✓ Tag v3.0.1-beta.0 created
+# ✓ Pushed to main
+# ✓ Tag pushed (workflow triggered)
+```
+
+**Important:** These scripts use `--git-tag-version=true` to ensure tags are always created, and `git push origin --tags` to ensure tags are pushed (avoiding the `--follow-tags` limitation).
+
 ### Method 2: Manual Workflow Dispatch
 
 Use this for testing or publishing without creating a git tag.
@@ -257,6 +298,49 @@ npm install
 
 **Note:** This has been fixed in the repository. If you encounter this, ensure you're on the latest main branch.
 
+### Workflow Didn't Trigger After Version Bump
+
+**Cause:** Tag was not created or not pushed to remote repository.
+
+**Symptoms:**
+- You ran `npm run release:*` but workflow didn't start
+- Commit was pushed but no GitHub Actions run appears
+- `git tag -l` shows tag locally but `git ls-remote --tags origin` doesn't
+
+**Common Reasons:**
+1. **Using `--follow-tags` with lightweight tags**: The `--follow-tags` flag only pushes annotated tags, but `npm version` creates lightweight tags by default
+2. **Tag not created**: `npm version` might not create tags in some configurations
+3. **Push failed silently**: Network issues or permissions problems
+
+**Solution:**
+
+**If using old scripts (before this fix):**
+```bash
+# Check if tag exists locally
+git tag -l "v*"
+
+# If tag exists locally, push it
+git push origin v3.0.1-beta.0
+
+# If tag doesn't exist, create and push it
+git tag -a v3.0.1-beta.0 -m "Release v3.0.1-beta.0"
+git push origin v3.0.1-beta.0
+```
+
+**If using current scripts:**
+The issue should be fixed. The scripts now:
+- Use `--git-tag-version=true` to ensure tag creation
+- Use `git push origin --tags` instead of `--follow-tags`
+
+**Verify tag was pushed:**
+```bash
+# Check remote tags
+git ls-remote --tags origin | grep v3.0.1-beta.0
+
+# Should show:
+# abc123... refs/tags/v3.0.1-beta.0
+```
+
 ### OIDC Publishing Error (ENEEDAUTH)
 
 **Cause:** npm authentication issue with OIDC trusted publishing.
@@ -382,11 +466,17 @@ npm view @vpursuit/swipl-mcp-server version
 # Verify plugins are not published (should fail with 404)
 npm view @vpursuit/mcp-server-prolog version  # Should return 404
 
-# Publish server product
+# Automated releases (recommended)
+npm run release:prerelease  # Beta release
+npm run release:patch       # Patch release
+npm run release:minor       # Minor release
+npm run release:major       # Major release
+
+# Manual tag-based publish (server product)
 git tag v3.0.X
 git push origin v3.0.X
 
-# Publish future client product
+# Manual tag-based publish (future client product)
 git tag client-v1.0.X
 git push origin client-v1.0.X
 
