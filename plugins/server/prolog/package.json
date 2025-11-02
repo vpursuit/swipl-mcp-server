@@ -54,7 +54,7 @@
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.20.2",
-    "@vpursuit/mcp-server-core": "workspace:*"
+    "@vpursuit/mcp-server-core": "*"
   },
   "engines": {
     "node": ">=20.0.0"
