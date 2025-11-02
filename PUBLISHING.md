@@ -85,11 +85,12 @@ git push origin client-v1.0.0
 - Go to [GitHub Actions](https://github.com/vpursuit/swipl-mcp-server/actions)
 - Watch "Publish to NPM" workflow
 - Workflow runs:
-  1. Security audit
-  2. Build all packages
-  3. Run tests
-  4. Publish to npm (if version doesn't exist)
-  5. Create GitHub release
+  1. Upgrade npm to v11 (for workspace protocol support)
+  2. Security audit
+  3. Build all packages
+  4. Run tests
+  5. Publish to npm (if version doesn't exist)
+  6. Create GitHub release
 
 **5. Verify Publication**
 
@@ -191,7 +192,7 @@ Before publishing any package:
 npm view @vpursuit/PACKAGE_NAME versions
 
 # Bump version in package.json
-# packages/PACKAGE_NAME/package.json
+# products/PACKAGE_NAME/package.json
 # "version": "3.0.2"  (increment)
 
 # Create new tag
@@ -233,6 +234,29 @@ swipl --version
 # Fix tests, commit, and retry
 ```
 
+### Workspace Protocol Error (EUNSUPPORTEDPROTOCOL)
+
+**Cause:** npm doesn't support `workspace:*` protocol (pnpm/Yarn syntax).
+
+**Error Message:**
+```
+npm error code EUNSUPPORTEDPROTOCOL
+npm error Unsupported URL Type "workspace:": workspace:*
+```
+
+**Solution:**
+```bash
+# Use standard npm workspace syntax (*) instead of workspace:*
+# In package.json devDependencies:
+"@vpursuit/mcp-server-core": "*"  # ✅ Correct
+"@vpursuit/mcp-server-core": "workspace:*"  # ❌ Wrong
+
+# After fixing, regenerate lockfile
+npm install
+```
+
+**Note:** This has been fixed in the repository. If you encounter this, ensure you're on the latest main branch.
+
 ### OIDC Publishing Error (ENEEDAUTH)
 
 **Cause:** npm authentication issue with OIDC trusted publishing.
@@ -250,17 +274,16 @@ If still fails, check:
 
 **Warning:** npm has size limits for packages.
 
-**Current sizes:**
-- swipl-mcp-server: 164.9 KB ✅
-- mcp-prolog: 64.1 KB ✅
-- mcp-core: 9.5 KB ✅
-- mcp-roots: 16.2 KB ✅
+**Current size (published product):**
+- @vpursuit/swipl-mcp-server: 343.2 KB (unpacked: 1.3 MB) ✅
 
-All well under limits.
+**Note:** Plugins are bundled into the main product and are not published separately.
+
+Well under npm limits (unpublished packages have 10 MB limit).
 
 **To check size:**
 ```bash
-cd packages/PACKAGE_NAME
+cd products/PACKAGE_NAME
 npm pack --dry-run
 ```
 
