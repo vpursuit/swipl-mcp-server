@@ -33,7 +33,15 @@
     "clean:full": "npm run clean --workspaces --if-present && rm -rf node_modules products/*/node_modules plugins/*/node_modules plugins/*/*/node_modules",
     "security:audit": "npm audit --workspaces --audit-level=moderate",
     "security:check": "npm audit --workspaces --audit-level=high --json | jq -r '.vulnerabilities | length' | xargs -I {} test {} -eq 0",
-    "security:update": "npm update --workspaces && npm audit fix --workspaces"
+    "security:update": "npm update --workspaces && npm audit fix --workspaces",
+    "version:patch": "npm version patch -w @vpursuit/swipl-mcp-server",
+    "version:minor": "npm version minor -w @vpursuit/swipl-mcp-server",
+    "version:major": "npm version major -w @vpursuit/swipl-mcp-server",
+    "version:prerelease": "npm version prerelease --preid=beta -w @vpursuit/swipl-mcp-server",
+    "release:patch": "npm run version:patch && git push origin main --follow-tags",
+    "release:minor": "npm run version:minor && git push origin main --follow-tags",
+    "release:major": "npm run version:major && git push origin main --follow-tags",
+    "release:prerelease": "npm run version:prerelease && git push origin main --follow-tags"
   },
   "author": "Peter Trebing",
   "license": "BSD-3-Clause",
