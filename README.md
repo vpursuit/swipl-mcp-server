@@ -30,17 +30,17 @@ Build your own MCP servers using these composable packages:
 
 | Package | Description | Version | NPM |
 |---------|-------------|---------|-----|
-| [`@vpursuit/mcp-core`](./packages/mcp-core) | Plugin system for MCP servers | 1.0.0 | [npm](https://www.npmjs.com/package/@vpursuit/mcp-core) |
-| [`@vpursuit/mcp-prolog`](./packages/mcp-prolog) | SWI-Prolog integration plugin | 3.0.0 | [npm](https://www.npmjs.com/package/@vpursuit/mcp-prolog) |
-| [`@vpursuit/mcp-roots`](./packages/mcp-roots) | Dynamic filesystem roots management | 1.0.0 | [npm](https://www.npmjs.com/package/@vpursuit/mcp-roots) |
+| [`@vpursuit/mcp-server-core`](./packages/mcp-core) | Plugin system for MCP servers | 1.0.0 | [npm](https://www.npmjs.com/package/@vpursuit/mcp-server-core) |
+| [`@vpursuit/mcp-server-prolog`](./packages/mcp-prolog) | SWI-Prolog integration plugin | 3.0.0 | [npm](https://www.npmjs.com/package/@vpursuit/mcp-server-prolog) |
+| [`@vpursuit/mcp-server-roots`](./packages/mcp-roots) | Dynamic filesystem roots management | 1.0.0 | [npm](https://www.npmjs.com/package/@vpursuit/mcp-server-roots) |
 
 ### Using the Libraries
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { loadPlugins } from '@vpursuit/mcp-core';
-import { plugin as prologPlugin } from '@vpursuit/mcp-prolog';
-import { plugin as rootsPlugin } from '@vpursuit/mcp-roots';
+import { loadPlugins } from '@vpursuit/mcp-server-core';
+import { plugin as prologPlugin } from '@vpursuit/mcp-server-prolog';
+import { plugin as rootsPlugin } from '@vpursuit/mcp-server-roots';
 
 const server = new McpServer({
   name: 'my-mcp-server',
@@ -187,7 +187,7 @@ npx @vpursuit/swipl-mcp-server
 
 **For developers**: Build custom MCP servers using the plugin libraries
 ```bash
-npm install @vpursuit/mcp-core @vpursuit/mcp-prolog @vpursuit/mcp-roots
+npm install @vpursuit/mcp-server-core @vpursuit/mcp-server-prolog @vpursuit/mcp-server-roots
 ```
 
 **For contributors**: Set up the development environment

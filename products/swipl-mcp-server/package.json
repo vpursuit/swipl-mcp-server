@@ -28,12 +28,8 @@
     "swipl-mcp-server": "./dist/index.js"
   },
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
+    ".": "./dist/index.js"
   },
   "files": [
     "dist",
@@ -44,7 +40,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "rollup -c",
+    "build:plugins": "cd ../.. && npm run build -w @vpursuit/mcp-server-core -w @vpursuit/mcp-server-prolog -w @vpursuit/mcp-server-roots",
+    "build": "npm run build:plugins && rollup -c",
     "build:types": "echo 'Types generated during build'",
     "build:full": "npm run build",
     "clean": "rm -rf dist *.tsbuildinfo",
@@ -56,10 +53,7 @@
     "prepublishOnly": "npm run build:full && npm run test:npx"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.20.2",
-    "@vpursuit/mcp-server-core": "*",
-    "@vpursuit/mcp-server-prolog": "*",
-    "@vpursuit/mcp-server-roots": "*"
+    "@modelcontextprotocol/sdk": "^1.20.2"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.9",
@@ -67,6 +61,9 @@
     "@rollup/plugin-node-resolve": "^15.3.1",
     "@rollup/plugin-typescript": "^12.3.0",
     "@types/node": "^24.9.1",
+    "@vpursuit/mcp-server-core": "*",
+    "@vpursuit/mcp-server-prolog": "*",
+    "@vpursuit/mcp-server-roots": "*",
     "rollup": "^4.52.5",
     "tslib": "^2.8.1",
     "typescript": "^5.9.3",

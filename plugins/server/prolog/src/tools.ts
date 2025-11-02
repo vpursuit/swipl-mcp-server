@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import os from "os";
-import type { ToolDefinitions, CallToolResult, ToolDefinition } from "@vpursuit/mcp-core";
+import type { ToolDefinitions, CallToolResult, ToolDefinition } from "@vpursuit/mcp-server-core";
 import { PrologInterface } from "./PrologInterface.js";
 import type { CapabilitiesSummary } from "./types.js";
 import {

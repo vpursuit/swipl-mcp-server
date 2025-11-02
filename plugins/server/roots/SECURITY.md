@@ -1,4 +1,4 @@
-# Security Policy - @vpursuit/mcp-roots
+# Security Policy - @vpursuit/mcp-server-roots
 
 Dynamic filesystem root discovery for MCP servers.
 
@@ -111,7 +111,7 @@ process.env.SWI_MCP_STRICT_ROOTS = 'true';
 
 **1. Configure Allowed Roots:**
 ```typescript
-import { RootsManager } from '@vpursuit/mcp-roots';
+import { RootsManager } from '@vpursuit/mcp-server-roots';
 
 const manager = RootsManager.getInstance();
 manager.setServerInstance(server);
@@ -315,7 +315,7 @@ if (validation.allowed) {
 
 ## Reporting Vulnerabilities
 
-If you discover a security vulnerability in @vpursuit/mcp-roots:
+If you discover a security vulnerability in @vpursuit/mcp-server-roots:
 
 1. **Do not** open a public GitHub issue
 2. Use [GitHub Security Advisories](https://github.com/vpursuit/swipl-mcp-server/security/advisories/new) for private reporting

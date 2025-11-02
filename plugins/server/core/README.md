@@ -1,15 +1,15 @@
-# @vpursuit/mcp-core
+# @vpursuit/mcp-server-core
 
 Plugin system for Model Context Protocol (MCP) servers.
 
 ## Overview
 
-`@vpursuit/mcp-core` provides a simple, export-based plugin architecture for building modular MCP servers. It defines standard interfaces for plugins and provides utilities for loading plugins into an MCP server.
+`@vpursuit/mcp-server-core` provides a simple, export-based plugin architecture for building modular MCP servers. It defines standard interfaces for plugins and provides utilities for loading plugins into an MCP server.
 
 ## Installation
 
 ```bash
-npm install @vpursuit/mcp-core
+npm install @vpursuit/mcp-server-core
 ```
 
 ## Core Concepts
@@ -35,7 +35,7 @@ The `loadPlugins()` function registers all features from an array of plugins int
 ### Creating a Plugin
 
 ```typescript
-import type { Plugin } from '@vpursuit/mcp-core';
+import type { Plugin } from '@vpursuit/mcp-server-core';
 import { z } from 'zod';
 
 export const plugin: Plugin = {
@@ -68,7 +68,7 @@ export const plugin: Plugin = {
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { loadPlugins } from '@vpursuit/mcp-core';
+import { loadPlugins } from '@vpursuit/mcp-server-core';
 import { plugin as myPlugin } from './my-plugin.js';
 
 const server = new McpServer({
@@ -119,7 +119,7 @@ Both loader functions accept an optional `PluginLoaderConfig`:
 
 ## Examples
 
-See the [@vpursuit/mcp-roots](../mcp-roots) and [@vpursuit/mcp-prolog](../mcp-prolog) packages for real-world plugin examples.
+See the [@vpursuit/mcp-server-roots](../mcp-roots) and [@vpursuit/mcp-server-prolog](../mcp-prolog) packages for real-world plugin examples.
 
 ## License
 

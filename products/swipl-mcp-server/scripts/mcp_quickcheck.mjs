@@ -4,7 +4,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 const client = new Client({ name: "quickcheck", version: "0.0.1" });
 const transport = new StdioClientTransport({
   command: "node",
-  args: ["build/index.js"],
+  args: ["dist/index.js"],
   cwd: process.cwd(),
   stderr: "pipe",
 });

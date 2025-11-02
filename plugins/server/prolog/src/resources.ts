@@ -8,7 +8,7 @@
  */
 
 import { promises as fs } from "fs";
-import type { ResourceDefinitions, ReadResourceResult } from "@vpursuit/mcp-core";
+import type { ResourceDefinitions, ReadResourceResult } from "@vpursuit/mcp-server-core";
 import { findNearestFile } from "./meta.js";
 import { prologInterface, getCapabilitiesSummary, tools } from "./tools.js";
 

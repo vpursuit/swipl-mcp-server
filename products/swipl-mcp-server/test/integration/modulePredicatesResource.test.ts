@@ -21,7 +21,7 @@ maybeDescribe("Module Predicates Resource", () => {
 
   beforeAll(async () => {
     execSync("npm run build", { stdio: "inherit", cwd: process.cwd() });
-    child = spawn(process.execPath, ["packages/swipl-mcp-server/build/index.js"], {
+    child = spawn(process.execPath, ["products/swipl-mcp-server/dist/index.js"], {
       cwd: process.cwd(),
       stdio: ["pipe", "pipe", "pipe"],
       env: { ...process.env },

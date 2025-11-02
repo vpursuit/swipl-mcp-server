@@ -4,7 +4,7 @@
  */
 
 import { describe, beforeEach, afterEach, test, expect } from "vitest";
-import { toolHandlers, prologInterface } from "@vpursuit/mcp-prolog";
+import { toolHandlers, prologInterface } from "@vpursuit/mcp-server-prolog";
 
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 

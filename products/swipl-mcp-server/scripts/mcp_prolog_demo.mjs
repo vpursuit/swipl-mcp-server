@@ -10,7 +10,7 @@ async function main() {
   const client = new Client({ name: "local-test", version: "0.1.0" });
   const transport = new StdioClientTransport({
     command: "node",
-    args: ["build/index.js"],
+    args: ["dist/index.js"],
     cwd: process.cwd(),
     stderr: "pipe",
   });

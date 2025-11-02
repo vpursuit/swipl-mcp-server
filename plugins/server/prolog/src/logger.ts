@@ -3,7 +3,7 @@
  * Uses the shared MCP logger infrastructure
  */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { createMcpLogger, type McpLogger } from "@vpursuit/mcp-core";
+import { createMcpLogger, type McpLogger } from "@vpursuit/mcp-server-core";
 import path from "path";
 
 // Shared server reference for MCP logging

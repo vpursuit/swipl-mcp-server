@@ -1,4 +1,4 @@
-import type { ToolResponse } from "@vpursuit/mcp-core";
+import type { ToolResponse } from "@vpursuit/mcp-server-core";
 
 /**
  * Result of a clause operation (assert/retract)

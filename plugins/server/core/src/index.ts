@@ -1,5 +1,5 @@
 /**
- * @vpursuit/mcp-core
+ * @vpursuit/mcp-server-core
  *
  * Plugin system for Model Context Protocol servers
  * Provides types and utilities for building plugin-based MCP servers

@@ -1,10 +1,10 @@
 /**
- * @vpursuit/mcp-roots
+ * @vpursuit/mcp-server-roots
  *
  * Dynamic filesystem root discovery for MCP servers
  */
 
-import type { Plugin } from "@vpursuit/mcp-core";
+import type { Plugin } from "@vpursuit/mcp-server-core";
 import { z } from "zod";
 import { RootsManager } from "./roots.js";
 

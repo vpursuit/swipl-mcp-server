@@ -1,9 +1,9 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/mcp-core" },
-    { "path": "./packages/mcp-roots" },
-    { "path": "./packages/mcp-prolog" },
-    { "path": "./packages/swipl-mcp-server" }
+    { "path": "./plugins/server/core" },
+    { "path": "./plugins/server/roots" },
+    { "path": "./plugins/server/prolog" },
+    { "path": "./products/swipl-mcp-server" }
   ]
 }

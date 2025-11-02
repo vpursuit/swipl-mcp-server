@@ -26,7 +26,7 @@
 ## Issue 1: ToolResponse Type Mismatch
 
 ### Problem
-The `ToolResponse` interface in `@vpursuit/mcp-core/src/types.ts` doesn't match what MCP SDK expects.
+The `ToolResponse` interface in `@vpursuit/mcp-server-core/src/types.ts` doesn't match what MCP SDK expects.
 
 **Current mcp-core type:**
 ```typescript
@@ -83,7 +83,7 @@ export interface ToolResponse {
 import { readFile } from "fs/promises";
 import path from "path";
 import os from "os";
-import type { ToolDefinitions, ToolResponse } from "@vpursuit/mcp-core";
+import type { ToolDefinitions, ToolResponse } from "@vpursuit/mcp-server-core";
 import { PrologInterface } from "./PrologInterface.js";
 import {
   MAX_FILENAME_LENGTH,
@@ -349,7 +349,7 @@ export const tools: ToolDefinitions = {
    ```
 
 3. **Update imports** to use:
-   - `@vpursuit/mcp-core` types
+   - `@vpursuit/mcp-server-core` types
    - Local schemas from `./schemas.js`
    - Local constants from `./constants.js`
    - Remove dependency on `src/utils/*` (copy utilities locally or import from mcp-core)
@@ -362,7 +362,7 @@ Extract Prolog resources from `src/index.ts` (lines ~176-303):
 
 ```typescript
 // packages/mcp-prolog/src/resources.ts
-import type { ResourceDefinitions } from "@vpursuit/mcp-core";
+import type { ResourceDefinitions } from "@vpursuit/mcp-server-core";
 import { PrologInterface } from "./PrologInterface.js";
 import { resolvePackageVersion, findPrologScript } from "./meta.js";
 import { readFile } from "fs/promises";
@@ -453,7 +453,7 @@ The `prompts.ts` file already exists and has the correct structure. We just need
 
 ```typescript
 // packages/mcp-prolog/src/prompts.ts (restructure existing)
-import type { PromptDefinitions } from "@vpursuit/mcp-core";
+import type { PromptDefinitions } from "@vpursuit/mcp-server-core";
 
 /**
  * Prompt definitions for Prolog plugin
@@ -495,7 +495,7 @@ export const prompts: PromptDefinitions = {
 
 ```typescript
 // packages/mcp-prolog/src/index.ts
-import type { Plugin } from "@vpursuit/mcp-core";
+import type { Plugin } from "@vpursuit/mcp-server-core";
 import { PrologInterface } from "./PrologInterface.js";
 import { tools } from "./tools.js";
 import { resources } from "./resources.js";
@@ -553,13 +553,13 @@ npm install
 npm run build
 
 # Verify build output
-ls -la build/
+ls -la dist/
 ```
 
 ### Expected Build Output
 
 ```
-build/
+dist/
 ├── index.js
 ├── index.d.ts
 ├── PrologInterface.js
@@ -582,7 +582,7 @@ build/
 
 1. **Import test** in a Node REPL:
    ```javascript
-   import { plugin } from '@vpursuit/mcp-prolog';
+   import { plugin } from '@vpursuit/mcp-server-prolog';
    console.log(plugin.name); // "mcp-prolog"
    console.log(Object.keys(plugin.tools).length); // 15
    console.log(Object.keys(plugin.resources).length); // 7
@@ -620,7 +620,7 @@ build/
 ### Already in package.json ✅
 - `zod`: Schema validation
 - `@modelcontextprotocol/sdk`: MCP SDK (peer)
-- `@vpursuit/mcp-core`: Plugin system (peer)
+- `@vpursuit/mcp-server-core`: Plugin system (peer)
 
 ### Additional Imports Needed
 None - all dependencies are satisfied.
@@ -633,7 +633,7 @@ After completing all files:
 
 - [ ] Package builds without errors: `npm run build`
 - [ ] TypeScript type checking passes: `tsc --noEmit`
-- [ ] Can import plugin: `import { plugin } from '@vpursuit/mcp-prolog'`
+- [ ] Can import plugin: `import { plugin } from '@vpursuit/mcp-server-prolog'`
 - [ ] Plugin has 15 tools
 - [ ] Plugin has 7 resources
 - [ ] Plugin has 5 prompts

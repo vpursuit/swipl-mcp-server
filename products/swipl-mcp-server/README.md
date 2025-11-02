@@ -105,7 +105,7 @@ If you cloned the repo, you may use this configuration. Note: change <path to yo
   "mcpServers": {
     "swipl": {
       "command": "node",
-      "args": ["<path to your development directory>/swipl-mcp-server/packages/swipl-mcp-server/build/index.js"],
+      "args": ["<path to your development directory>/swipl-mcp-server/packages/swipl-mcp-server/dist/index.js"],
       "env": {
         "SWI_MCP_READY_TIMEOUT_MS": "10000",
         "SWI_MCP_QUERY_TIMEOUT_MS": "120000",
@@ -251,9 +251,9 @@ See [docs/examples.md](./docs/examples.md) for comprehensive examples including 
 
 This package uses a plugin-based architecture composed of:
 
-- **[@vpursuit/mcp-core](../mcp-core)** - Plugin system for MCP servers
-- **[@vpursuit/mcp-roots](../mcp-roots)** - Dynamic filesystem root discovery
-- **[@vpursuit/mcp-prolog](../mcp-prolog)** - SWI-Prolog knowledge base and query tools
+- **[@vpursuit/mcp-server-core](../mcp-core)** - Plugin system for MCP servers
+- **[@vpursuit/mcp-server-roots](../mcp-roots)** - Dynamic filesystem root discovery
+- **[@vpursuit/mcp-server-prolog](../mcp-prolog)** - SWI-Prolog knowledge base and query tools
 
 The Prolog integration uses:
 - Single persistent SWI‑Prolog process with two query modes (standard via `call_nth/2`, engine via SWI engines)
@@ -348,9 +348,9 @@ For security practices, reporting, and hardening guidance, see [SECURITY.md](./S
 ## Related Packages
 
 This orchestrator package depends on:
-- [@vpursuit/mcp-core](https://npmjs.com/package/@vpursuit/mcp-core) - Plugin system for MCP servers
-- [@vpursuit/mcp-prolog](https://npmjs.com/package/@vpursuit/mcp-prolog) - Prolog integration plugin
-- [@vpursuit/mcp-roots](https://npmjs.com/package/@vpursuit/mcp-roots) - Filesystem roots management
+- [@vpursuit/mcp-server-core](https://npmjs.com/package/@vpursuit/mcp-server-core) - Plugin system for MCP servers
+- [@vpursuit/mcp-server-prolog](https://npmjs.com/package/@vpursuit/mcp-server-prolog) - Prolog integration plugin
+- [@vpursuit/mcp-server-roots](https://npmjs.com/package/@vpursuit/mcp-server-roots) - Filesystem roots management
 
 ## License
 

@@ -42,7 +42,7 @@ These prompts help AI agents provide more specialized Prolog expertise when work
 1. Build server and start inspector:
 ```bash
 npm run build
-npx @modelcontextprotocol/inspector --transport stdio node build/index.js
+npx @modelcontextprotocol/inspector --transport stdio node dist/index.js
 ```
 
 2. Browser opens automatically with the Inspector interface

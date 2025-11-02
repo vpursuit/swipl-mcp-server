@@ -1,4 +1,4 @@
-# Security Policy - @vpursuit/mcp-prolog
+# Security Policy - @vpursuit/mcp-server-prolog
 
 SWI-Prolog integration plugin for Model Context Protocol servers.
 
@@ -125,7 +125,7 @@ The `prolog_server.pl` script:
 
 **1. Validate Input:**
 ```typescript
-import { toolHandlers } from '@vpursuit/mcp-prolog';
+import { toolHandlers } from '@vpursuit/mcp-server-prolog';
 
 // Input is validated automatically by tool handlers
 await toolHandlers.knowledge_base_assert({
@@ -198,7 +198,7 @@ dangerous :- shell('cat /etc/passwd').
 
 ## Reporting Vulnerabilities
 
-If you discover a security vulnerability in @vpursuit/mcp-prolog:
+If you discover a security vulnerability in @vpursuit/mcp-server-prolog:
 
 1. **Do not** open a public GitHub issue
 2. Use [GitHub Security Advisories](https://github.com/vpursuit/swipl-mcp-server/security/advisories/new) for private reporting

@@ -40,15 +40,20 @@ class NPXIntegrationTest {
 
     // Pack all workspace dependencies - these need to be available for the main package
     console.log('📤 Creating tarballs for all workspace packages...');
-    const workspacePackages = ['mcp-core', 'mcp-roots', 'mcp-prolog', 'swipl-mcp-server'];
+    const workspacePackages = [
+      { name: 'mcp-server-core', dir: 'plugins/server/core' },
+      { name: 'mcp-server-roots', dir: 'plugins/server/roots' },
+      { name: 'mcp-server-prolog', dir: 'plugins/server/prolog' },
+      { name: 'swipl-mcp-server', dir: 'products/swipl-mcp-server' }
+    ];
 
     for (const pkg of workspacePackages) {
-      const pkgDir = path.join(ROOT_DIR, 'packages', pkg);
-      console.log(`  📦 Packing @vpursuit/${pkg}...`);
+      const pkgDir = path.join(ROOT_DIR, pkg.dir);
+      console.log(`  📦 Packing @vpursuit/${pkg.name}...`);
       const { stdout } = await execAsync('npm pack', { cwd: pkgDir });
       const tarballName = stdout.trim();
       const tarballPath = path.join(pkgDir, tarballName);
-      this.packagePaths[pkg] = tarballPath;
+      this.packagePaths[pkg.name] = tarballPath;
       console.log(`    ✅ Created: ${tarballName}`);
     }
 
@@ -59,8 +64,8 @@ class NPXIntegrationTest {
     console.log('📥 Installing all locally built packages...');
 
     // Install workspace dependencies first (in dependency order)
-    // mcp-core has no deps, roots and prolog depend on core, swipl-mcp-server depends on all
-    const installOrder = ['mcp-core', 'mcp-roots', 'mcp-prolog', 'swipl-mcp-server'];
+    // mcp-server-core has no deps, roots and prolog depend on core, swipl-mcp-server depends on all
+    const installOrder = ['mcp-server-core', 'mcp-server-roots', 'mcp-server-prolog', 'swipl-mcp-server'];
 
     for (const pkg of installOrder) {
       console.log(`  📦 Installing @vpursuit/${pkg}...`);
@@ -218,7 +223,7 @@ class NPXIntegrationTest {
     return new Promise((resolve, reject) => {
       // Run from clean directory that doesn't have source files
       // This simulates real user environment
-      const child = spawn('node', [path.join(this.tempDir, 'node_modules', '@vpursuit', 'swipl-mcp-server', 'build', 'index.js')], {
+      const child = spawn('node', [path.join(this.tempDir, 'node_modules', '@vpursuit', 'swipl-mcp-server', 'dist', 'index.js')], {
         cwd: '/tmp',  // Clean directory, no access to development files
         env: {
           ...process.env,

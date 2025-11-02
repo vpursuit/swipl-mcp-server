@@ -85,7 +85,7 @@ less README.md SECURITY.md src/
 npm install
 npm run build
 
-# The built server is now at: build/index.js
+# The built server is now at: dist/index.js
 # Note this full path for Claude Desktop configuration
 pwd  # Shows your current directory path
 ```
@@ -96,7 +96,7 @@ pwd  # Shows your current directory path
   "mcpServers": {
     "swipl": {
       "command": "node",
-      "args": ["/full/path/to/swipl-mcp-server/build/index.js"]
+      "args": ["/full/path/to/swipl-mcp-server/dist/index.js"]
     }
   }
 }

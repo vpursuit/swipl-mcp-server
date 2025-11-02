@@ -1,6 +1,7 @@
 {
-  "name": "@vpursuit/mcp-prolog",
+  "name": "@vpursuit/mcp-server-prolog",
   "version": "3.0.0",
+  "private": true,
   "type": "module",
   "description": "SWI-Prolog integration for Model Context Protocol servers",
   "keywords": [
@@ -15,22 +16,22 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vpursuit/swipl-mcp-server.git",
-    "directory": "packages/mcp-prolog"
+    "directory": "plugins/server/prolog"
   },
-  "homepage": "https://github.com/vpursuit/swipl-mcp-server/tree/main/packages/mcp-prolog#readme",
+  "homepage": "https://github.com/vpursuit/swipl-mcp-server/tree/main/plugins/server/prolog#readme",
   "bugs": {
     "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
   },
-  "main": "./build/index.js",
-  "types": "./build/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./build/index.d.ts",
-      "default": "./build/index.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "files": [
-    "build",
+    "dist",
     "prolog",
     "images",
     "README.md",
@@ -39,13 +40,13 @@
   ],
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf build *.tsbuildinfo",
+    "clean": "rm -rf dist *.tsbuildinfo",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.20.2",
-    "@vpursuit/mcp-core": "^1.0.0"
+    "@vpursuit/mcp-server-core": "^1.0.0"
   },
   "dependencies": {
     "zod": "^3.25.76",
@@ -53,7 +54,7 @@
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.20.2",
-    "@vpursuit/mcp-core": "*"
+    "@vpursuit/mcp-server-core": "*"
   },
   "engines": {
     "node": ">=20.0.0"

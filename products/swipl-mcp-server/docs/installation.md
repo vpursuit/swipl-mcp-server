@@ -119,7 +119,7 @@ If you cloned the repo, you may use this configuration. Note: change `<path to y
   "mcpServers": {
     "swipl": {
       "command": "node",
-      "args": ["<path to your development directory>/swipl-mcp-server/build/index.js"],
+      "args": ["<path to your development directory>/swipl-mcp-server/dist/index.js"],
       "env": {
         "SWI_MCP_READY_TIMEOUT_MS": "10000",
         "SWI_MCP_QUERY_TIMEOUT_MS": "120000",

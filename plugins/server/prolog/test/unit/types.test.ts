@@ -6,7 +6,7 @@
  */
 
 import { describe, test, expect } from "vitest";
-import type { ToolDefinition } from "@vpursuit/mcp-core";
+import type { ToolDefinition } from "@vpursuit/mcp-server-core";
 import { tools, toolHandlers, getCapabilitiesSummary } from "../../src/tools.js";
 import type { CapabilitiesSummary } from "../../src/types.js";
 

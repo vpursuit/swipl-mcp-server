@@ -1,15 +1,15 @@
-# @vpursuit/mcp-prolog
+# @vpursuit/mcp-server-prolog
 
 SWI-Prolog integration plugin for Model Context Protocol servers.
 
 ## Overview
 
-`@vpursuit/mcp-prolog` is a comprehensive plugin that adds SWI-Prolog knowledge base management and query capabilities to MCP servers. It provides tools for loading Prolog files, managing facts and rules, executing queries with two modes (standard and engine-based), and includes security sandboxing.
+`@vpursuit/mcp-server-prolog` is a comprehensive plugin that adds SWI-Prolog knowledge base management and query capabilities to MCP servers. It provides tools for loading Prolog files, managing facts and rules, executing queries with two modes (standard and engine-based), and includes security sandboxing.
 
 ## Installation
 
 ```bash
-npm install @vpursuit/mcp-prolog
+npm install @vpursuit/mcp-server-prolog
 ```
 
 ## Requirements
@@ -23,8 +23,8 @@ npm install @vpursuit/mcp-prolog
 
 ```typescript
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { loadPlugins } from '@vpursuit/mcp-core';
-import { plugin as prologPlugin } from '@vpursuit/mcp-prolog';
+import { loadPlugins } from '@vpursuit/mcp-server-core';
+import { plugin as prologPlugin } from '@vpursuit/mcp-server-prolog';
 
 const server = new McpServer({
   name: 'my-prolog-server',
@@ -38,7 +38,7 @@ await loadPlugins(server, [prologPlugin]);
 ### Direct Access
 
 ```typescript
-import { prologInterface, toolHandlers } from '@vpursuit/mcp-prolog';
+import { prologInterface, toolHandlers } from '@vpursuit/mcp-server-prolog';
 
 // Start Prolog process
 await prologInterface.start();
@@ -122,8 +122,8 @@ Full documentation available in the [swipl-mcp-server monorepo](https://github.c
 
 ## Related Packages
 
-- [@vpursuit/mcp-core](https://npmjs.com/package/@vpursuit/mcp-core) - Plugin system
-- [@vpursuit/mcp-roots](https://npmjs.com/package/@vpursuit/mcp-roots) - Filesystem roots
+- [@vpursuit/mcp-server-core](https://npmjs.com/package/@vpursuit/mcp-server-core) - Plugin system
+- [@vpursuit/mcp-server-roots](https://npmjs.com/package/@vpursuit/mcp-server-roots) - Filesystem roots
 - [@vpursuit/swipl-mcp-server](https://npmjs.com/package/@vpursuit/swipl-mcp-server) - Complete server
 
 ## License

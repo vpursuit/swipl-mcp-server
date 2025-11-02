@@ -1,17 +1,16 @@
-#!/usr/bin/env node
 /**
  * @vpursuit/swipl-mcp-server
  *
  * MCP Server orchestrator that loads and integrates plugins:
- * - @vpursuit/mcp-roots: Dynamic filesystem root discovery
- * - @vpursuit/mcp-prolog: SWI-Prolog knowledge base and query tools
+ * - @vpursuit/mcp-server-roots: Dynamic filesystem root discovery
+ * - @vpursuit/mcp-server-prolog: SWI-Prolog knowledge base and query tools
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { loadPlugins } from "@vpursuit/mcp-core";
-import { plugin as rootsPlugin } from "@vpursuit/mcp-roots";
-import { plugin as prologPlugin, prologInterface } from "@vpursuit/mcp-prolog";
+import { loadPlugins } from "@vpursuit/mcp-server-core";
+import { plugin as rootsPlugin } from "@vpursuit/mcp-server-roots";
+import { plugin as prologPlugin, prologInterface } from "@vpursuit/mcp-server-prolog";
 import { resolvePackageVersion } from "./meta.js";
 
 /**
@@ -19,10 +18,10 @@ import { resolvePackageVersion } from "./meta.js";
  *
  * Orchestrates multiple plugins to provide comprehensive Prolog and filesystem functionality:
  *
- * FROM @vpursuit/mcp-roots:
+ * FROM @vpursuit/mcp-server-roots:
  * - roots_list: List filesystem roots for path validation
  *
- * FROM @vpursuit/mcp-prolog:
+ * FROM @vpursuit/mcp-server-prolog:
  * - knowledge_base_load: Load Prolog files
  * - knowledge_base_load_library: Load safe Prolog library
  * - knowledge_base_assert: Add facts/rules

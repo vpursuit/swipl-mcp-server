@@ -1,6 +1,7 @@
 {
-  "name": "@vpursuit/mcp-core",
+  "name": "@vpursuit/mcp-server-core",
   "version": "1.0.0",
+  "private": true,
   "type": "module",
   "description": "Plugin system for Model Context Protocol servers",
   "keywords": [
@@ -14,29 +15,29 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vpursuit/swipl-mcp-server.git",
-    "directory": "packages/mcp-core"
+    "directory": "plugins/server/core"
   },
-  "homepage": "https://github.com/vpursuit/swipl-mcp-server/tree/main/packages/mcp-core#readme",
+  "homepage": "https://github.com/vpursuit/swipl-mcp-server/tree/main/plugins/server/core#readme",
   "bugs": {
     "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
   },
-  "main": "./build/index.js",
-  "types": "./build/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./build/index.d.ts",
-      "default": "./build/index.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "files": [
-    "build",
+    "dist",
     "README.md",
     "SECURITY.md",
     "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf build *.tsbuildinfo",
+    "clean": "rm -rf dist *.tsbuildinfo",
     "test": "vitest run",
     "test:watch": "vitest"
   },

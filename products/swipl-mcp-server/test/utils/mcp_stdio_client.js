@@ -3,7 +3,7 @@ import { spawn } from 'child_process';
 import readline from 'readline';
 
 const cmd = '/Users/keeper/.nvm/versions/node/v22.17.1/bin/node';
-const args = ['build/index.js'];
+const args = ['dist/index.js'];
 const env = Object.assign({}, process.env, {
   SWI_MCP_READY_TIMEOUT_MS: '10000',
   SWI_MCP_QUERY_TIMEOUT_MS: '120000',

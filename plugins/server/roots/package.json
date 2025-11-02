@@ -1,6 +1,7 @@
 {
-  "name": "@vpursuit/mcp-roots",
+  "name": "@vpursuit/mcp-server-roots",
   "version": "1.0.0",
+  "private": true,
   "type": "module",
   "description": "Dynamic filesystem root discovery for MCP servers",
   "keywords": [
@@ -15,29 +16,29 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vpursuit/swipl-mcp-server.git",
-    "directory": "packages/mcp-roots"
+    "directory": "plugins/server/roots"
   },
-  "homepage": "https://github.com/vpursuit/swipl-mcp-server/tree/main/packages/mcp-roots#readme",
+  "homepage": "https://github.com/vpursuit/swipl-mcp-server/tree/main/plugins/server/roots#readme",
   "bugs": {
     "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
   },
-  "main": "./build/index.js",
-  "types": "./build/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./build/index.d.ts",
-      "default": "./build/index.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "files": [
-    "build",
+    "dist",
     "README.md",
     "SECURITY.md",
     "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf build *.tsbuildinfo",
+    "clean": "rm -rf dist *.tsbuildinfo",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -46,11 +47,11 @@
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.20.2",
-    "@vpursuit/mcp-core": "^1.0.0"
+    "@vpursuit/mcp-server-core": "^1.0.0"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.20.2",
-    "@vpursuit/mcp-core": "*"
+    "@vpursuit/mcp-server-core": "*"
   },
   "engines": {
     "node": ">=20.0.0"

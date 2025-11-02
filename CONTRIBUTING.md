@@ -18,7 +18,7 @@ Quick Dev Loop
 --------------
 - Build then run (recommended): npm run server
 - Or: npm run build && npm start
-- Inspect via MCP Inspector (stdio): npx @modelcontextprotocol/inspector node build/index.js
+- Inspect via MCP Inspector (stdio): npx @modelcontextprotocol/inspector node dist/index.js
 
 Workflow Checklist (Before PR)
 ------------------------------

@@ -2,50 +2,6 @@ import typescript from '@rollup/plugin-typescript';
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-/**
- * Workspace resolver for Rollup
- * Maps @vpursuit/* packages to their source files
- * (Same concept as esbuild-workspace-resolver.js)
- */
-function workspaceResolver() {
-  const workspaceMap = {};
-
-  // Scan node_modules/@vpursuit for workspace symlinks
-  const vpursuitDir = path.resolve(__dirname, '../../node_modules/@vpursuit');
-
-  if (fs.existsSync(vpursuitDir)) {
-    for (const entry of fs.readdirSync(vpursuitDir)) {
-      const symlinkPath = path.join(vpursuitDir, entry);
-      const stats = fs.lstatSync(symlinkPath);
-
-      if (stats.isSymbolicLink()) {
-        const realPath = fs.realpathSync(symlinkPath);
-        const srcPath = path.join(realPath, 'src/index.ts');
-
-        if (fs.existsSync(srcPath)) {
-          workspaceMap[`@vpursuit/${entry}`] = srcPath;
-        }
-      }
-    }
-  }
-
-  return {
-    name: 'workspace-resolver',
-    resolveId(source) {
-      // Resolve workspace packages to source files
-      if (workspaceMap[source]) {
-        return workspaceMap[source];
-      }
-      return null; // Let other plugins handle it
-    }
-  };
-}
 
 export default {
   // Entry point
@@ -73,15 +29,12 @@ export default {
       // Type checking enabled with rollup-specific config
       noEmitOnError: true,
 
-      // Explicitly include TypeScript files
-      include: ['src/**/*.ts', '../../plugins/server/*/src/**/*.ts'],
+      // Include only product source files
+      include: ['src/**/*.ts'],
       exclude: ['node_modules', '**/*.test.ts'],
     }),
 
-    // 2. Resolve workspace packages
-    workspaceResolver(),
-
-    // 3. Resolve node_modules
+    // 2. Resolve node_modules
     resolve({
       preferBuiltins: true,
       extensions: ['.ts', '.js', '.json'],
@@ -118,5 +71,3 @@ export default {
     warn(warning);
   },
 };
-
-console.log('✅ Rollup configuration loaded (using official TypeScript compiler)');

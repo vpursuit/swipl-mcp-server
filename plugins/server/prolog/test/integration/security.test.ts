@@ -1,5 +1,5 @@
 import { describe, beforeEach, afterEach, test, expect } from "vitest";
-import { toolHandlers, prologInterface } from "@vpursuit/mcp-prolog";
+import { toolHandlers, prologInterface } from "@vpursuit/mcp-server-prolog";
 import os from "os";
 import path from "path";
 import fs from "fs/promises";

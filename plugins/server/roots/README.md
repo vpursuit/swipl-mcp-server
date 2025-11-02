@@ -1,10 +1,10 @@
-# @vpursuit/mcp-roots
+# @vpursuit/mcp-server-roots
 
 Dynamic filesystem root discovery for Model Context Protocol (MCP) servers.
 
 ## Overview
 
-`@vpursuit/mcp-roots` provides secure, dynamic filesystem access control for MCP servers through:
+`@vpursuit/mcp-server-roots` provides secure, dynamic filesystem access control for MCP servers through:
 - Client-provided roots via MCP protocol
 - Automatic fallback to `~/.swipl-mcp-server`
 - Path validation and security checks
@@ -14,7 +14,7 @@ Dynamic filesystem root discovery for Model Context Protocol (MCP) servers.
 ## Installation
 
 ```bash
-npm install @vpursuit/mcp-roots
+npm install @vpursuit/mcp-server-roots
 ```
 
 ## Usage
@@ -22,8 +22,8 @@ npm install @vpursuit/mcp-roots
 ### As a Plugin
 
 ```typescript
-import { loadPlugins } from '@vpursuit/mcp-core';
-import { plugin as rootsPlugin } from '@vpursuit/mcp-roots';
+import { loadPlugins } from '@vpursuit/mcp-server-core';
+import { plugin as rootsPlugin } from '@vpursuit/mcp-server-roots';
 
 await loadPlugins(server, [rootsPlugin]);
 ```
@@ -31,7 +31,7 @@ await loadPlugins(server, [rootsPlugin]);
 ### Direct API Usage
 
 ```typescript
-import { RootsManager } from '@vpursuit/mcp-roots';
+import { RootsManager } from '@vpursuit/mcp-server-roots';
 
 const manager = RootsManager.getInstance();
 manager.setServerInstance(server);

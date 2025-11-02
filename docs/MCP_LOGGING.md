@@ -101,7 +101,7 @@ logger.debug("Processing query", { query: "member(X, [1,2,3])" });
 
 ```typescript
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { createMcpLogger, type McpLogger } from "@vpursuit/mcp-core";
+import { createMcpLogger, type McpLogger } from "@vpursuit/mcp-server-core";
 
 // Shared server reference for MCP logging
 export const serverRef: { current: McpServer | null } = { current: null };
@@ -200,7 +200,7 @@ console.error("[fallback] Message");       // stderr fallback - OK for pre-init
 
 1. Start the MCP Inspector:
    ```bash
-   npx @modelcontextprotocol/inspector node packages/swipl-mcp-server/build/index.js
+   npx @modelcontextprotocol/inspector node packages/swipl-mcp-server/dist/index.js
    ```
 
 2. Check for errors in the Inspector console:

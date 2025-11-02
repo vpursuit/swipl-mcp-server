@@ -10,9 +10,9 @@ For detailed security information specific to each package, please refer to the 
 - **[@vpursuit/swipl-mcp-server](./packages/swipl-mcp-server/SECURITY.md)** - Comprehensive security policy for Prolog execution, sandboxing, file path restrictions, and dangerous predicate blocking
 
 ### Libraries
-- **[@vpursuit/mcp-prolog](./packages/mcp-prolog/)** - Prolog integration plugin security considerations
-- **[@vpursuit/mcp-core](./packages/mcp-core/)** - Plugin system security considerations
-- **[@vpursuit/mcp-roots](./packages/mcp-roots/)** - Filesystem access control and path validation security
+- **[@vpursuit/mcp-server-prolog](./packages/mcp-prolog/)** - Prolog integration plugin security considerations
+- **[@vpursuit/mcp-server-core](./packages/mcp-core/)** - Plugin system security considerations
+- **[@vpursuit/mcp-server-roots](./packages/mcp-roots/)** - Filesystem access control and path validation security
 
 ## Reporting a Vulnerability
 
@@ -41,9 +41,9 @@ Please provide the following information in your report:
 | Package | Version | Supported |
 |---------|---------|-----------|
 | @vpursuit/swipl-mcp-server | 3.x | ✅ Yes |
-| @vpursuit/mcp-prolog | 3.x | ✅ Yes |
-| @vpursuit/mcp-core | 1.x | ✅ Yes |
-| @vpursuit/mcp-roots | 1.x | ✅ Yes |
+| @vpursuit/mcp-server-prolog | 3.x | ✅ Yes |
+| @vpursuit/mcp-server-core | 1.x | ✅ Yes |
+| @vpursuit/mcp-server-roots | 1.x | ✅ Yes |
 
 - **Main branch**: Actively maintained with latest security fixes
 - **Older versions**: Security patches may be backported for critical vulnerabilities
@@ -119,7 +119,7 @@ cat packages/swipl-mcp-server/SECURITY.md
 npm install
 npm run build
 
-# Built packages are in packages/*/build/
+# Built packages are in packages/*/dist/
 ```
 
 **Benefits of GitHub Installation:**

@@ -4,16 +4,23 @@ This document explains how to publish packages from this monorepo to npm.
 
 ## Overview
 
-This monorepo contains 4 independently versioned npm packages:
+This monorepo uses a **products vs plugins architecture**:
 
-| Package | Description | Current Version |
-|---------|-------------|----------------|
-| `@vpursuit/swipl-mcp-server` | Main MCP server (orchestrator) | 3.0.0 |
-| `@vpursuit/mcp-prolog` | SWI-Prolog integration plugin | 3.0.0 |
-| `@vpursuit/mcp-core` | Plugin system for MCP servers | 1.0.0 |
-| `@vpursuit/mcp-roots` | Filesystem root discovery | 1.0.0 |
+### Publishable Products (Public npm packages)
 
-Each package can be published independently using automated GitHub Actions workflows.
+| Package | Description | Current Version | Location |
+|---------|-------------|----------------|----------|
+| `@vpursuit/swipl-mcp-server` | Main MCP server product | 3.0.0 | `products/swipl-mcp-server/` |
+
+### Internal Plugins (Private, not published)
+
+| Package | Description | Current Version | Location |
+|---------|-------------|----------------|----------|
+| `@vpursuit/mcp-server-prolog` | SWI-Prolog integration (private) | 3.0.0 | `plugins/server/prolog/` |
+| `@vpursuit/mcp-server-core` | Plugin system (private) | 1.0.0 | `plugins/server/core/` |
+| `@vpursuit/mcp-server-roots` | Filesystem root discovery (private) | 1.0.0 | `plugins/server/roots/` |
+
+**Note:** Only products are published to npm. Plugins are internal dependencies bundled with the products.
 
 ## Prerequisites
 
@@ -29,48 +36,48 @@ This is the primary method for production releases. Push a git tag and GitHub Ac
 
 #### Tag Format
 
-Each package has its own tag format:
+Products use simple version tags:
 
 ```bash
-# Main product (swipl-mcp-server)
+# Server product (swipl-mcp-server)
 v3.0.0          # Stable release
 v3.0.1-beta.1   # Pre-release
 
-# Library packages
-mcp-prolog-v3.0.1
-mcp-core-v1.0.1
-mcp-roots-v1.0.1
+# Future client product
+client-v1.0.0   # Client product release
 ```
+
+**Note:** Plugins are not published independently, so they don't have their own tags.
 
 #### Publishing Steps
 
 **1. Update Package Version**
 
-Edit the `package.json` in the package you want to publish:
+Edit the `package.json` in the product you want to publish:
 
 ```bash
 # Example: Publishing swipl-mcp-server
-cd packages/swipl-mcp-server
+cd products/swipl-mcp-server
 # Edit package.json: "version": "3.0.1"
 ```
 
 **2. Commit Changes**
 
 ```bash
-git add packages/swipl-mcp-server/package.json
+git add products/swipl-mcp-server/package.json
 git commit -m "chore: bump swipl-mcp-server to v3.0.1"
 ```
 
 **3. Create and Push Tag**
 
 ```bash
-# For main product
+# For server product
 git tag v3.0.1
 git push origin v3.0.1
 
-# For library packages
-git tag mcp-prolog-v3.0.2
-git push origin mcp-prolog-v3.0.2
+# For future client product
+git tag client-v1.0.0
+git push origin client-v1.0.0
 ```
 
 **4. Monitor GitHub Actions**
@@ -89,9 +96,9 @@ git push origin mcp-prolog-v3.0.2
 Check npm registry:
 ```bash
 npm view @vpursuit/swipl-mcp-server
-npm view @vpursuit/mcp-prolog
-npm view @vpursuit/mcp-core
-npm view @vpursuit/mcp-roots
+
+# Verify plugins are NOT published (should return 404)
+npm view @vpursuit/mcp-server-prolog  # Should fail - private package
 ```
 
 ### Method 2: Manual Workflow Dispatch
@@ -109,12 +116,8 @@ Use this for testing or publishing without creating a git tag.
 **2. Configure Workflow**
 
 - **Branch**: Select `main` (or your branch)
-- **Package**: Choose which package to publish
-  - `all` - Publish all 4 packages
-  - `swipl-mcp-server` - Main product only
-  - `mcp-prolog` - Prolog plugin only
-  - `mcp-core` - Core plugin system only
-  - `mcp-roots` - Roots plugin only
+- **Package**: Choose which product to publish
+  - `swipl-mcp-server` - Main server product (default)
 - **Dry run**:
   - `true` - Test without publishing (shows what would be published)
   - `false` - Actually publish to npm
@@ -138,34 +141,30 @@ All packages follow [semantic versioning](https://semver.org/):
 - **MINOR** (1.X.0): New features (backward compatible)
 - **PATCH** (1.0.X): Bug fixes (backward compatible)
 
-### Version Independence
+### Versioning for Products and Plugins
 
-Each package maintains its own version number:
-
+**Products** (published to npm):
 ```
-@vpursuit/swipl-mcp-server: 3.0.0  (orchestrator, high-level)
-@vpursuit/mcp-prolog:       3.0.0  (implementation, matches server)
-@vpursuit/mcp-core:         1.0.0  (stable plugin API)
-@vpursuit/mcp-roots:        1.0.0  (stable filesystem API)
+@vpursuit/swipl-mcp-server: 3.0.0
+```
+
+**Plugins** (private, not published):
+```
+@vpursuit/mcp-server-prolog: 3.0.0  (internal)
+@vpursuit/mcp-server-core:   1.0.0  (internal)
+@vpursuit/mcp-server-roots:  1.0.0  (internal)
 ```
 
 ### When to Bump Versions
 
-**swipl-mcp-server (Main Product):**
+**swipl-mcp-server (Product):**
 - Bump for new features, breaking changes, or significant updates
-- Usually changes with mcp-prolog (they're tightly coupled)
+- This is the version users see and install
 
-**mcp-prolog:**
-- Bump when Prolog interface changes
-- Usually matches swipl-mcp-server version
-
-**mcp-core:**
-- Bump only when plugin API changes
-- Rare - this is a stable foundation
-
-**mcp-roots:**
-- Bump when filesystem security or root discovery changes
-- Rare - this is a stable utility
+**Internal Plugins:**
+- Bump plugin versions when their APIs change
+- Plugin versions are internal only (not published)
+- Users don't interact with plugin versions directly
 
 ## Publishing Checklist
 
@@ -280,7 +279,7 @@ Test the entire publishing workflow without actually publishing:
 **Locally:**
 ```bash
 # Check what files will be published
-cd packages/PACKAGE_NAME
+cd products/swipl-mcp-server
 npm pack --dry-run
 
 # Create actual tarball for inspection
@@ -294,40 +293,14 @@ rm *.tgz
 Test the package locally before publishing:
 
 ```bash
-# In package directory
-cd packages/swipl-mcp-server
+# In product directory
+cd products/swipl-mcp-server
 npm link
 
 # In another project
 npm link @vpursuit/swipl-mcp-server
 npx @vpursuit/swipl-mcp-server
 ```
-
-## Advanced: Publishing All Packages
-
-If you need to publish all 4 packages at once (rare):
-
-**Via GitHub Actions:**
-1. Go to Actions → Publish to NPM → Run workflow
-2. Select package: `all`
-3. Dry run: `false`
-4. Run workflow
-
-**Manually:**
-```bash
-# Bump all versions in respective package.json files
-
-# Create tags for each
-git tag v3.0.1
-git tag mcp-prolog-v3.0.1
-git tag mcp-core-v1.0.1
-git tag mcp-roots-v1.0.1
-
-# Push all tags
-git push origin --tags
-```
-
-This triggers 4 separate workflow runs (one per tag).
 
 ## Rollback / Unpublishing
 
@@ -380,21 +353,21 @@ npm view @vpursuit/swipl-mcp-server --json | jq .dist.attestations
 ## Quick Reference
 
 ```bash
-# Check current versions
+# Check current product version
 npm view @vpursuit/swipl-mcp-server version
-npm view @vpursuit/mcp-prolog version
-npm view @vpursuit/mcp-core version
-npm view @vpursuit/mcp-roots version
 
-# Publish main product
+# Verify plugins are not published (should fail with 404)
+npm view @vpursuit/mcp-server-prolog version  # Should return 404
+
+# Publish server product
 git tag v3.0.X
 git push origin v3.0.X
 
-# Publish library package
-git tag mcp-PACKAGE-v3.0.X
-git push origin mcp-PACKAGE-v3.0.X
+# Publish future client product
+git tag client-v1.0.X
+git push origin client-v1.0.X
 
 # Test package contents
-cd packages/PACKAGE_NAME
+cd products/swipl-mcp-server
 npm pack --dry-run
 ```

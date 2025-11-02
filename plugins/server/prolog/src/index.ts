@@ -1,10 +1,10 @@
 /**
- * @vpursuit/mcp-prolog
+ * @vpursuit/mcp-server-prolog
  *
  * SWI-Prolog MCP plugin providing Prolog knowledge base and query tools
  */
 
-import type { Plugin, PromptDefinitions } from "@vpursuit/mcp-core";
+import type { Plugin, PromptDefinitions } from "@vpursuit/mcp-server-core";
 import { tools } from "./tools.js";
 import { resources } from "./resources.js";
 import { prologPrompts } from "./prompts.js";

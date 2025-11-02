@@ -21,53 +21,53 @@ export default defineConfig({
     globals: true, // Enable Jest-compatible globals
     // Projects configuration (replaces deprecated workspace file)
     projects: [
-      // Core package
+      // Core plugin
       {
         test: {
-          name: 'mcp-core',
-          include: ['packages/mcp-core/test/**/*.test.ts'],
+          name: 'mcp-server-core',
+          include: ['plugins/server/core/test/**/*.test.ts'],
           environment: 'node',
           globals: true,
           testTimeout: 10000,
         },
       },
-      // Roots package
+      // Roots plugin
       {
         test: {
-          name: 'mcp-roots',
-          include: ['packages/mcp-roots/test/**/*.test.ts'],
+          name: 'mcp-server-roots',
+          include: ['plugins/server/roots/test/**/*.test.ts'],
           environment: 'node',
           globals: true,
           testTimeout: 10000,
         },
       },
-      // Prolog package
+      // Prolog plugin
       {
         test: {
-          name: 'mcp-prolog',
+          name: 'mcp-server-prolog',
           include: [
-            'packages/mcp-prolog/test/**/*.test.ts',
-            'packages/mcp-prolog/test/**/*.test.js',
+            'plugins/server/prolog/test/**/*.test.ts',
+            'plugins/server/prolog/test/**/*.test.js',
           ],
           environment: 'node',
           globals: true,
           testTimeout: 60000,
-          setupFiles: ['./packages/mcp-prolog/test/setup.js'],
+          setupFiles: ['./plugins/server/prolog/test/setup.js'],
         },
       },
-      // Orchestrator package
+      // Server product
       {
         test: {
           name: 'swipl-mcp-server',
           include: [
-            'packages/swipl-mcp-server/test/**/*.test.ts',
-            'packages/swipl-mcp-server/test/**/*.test.js',
+            'products/swipl-mcp-server/test/**/*.test.ts',
+            'products/swipl-mcp-server/test/**/*.test.js',
           ],
-          exclude: ['packages/swipl-mcp-server/test/e2e/npx-integration.test.js'],
+          exclude: ['products/swipl-mcp-server/test/e2e/npx-integration.test.js'],
           environment: 'node',
           globals: true,
           testTimeout: 60000,
-          setupFiles: ['./packages/swipl-mcp-server/test/setup.js'],
+          setupFiles: ['./products/swipl-mcp-server/test/setup.js'],
         },
       },
     ]

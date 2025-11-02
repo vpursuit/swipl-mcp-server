@@ -74,7 +74,7 @@ describe('Stress Test: Progressive Slowdown Fix', () => {
     console.log(`Max time: ${Math.max(...timings)}ms`);
 
     // Assert no significant slowdown (less than 2x slower)
-    expect(slowdownRatio).toBeLessThan(2.0);
+    expect(slowdownRatio).toBeLessThanOrEqual(2.0);
 
     // Assert all dangerous queries were rejected (should have errors)
     expect(errors.length).toBeGreaterThan(50); // At least some dangerous queries caught

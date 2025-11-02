@@ -15,24 +15,23 @@
 
     // No emit - Rollup handles output
     "noEmit": false,
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
     "sourceMap": true,
 
     // Output
     "outDir": "./dist",
 
     // Path mappings for workspace packages
+    // TypeScript will use package.json to find main/types fields
     "baseUrl": ".",
     "paths": {
-      "@vpursuit/mcp-server-core": ["../../plugins/server/core/src/index.ts"],
-      "@vpursuit/mcp-server-prolog": ["../../plugins/server/prolog/src/index.ts"],
-      "@vpursuit/mcp-server-roots": ["../../plugins/server/roots/src/index.ts"]
+      "@vpursuit/mcp-server-core": ["../../node_modules/@vpursuit/mcp-server-core"],
+      "@vpursuit/mcp-server-prolog": ["../../node_modules/@vpursuit/mcp-server-prolog"],
+      "@vpursuit/mcp-server-roots": ["../../node_modules/@vpursuit/mcp-server-roots"]
     }
   },
   "include": [
-    "src/**/*",
-    "../../plugins/server/*/src/**/*"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",

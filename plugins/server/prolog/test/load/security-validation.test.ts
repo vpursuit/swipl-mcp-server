@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { prologInterface } from "@vpursuit/mcp-prolog";
+import { prologInterface } from "@vpursuit/mcp-server-prolog";
 
 describe("Security Validation Under Load", () => {
   beforeAll(async () => {

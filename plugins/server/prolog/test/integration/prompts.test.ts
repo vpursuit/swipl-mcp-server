@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { toolHandlers, getCapabilitiesSummary, prologPrompts } from "@vpursuit/mcp-prolog";
+import { toolHandlers, getCapabilitiesSummary, prologPrompts } from "@vpursuit/mcp-server-prolog";
 import { z } from "zod";
 
 // Mock the server setup to test prompt registration

@@ -1,5 +1,5 @@
 import { describe, expect } from "vitest";
-import { jsonSchemas } from "@vpursuit/mcp-prolog";
+import { jsonSchemas } from "@vpursuit/mcp-server-prolog";
 
 describe("JSON Schemas (MCP registration)", () => {
   it("should be plain serializable JSON objects", () => {

@@ -80,7 +80,7 @@ Solution 1: parent(john, mary)
 ## Troubleshooting
 
 **Server fails to start:**
-- Check that `build/index.js` exists (`npm run build`)
+- Check that `dist/index.js` exists (`npm run build`)
 - Verify SWI-Prolog is installed: `swipl --version`
 - Check stderr output for error messages
 
@@ -98,7 +98,7 @@ Solution 1: parent(john, mary)
 For interactive testing with a GUI, use the official MCP Inspector:
 
 ```bash
-npx @modelcontextprotocol/inspector node build/index.js
+npx @modelcontextprotocol/inspector node dist/index.js
 ```
 
 This provides a web-based interface for exploring tools, resources, and prompts.
