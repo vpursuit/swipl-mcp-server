@@ -1,0 +1,78 @@
+{
+  "name": "@vpursuit/swipl-mcp-server",
+  "version": "3.0.0",
+  "type": "module",
+  "icon": "./images/logo.svg",
+  "description": "SWI-Prolog integration for Model Context Protocol - orchestrator package",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "prolog",
+    "swi-prolog",
+    "ai",
+    "agent",
+    "llm"
+  ],
+  "author": "Peter Trebing",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vpursuit/swipl-mcp-server.git",
+    "directory": "products/swipl-mcp-server"
+  },
+  "homepage": "https://github.com/vpursuit/swipl-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
+  },
+  "bin": {
+    "swipl-mcp-server": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "prolog",
+    "images",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "build:types": "echo 'Types generated during build'",
+    "build:full": "npm run build",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "cd ../.. && vitest run --project=swipl-mcp-server",
+    "test:watch": "cd ../.. && vitest --project=swipl-mcp-server",
+    "test:npx": "cd ../.. && vitest run --project=swipl-mcp-server -t 'NPX Integration'",
+    "server": "npm run build && node dist/index.js",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "prepublishOnly": "npm run build:full && npm run test:npx"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.2",
+    "@vpursuit/mcp-server-core": "*",
+    "@vpursuit/mcp-server-prolog": "*",
+    "@vpursuit/mcp-server-roots": "*"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.9",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.3.1",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "@types/node": "^24.9.1",
+    "rollup": "^4.52.5",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -14,11 +14,13 @@
     "plugin-system"
   ],
   "workspaces": [
-    "packages/*"
+    "products/*",
+    "plugins/server/*",
+    "plugins/client/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "test": "vitest run",
+    "build": "npm run build --workspace=@vpursuit/swipl-mcp-server",
+    "test": "npm run build --workspaces --if-present && vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "server": "npm run server --workspace=@vpursuit/swipl-mcp-server",
@@ -27,10 +29,11 @@
     "lint:fix": "npm run lint:fix --workspaces --if-present",
     "format": "prettier --write \"**/*.{ts,js,json,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,js,json,yml,yaml}\"",
-    "clean": "npm run clean --workspaces --if-present && rm -rf node_modules",
-    "security:audit": "npm audit --audit-level=moderate",
-    "security:check": "npm audit --audit-level=high --json | jq -r '.vulnerabilities | length' | xargs -I {} test {} -eq 0",
-    "security:update": "npm update && npm audit fix"
+    "clean": "npm run clean --workspaces --if-present",
+    "clean:full": "npm run clean --workspaces --if-present && rm -rf node_modules products/*/node_modules plugins/*/node_modules plugins/*/*/node_modules",
+    "security:audit": "npm audit --workspaces --audit-level=moderate",
+    "security:check": "npm audit --workspaces --audit-level=high --json | jq -r '.vulnerabilities | length' | xargs -I {} test {} -eq 0",
+    "security:update": "npm update --workspaces && npm audit fix --workspaces"
   },
   "author": "Peter Trebing",
   "license": "BSD-3-Clause",

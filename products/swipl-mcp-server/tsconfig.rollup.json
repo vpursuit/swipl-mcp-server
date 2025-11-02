@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    // Target and module for Rollup
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+
+    // Strict type checking
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+
+    // No emit - Rollup handles output
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+
+    // Output
+    "outDir": "./dist",
+
+    // Path mappings for workspace packages
+    "baseUrl": ".",
+    "paths": {
+      "@vpursuit/mcp-server-core": ["../../plugins/server/core/src/index.ts"],
+      "@vpursuit/mcp-server-prolog": ["../../plugins/server/prolog/src/index.ts"],
+      "@vpursuit/mcp-server-roots": ["../../plugins/server/roots/src/index.ts"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "../../plugins/server/*/src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts"
+  ]
+}
