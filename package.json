@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspace=@vpursuit/swipl-mcp-server",
-    "test": "npm run build --workspaces --if-present && vitest run",
+    "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "server": "npm run server --workspace=@vpursuit/swipl-mcp-server",

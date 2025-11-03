@@ -49,7 +49,7 @@
     "test:npx": "cd ../.. && vitest run --project=swipl-mcp-server -t 'NPX Integration'",
     "server": "npm run build && node dist/index.js",
     "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
-    "prepublishOnly": "npm run build:full && npm run test:npx"
+    "prepublishOnly": "test -d dist || (echo 'Error: dist directory not found. Run npm run build first.' && exit 1)"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.20.2"

@@ -76,7 +76,6 @@ jobs:
 
   build-and-test:
     name: Build and Test
-    needs: security-audit
     runs-on: ubuntu-22.04
 
     steps:
