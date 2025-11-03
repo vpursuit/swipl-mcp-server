@@ -53,6 +53,8 @@ export default defineConfig({
           globals: true,
           testTimeout: 60000,
           setupFiles: ['./plugins/server/prolog/test/setup.js'],
+          // Run tests sequentially - they share a singleton PrologInterface
+          fileParallelism: false,
         },
       },
       // Server product
