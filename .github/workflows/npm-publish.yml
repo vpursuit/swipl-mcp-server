@@ -158,9 +158,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build all packages
-        run: npm run build
-
       - name: Generate changelog
         run: node scripts/generate-changelog.js
 
@@ -203,12 +200,6 @@ jobs:
           npm --version
           npm install -g npm@11
           npm --version
-
-      - name: Install SWI-Prolog
-        if: inputs.dry_run != true
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y swi-prolog
 
       # OIDC trusted publish: no tokens, provenance enabled.
       - name: Publish packages to NPM
