@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [3.0.1-beta.4] - 2025-11-03
+
+### Features
+
+- add automated changelog and release notes system (2f3dd34)
+- add strict npm signature verification and document provenance (b8cb3e3)
+
 ## [3.0.1-beta.3] - 2025-11-03
 
 ### Performance Improvements
