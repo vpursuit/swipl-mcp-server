@@ -1,4 +1,4 @@
-<img src="./images/logo.svg" alt="SWI-Prolog MCP Server logo" width="100" />
+<img src="https://raw.githubusercontent.com/vpursuit/model-context-lab/main/products/swipl-mcp-server/images/logo.svg" alt="SWI-Prolog MCP Server logo" width="100" />
 
 # SWI-Prolog MCP Server
 
