@@ -1074,6 +1074,14 @@ export class PrologInterface {
         logger.warn(`Process did not exit after ${STOP_MAX_WAIT_MS}ms, forcing SIGKILL`);
         try {
           proc.kill("SIGKILL");
+          // Give SIGKILL a moment to work, then force cleanup
+          setTimeout(() => {
+            if (proc.exitCode === null) {
+              logger.error(`Process still alive after SIGKILL, forcing cleanup`);
+              // Manually trigger cleanup if process is truly stuck
+              proc.emit('exit', -1, 'SIGKILL');
+            }
+          }, 100);
         } catch {}
       }
     }, STOP_MAX_WAIT_MS);
@@ -1082,7 +1090,7 @@ export class PrologInterface {
       // ✅ WAIT for process to actually exit (with timeout)
       await Promise.race([
         exitPromise,
-        new Promise<void>(resolve => setTimeout(resolve, STOP_MAX_WAIT_MS + 100))
+        new Promise<void>(resolve => setTimeout(resolve, STOP_MAX_WAIT_MS + 500))
       ]);
     } finally {
       clearTimeout(killTimer);
