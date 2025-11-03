@@ -4,6 +4,7 @@ import os from "os";
 import type { ToolDefinitions, CallToolResult, ToolDefinition } from "@vpursuit/mcp-server-core";
 import { PrologInterface } from "./PrologInterface.js";
 import type { CapabilitiesSummary } from "./types.js";
+import { RootsManager } from "@vpursuit/mcp-server-roots";
 import {
   MAX_FILENAME_LENGTH,
   MAX_QUERY_LENGTH,
@@ -34,29 +35,15 @@ import { resolvePackageVersion, findNearestFile } from "./meta.js";
 import { validateStringInput } from "./utils/validation.js";
 import { createErrorResponse, createSuccessResponse, formatClauseResults, type ClauseOperationResult } from "./utils/response.js";
 
-// Security: Only allow files within the designated directory
-const ALLOWED_DIR = path.join(os.homedir(), '.model-context-lab');
+// Security: Use RootsManager for dynamic root discovery and validation
+async function validateFilePath(filename: string): Promise<{ allowed: boolean; error?: string }> {
+  const rootsManager = RootsManager.getInstance();
+  const validation = await rootsManager.validatePath(filename);
 
-function validateFilePath(filename: string): { allowed: boolean; error?: string } {
-  try {
-    const absolutePath = path.resolve(filename);
-    const relativePath = path.relative(ALLOWED_DIR, absolutePath);
-    const isWithinAllowed = !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
-
-    if (isWithinAllowed) {
-      return { allowed: true };
-    }
-
-    return {
-      allowed: false,
-      error: `Security Error: Files can only be loaded from ${ALLOWED_DIR}`
-    };
-  } catch (_error) {
-    return {
-      allowed: false,
-      error: `Security Error: Invalid file path`
-    };
-  }
+  return {
+    allowed: validation.allowed,
+    error: validation.error
+  };
 }
 
 // Global Prolog interface instance
@@ -166,7 +153,7 @@ export function getCapabilitiesSummary(): CapabilitiesSummary {
     security: {
       module: "knowledge_base",
       file_restrictions: {
-        allowed_directory: "~/.model-context-lab/",
+        allowed_directory: "Explicit configuration required (secure by default): MCP client roots or SWI_MCP_ALLOWED_ROOTS=/path/one,/path/two",
         blocked_directories: [
           "/etc",
           "/usr",
@@ -178,7 +165,7 @@ export function getCapabilitiesSummary(): CapabilitiesSummary {
           "/dev",
           "/root",
         ],
-        validation: "pre-execution path checking",
+        validation: "pre-execution path checking with strict roots validation",
       },
       consult: "facts/rules only; directives rejected",
       model: "enhanced_hybrid",
@@ -271,7 +258,8 @@ export const tools: ToolDefinitions = {
         ],
         safety: [
           "Enhanced Security Model:",
-          "- File Path Restrictions: Only ~/.model-context-lab/ directory allowed for file operations",
+          "- File Path Restrictions: Explicit root configuration required (MCP client or SWI_MCP_ALLOWED_ROOTS)",
+          "- Secure by default: No file access without explicit configuration",
           "- Dangerous Predicate Blocking: Pre-execution detection of shell(), system(), call(), etc.",
           "- User code asserted into module 'knowledge_base' with unknown=fail",
           "- Files loaded via guarded consult (facts/rules only; directives rejected)",
@@ -282,8 +270,11 @@ export const tools: ToolDefinitions = {
         ],
         security: [
           "Security Architecture:",
-          "- File Path Restrictions: System directories (/etc, /usr, /bin, /var, etc.) blocked",
-          "- Only ~/.model-context-lab/ directory allowed for file loading",
+          "- Secure by Default: No file access without explicit root configuration",
+          "- Root Configuration: MCP client roots or SWI_MCP_ALLOWED_ROOTS environment variable",
+          "- File Path Restrictions: System directories (/etc, /usr, /bin, /var, etc.) always blocked",
+          "- Dynamic root discovery from MCP client with strict path validation",
+          "- Environment: SWI_MCP_ALLOWED_ROOTS=/path/one,/path/two (comma-separated absolute paths)",
           "- Pre-execution validation catches dangerous predicates before execution",
           "- Most built-ins validated by library(sandbox)",
           "- Safe built-ins: arithmetic, lists, term operations, logic, string/atom helpers",
@@ -339,11 +330,13 @@ export const tools: ToolDefinitions = {
         ],
         roots: [
           "Filesystem Roots:",
-          "- MCP root discovery integration for dynamic path management",
-          "- Supports multiple allowed directories via roots/list",
-          "- Fallback to ~/.model-context-lab/ when no roots provided",
-          "- Environment override: SWI_MCP_ALLOWED_ROOTS (comma-separated paths)",
+          "- File access requires explicit root configuration",
+          "- Configure via MCP client roots or environment variable",
+          "- Environment variable: SWI_MCP_ALLOWED_ROOTS (comma-separated absolute paths)",
+          "- Example: SWI_MCP_ALLOWED_ROOTS=/Users/you/prolog,/Users/you/knowledge",
+          "- Without configuration: file operations disabled (secure by default)",
           "- System directories always blocked for security",
+          "- Use roots_list tool to see configured roots",
         ],
       };
 
@@ -439,7 +432,7 @@ export const tools: ToolDefinitions = {
         return createErrorResponse(v.error, startTime, { error_code: v.code });
       }
 
-      const pathValidation = validateFilePath(filename);
+      const pathValidation = await validateFilePath(filename);
       if (!pathValidation.allowed) {
         return createErrorResponse(
           pathValidation.error || "File access denied",

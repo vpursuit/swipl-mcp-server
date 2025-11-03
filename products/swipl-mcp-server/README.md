@@ -121,10 +121,47 @@ If you cloned the repo, you may use this configuration. Note: change <path to yo
 
 ## Configuration
 
+### Filesystem Roots
+
+**Required for file operations:** Configure allowed directories for loading Prolog files.
+
+**Option 1: MCP Client Roots (Recommended)**
+Configure roots in your MCP client. For Claude Desktop, add a `roots` array:
+```json
+{
+  "mcpServers": {
+    "swipl": {
+      "command": "npx",
+      "args": ["@vpursuit/swipl-mcp-server"],
+      "roots": ["/Users/you/prolog", "/Users/you/knowledge"]
+    }
+  }
+}
+```
+
+**Option 2: Environment Variable**
+Set `SWI_MCP_ALLOWED_ROOTS` with comma-separated absolute paths:
+```json
+{
+  "mcpServers": {
+    "swipl": {
+      "command": "npx",
+      "args": ["@vpursuit/swipl-mcp-server"],
+      "env": {
+        "SWI_MCP_ALLOWED_ROOTS": "/Users/you/prolog,/Users/you/knowledge"
+      }
+    }
+  }
+}
+```
+
+**Security:** Without configuration, file operations are disabled by default. Use the `roots_list` tool to verify configured roots.
+
 ### Environment Variables
 
 Configure timeouts, logging, and behavior via environment variables:
 
+- `SWI_MCP_ALLOWED_ROOTS`: comma-separated absolute paths for file access (see above)
 - `SWI_MCP_READY_TIMEOUT_MS`: server startup timeout (ms), default 5000
 - `SWI_MCP_QUERY_TIMEOUT_MS`: query execution timeout (ms), default 30000
 - `MCP_LOG_LEVEL`: `debug` | `info` | `warn` | `error` | `silent` (default `warn`)
@@ -138,7 +175,7 @@ Configure timeouts, logging, and behavior via environment variables:
 - Shutdown: the server exits on `SIGINT`/`SIGTERM` or when the client closes stdio. On stdio close, a small grace (~25ms) allows final responses to flush before exit.
 - Stateful per connection: asserted facts/rules live in memory for the lifetime of the MCP connection (one Node process and one SWI‑Prolog child). When the client disconnects and the server exits, in‑memory state is reset on next start.
 - Client guidance: keep a single stdio connection open for workflows that depend on shared state across multiple tool calls; avoid closing stdin immediately after a request.
-- Durability (optional): if persistent Knowledge Base is desired across restarts, use `knowledge_base_dump` to save to `~/.model-context-lab/` and `knowledge_base_load` (or `knowledge_base_assert_many`) to restore on startup. See [docs/lifecycle.md](./docs/lifecycle.md) for patterns.
+- Durability (optional): if persistent Knowledge Base is desired across restarts, use `knowledge_base_dump` to save to a configured root directory and `knowledge_base_load` (or `knowledge_base_assert_many`) to restore on startup. See [docs/lifecycle.md](./docs/lifecycle.md) for patterns.
 
 ## Features
 
@@ -193,9 +230,9 @@ All standard SWI-Prolog predicates are available (lists, arithmetic, meta-predic
 
 ### Loading and Querying Knowledge Base
 
-Load a Prolog file (files must be in `~/.model-context-lab/`):
+Load a Prolog file (must be in a configured root directory):
 ```json
-knowledge_base_load { "filename": "~/.model-context-lab/family.pl" }
+knowledge_base_load { "filename": "/Users/you/prolog/family.pl" }
 ```
 
 Start a query and iterate through solutions:

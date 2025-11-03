@@ -50,31 +50,30 @@ maybeDescribe("Security: File Path Restrictions", () => {
 
   test("should block loading /etc/passwd with clear security error", async () => {
     const result = await toolHandlers.knowledgeBaseLoad({ filename: "/etc/passwd" });
-    
+
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
-    expect(result.content[0].text).toContain("Files can only be loaded from");
-    expect(result.content[0].text).toContain(path.join(os.homedir(), '.model-context-lab'));
+    expect(result.content[0].text).toMatch(/system directory|Access to system/i);
     expect(result.structuredContent.error_code).toBe("file_path_violation");
     expect(result.structuredContent.blocked_path).toBe("/etc/passwd");
   });
 
   test("should block loading /usr/bin/swipl with clear security error", async () => {
     const result = await toolHandlers.knowledgeBaseLoad({ filename: "/usr/bin/swipl" });
-    
+
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
-    expect(result.content[0].text).toContain("Files can only be loaded from");
+    expect(result.content[0].text).toMatch(/system directory|Access to system/i);
     expect(result.structuredContent.error_code).toBe("file_path_violation");
   });
 
   test("should block loading files outside allowed directory", async () => {
+    // Without configured roots, any file access should fail
     const result = await toolHandlers.knowledgeBaseLoad({ filename: "/tmp/malicious.pl" });
-    
+
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
-    expect(result.content[0].text).toContain("Files can only be loaded from");
-    expect(result.content[0].text).toContain(path.join(os.homedir(), '.model-context-lab'));
+    expect(result.content[0].text).toMatch(/No filesystem roots configured|File must be within allowed roots/i);
     expect(result.structuredContent.error_code).toBe("file_path_violation");
   });
 
@@ -82,6 +81,10 @@ maybeDescribe("Security: File Path Restrictions", () => {
     const homeDir = os.homedir();
     const allowedDir = path.join(homeDir, '.model-context-lab');
     const testFile = path.join(allowedDir, "test.pl");
+
+    // Configure roots to allow this directory
+    const originalRoots = process.env.SWI_MCP_ALLOWED_ROOTS;
+    process.env.SWI_MCP_ALLOWED_ROOTS = allowedDir;
 
     console.log(`Home directory: ${homeDir}`);
     console.log(`Target directory: ${allowedDir}`);
@@ -118,17 +121,24 @@ maybeDescribe("Security: File Path Restrictions", () => {
       console.error(`Failed to create test file ${testFile}:`, error);
       throw error;
     }
-    
+
     try {
       // This should pass security check and load successfully
       const result = await toolHandlers.knowledgeBaseLoad({ filename: testFile });
-      
+
       // Should succeed - no security error
       expect(result).toBeDefined();
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Successfully consulted file");
       expect(result.structuredContent.result).toBe("ok");
     } finally {
+      // Restore original roots configuration
+      if (originalRoots !== undefined) {
+        process.env.SWI_MCP_ALLOWED_ROOTS = originalRoots;
+      } else {
+        delete process.env.SWI_MCP_ALLOWED_ROOTS;
+      }
+
       // Clean up test file
       try {
         unlinkSync(testFile);

@@ -2,12 +2,21 @@
 
 /**
  * Integration test for npx usage scenarios
- * 
+ *
  * This test simulates real-world usage via npx by:
- * 1. Creating a temporary package from dist/
- * 2. Installing it in a clean environment 
- * 3. Testing core functionality through the MCP protocol
- * 4. Verifying path resolution works correctly
+ * 1. Verifying the product is built (dist/ directory exists)
+ * 2. Using a pre-existing tarball (created by 'npm pack')
+ * 3. Installing the tarball in a clean /tmp environment
+ * 4. Testing MCP protocol functionality
+ * 5. Verifying path resolution and security model
+ *
+ * PREREQUISITES:
+ * 1. Run 'npm run build' in products/swipl-mcp-server/ to build the product
+ * 2. Run 'npm pack' in products/swipl-mcp-server/ to create the tarball
+ *
+ * This test uses the REAL product tarball (same artifact published to npm).
+ * It does NOT rebuild or repack - it uses existing build artifacts.
+ * Workflow: build → pack → test (matching CI/CD pattern)
  */
 
 import { exec, spawn } from 'child_process';
@@ -23,7 +32,8 @@ const ROOT_DIR = path.resolve(__dirname, '../../../..');
 class NPXIntegrationTest {
   constructor() {
     this.tempDir = null;
-    this.packagePaths = {}; // Store paths to all tarballs
+    this.testFilesDir = null; // Directory for test Prolog files (allowed root)
+    this.tarballPath = null; // Path to the product tarball
     this.timeout = 30000; // 30 second timeout
   }
 
@@ -34,47 +44,62 @@ class NPXIntegrationTest {
     this.tempDir = await fs.mkdtemp('/tmp/swipl-mcp-test-');
     console.log(`📁 Created temp directory: ${this.tempDir}`);
 
-    // Build all workspace packages (monorepo)
-    console.log('📦 Building all workspace packages...');
-    await execAsync('npm run build', { cwd: ROOT_DIR });
+    // Create temporary directory for test Prolog files (used as allowed root)
+    this.testFilesDir = path.join(this.tempDir, 'test-prolog-files');
+    await fs.mkdir(this.testFilesDir, { recursive: true });
+    console.log(`📁 Created test files directory: ${this.testFilesDir}`);
 
-    // Pack all workspace dependencies - these need to be available for the main package
-    console.log('📤 Creating tarballs for all workspace packages...');
-    const workspacePackages = [
-      { name: 'mcp-server-core', dir: 'plugins/server/core' },
-      { name: 'mcp-server-roots', dir: 'plugins/server/roots' },
-      { name: 'mcp-server-prolog', dir: 'plugins/server/prolog' },
-      { name: 'swipl-mcp-server', dir: 'products/swipl-mcp-server' }
-    ];
+    // Verify product is built
+    // NOTE: Run 'npm run build' before running this test
+    console.log('🔍 Verifying product is built...');
+    const productDir = path.join(ROOT_DIR, 'products/swipl-mcp-server');
+    const distDir = path.join(productDir, 'dist');
 
-    for (const pkg of workspacePackages) {
-      const pkgDir = path.join(ROOT_DIR, pkg.dir);
-      console.log(`  📦 Packing @vpursuit/${pkg.name}...`);
-      const { stdout } = await execAsync('npm pack', { cwd: pkgDir });
-      const tarballName = stdout.trim();
-      const tarballPath = path.join(pkgDir, tarballName);
-      this.packagePaths[pkg.name] = tarballPath;
-      console.log(`    ✅ Created: ${tarballName}`);
+    try {
+      await fs.access(distDir);
+      console.log('✅ Product is built');
+    } catch (err) {
+      throw new Error(
+        `Product is not built. Missing: ${distDir}\n` +
+        `Run 'npm run build' in products/swipl-mcp-server/ first.`
+      );
     }
 
-    console.log('✅ All packages packed successfully');
+    // Verify tarball exists (should be created by 'npm pack')
+    console.log('🔍 Looking for product tarball...');
+    const files = await fs.readdir(productDir);
+    const tarball = files.find(f => f.match(/^vpursuit-swipl-mcp-server-.*\.tgz$/));
+
+    if (!tarball) {
+      throw new Error(
+        `Tarball not found. Expected pattern: vpursuit-swipl-mcp-server-*.tgz\n` +
+        `In directory: ${productDir}\n` +
+        `Run 'npm pack' in products/swipl-mcp-server/ first.`
+      );
+    }
+
+    this.tarballPath = path.join(productDir, tarball);
+    console.log(`✅ Found tarball: ${tarball}`);
   }
 
   async installPackage() {
-    console.log('📥 Installing all locally built packages...');
+    console.log('📥 Installing product from tarball...');
 
-    // Install workspace dependencies first (in dependency order)
-    // mcp-server-core has no deps, roots and prolog depend on core, swipl-mcp-server depends on all
-    const installOrder = ['mcp-server-core', 'mcp-server-roots', 'mcp-server-prolog', 'swipl-mcp-server'];
+    // Initialize minimal package.json to ensure npm install isolation
+    // This prevents npm from traversing to parent directories
+    await fs.writeFile(
+      path.join(this.tempDir, 'package.json'),
+      JSON.stringify({ name: 'test-install', version: '1.0.0', private: true }, null, 2)
+    );
 
-    for (const pkg of installOrder) {
-      console.log(`  📦 Installing @vpursuit/${pkg}...`);
-      await execAsync(`npm install "${this.packagePaths[pkg]}"`, {
-        cwd: this.tempDir
-      });
-    }
+    // Install the single product tarball
+    // npm will automatically fetch @modelcontextprotocol/sdk from registry
+    console.log(`  📦 Installing ${path.basename(this.tarballPath)}...`);
+    await execAsync(`npm install "${this.tarballPath}"`, {
+      cwd: this.tempDir
+    });
 
-    console.log('✅ All locally built packages installed successfully');
+    console.log('✅ Package installed successfully');
   }
 
   async testMCPProtocol() {
@@ -130,15 +155,15 @@ class NPXIntegrationTest {
       },
       {
         name: 'knowledge_base_load with non-existent file',
-        request: { 
-          jsonrpc: '2.0', 
-          id: 4, 
-          method: 'tools/call', 
-          params: { name: 'knowledge_base_load', arguments: { filename: '/non/existent/file.pl' } } 
+        request: {
+          jsonrpc: '2.0',
+          id: 4,
+          method: 'tools/call',
+          params: { name: 'knowledge_base_load', arguments: { filename: '/non/existent/file.pl' } }
         },
         validate: (result) => {
           const text = result.result?.content?.[0]?.text || '';
-          if (!text.includes('Security Error:') || !text.includes('Files can only be loaded from')) {
+          if (!text.includes('Security Error:') || !text.includes('File must be within allowed roots')) {
             throw new Error(`Expected security error for file outside allowed directory, got: ${text}`);
           }
         }
@@ -229,6 +254,9 @@ class NPXIntegrationTest {
           ...process.env,
           // Remove any paths that might lead back to development directory
           NODE_PATH: '',
+          // Configure allowed roots to avoid listRoots() timeout
+          // The test runs without a real MCP client, so we must use env var
+          SWI_MCP_ALLOWED_ROOTS: this.testFilesDir,
           SWI_MCP_READY_TIMEOUT_MS: '10000',
           SWI_MCP_QUERY_TIMEOUT_MS: '5000',
           DEBUG: 'swipl-mcp-server',  // Enable our debug logging
@@ -316,17 +344,11 @@ class NPXIntegrationTest {
     // Remove temporary test directory
     if (this.tempDir) {
       await fs.rm(this.tempDir, { recursive: true, force: true });
+      console.log(`  🗑️  Removed temp directory: ${path.basename(this.tempDir)}`);
     }
 
-    // Remove all created tarballs
-    for (const [pkg, tarballPath] of Object.entries(this.packagePaths)) {
-      try {
-        await fs.unlink(tarballPath);
-        console.log(`  🗑️  Removed tarball: ${path.basename(tarballPath)}`);
-      } catch (err) {
-        // Tarball might already be removed, ignore
-      }
-    }
+    // Note: Tarball is kept in products/swipl-mcp-server/ for reuse
+    // Run 'rm products/swipl-mcp-server/*.tgz' to clean manually if needed
 
     console.log('✅ Cleanup complete');
   }

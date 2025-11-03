@@ -14,9 +14,14 @@ maybeDescribe("Safe Library Loading: library(clpfd)", () => {
   const homeDir = os.homedir();
   const allowedDir = path.join(homeDir, '.model-context-lab');
   const testFile = path.join(allowedDir, "test_clpfd.pl");
+  let originalRoots: string | undefined;
 
   beforeEach(async () => {
     await prologInterface.stop();
+
+    // Configure roots to allow file loading
+    originalRoots = process.env.SWI_MCP_ALLOWED_ROOTS;
+    process.env.SWI_MCP_ALLOWED_ROOTS = allowedDir;
 
     // Ensure directory exists
     if (!existsSync(allowedDir)) {
@@ -26,6 +31,13 @@ maybeDescribe("Safe Library Loading: library(clpfd)", () => {
 
   afterEach(async () => {
     await prologInterface.stop();
+
+    // Restore original roots configuration
+    if (originalRoots !== undefined) {
+      process.env.SWI_MCP_ALLOWED_ROOTS = originalRoots;
+    } else {
+      delete process.env.SWI_MCP_ALLOWED_ROOTS;
+    }
 
     // Clean up test file
     try {
@@ -179,9 +191,14 @@ maybeDescribe("Safe Library Loading: Other Safe Libraries", () => {
   const homeDir = os.homedir();
   const allowedDir = path.join(homeDir, '.model-context-lab');
   const testFile = path.join(allowedDir, "test_safe_libs.pl");
+  let originalRoots: string | undefined;
 
   beforeEach(async () => {
     await prologInterface.stop();
+
+    // Configure roots to allow file loading
+    originalRoots = process.env.SWI_MCP_ALLOWED_ROOTS;
+    process.env.SWI_MCP_ALLOWED_ROOTS = allowedDir;
 
     if (!existsSync(allowedDir)) {
       mkdirSync(allowedDir, { recursive: true });
@@ -190,6 +207,13 @@ maybeDescribe("Safe Library Loading: Other Safe Libraries", () => {
 
   afterEach(async () => {
     await prologInterface.stop();
+
+    // Restore original roots configuration
+    if (originalRoots !== undefined) {
+      process.env.SWI_MCP_ALLOWED_ROOTS = originalRoots;
+    } else {
+      delete process.env.SWI_MCP_ALLOWED_ROOTS;
+    }
 
     try {
       if (existsSync(testFile)) {
@@ -306,9 +330,14 @@ maybeDescribe("Unsafe Library Blocking", () => {
   const homeDir = os.homedir();
   const allowedDir = path.join(homeDir, '.model-context-lab');
   const testFile = path.join(allowedDir, "test_unsafe_libs.pl");
+  let originalRoots: string | undefined;
 
   beforeEach(async () => {
     await prologInterface.stop();
+
+    // Configure roots to allow file loading (so we can test the library blocking, not path blocking)
+    originalRoots = process.env.SWI_MCP_ALLOWED_ROOTS;
+    process.env.SWI_MCP_ALLOWED_ROOTS = allowedDir;
 
     if (!existsSync(allowedDir)) {
       mkdirSync(allowedDir, { recursive: true });
@@ -317,6 +346,13 @@ maybeDescribe("Unsafe Library Blocking", () => {
 
   afterEach(async () => {
     await prologInterface.stop();
+
+    // Restore original roots configuration
+    if (originalRoots !== undefined) {
+      process.env.SWI_MCP_ALLOWED_ROOTS = originalRoots;
+    } else {
+      delete process.env.SWI_MCP_ALLOWED_ROOTS;
+    }
 
     try {
       if (existsSync(testFile)) {
@@ -407,9 +443,14 @@ maybeDescribe("Edge Cases: Library Loading", () => {
   const homeDir = os.homedir();
   const allowedDir = path.join(homeDir, '.model-context-lab');
   const testFile = path.join(allowedDir, "test_edge_cases.pl");
+  let originalRoots: string | undefined;
 
   beforeEach(async () => {
     await prologInterface.stop();
+
+    // Configure roots to allow file loading
+    originalRoots = process.env.SWI_MCP_ALLOWED_ROOTS;
+    process.env.SWI_MCP_ALLOWED_ROOTS = allowedDir;
 
     if (!existsSync(allowedDir)) {
       mkdirSync(allowedDir, { recursive: true });
@@ -418,6 +459,13 @@ maybeDescribe("Edge Cases: Library Loading", () => {
 
   afterEach(async () => {
     await prologInterface.stop();
+
+    // Restore original roots configuration
+    if (originalRoots !== undefined) {
+      process.env.SWI_MCP_ALLOWED_ROOTS = originalRoots;
+    } else {
+      delete process.env.SWI_MCP_ALLOWED_ROOTS;
+    }
 
     try {
       if (existsSync(testFile)) {

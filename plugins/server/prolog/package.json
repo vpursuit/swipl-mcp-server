@@ -39,7 +39,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --build",
     "clean": "rm -rf dist *.tsbuildinfo",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -54,7 +54,8 @@
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.20.2",
-    "@vpursuit/mcp-server-core": "*"
+    "@vpursuit/mcp-server-core": "*",
+    "@vpursuit/mcp-server-roots": "*"
   },
   "engines": {
     "node": ">=20.0.0"

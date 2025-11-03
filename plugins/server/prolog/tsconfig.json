@@ -5,6 +5,10 @@
     "outDir": "./dist",
     "composite": true
   },
+  "references": [
+    { "path": "../roots" },
+    { "path": "../core" }
+  ],
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test"]
 }

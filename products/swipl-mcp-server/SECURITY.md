@@ -5,7 +5,8 @@
 **Use this tool at your own risk.** This SWI-Prolog MCP Server provides controlled access to a Prolog environment and executes user-provided queries and code. While comprehensive security measures have been implemented including sandboxing and blacklisting, **no security system is perfect**. 
 
 **Security Layer:** This server includes an enhanced security framework that:
-- **File Path Restrictions**: Only allows file access within `~/.model-context-lab/` directory
+- **Secure by Default**: No file access without explicit root configuration
+- **File Path Restrictions**: Only allows file access within explicitly configured roots (MCP client or `SWI_MCP_ALLOWED_ROOTS`)
 - **Dangerous Predicate Blocking**: Pre-execution detection and blocking of dangerous operations
 - Validates predicates using SWI-Prolog's `library(sandbox)`
 - Maintains an explicit blacklist of dangerous operations
@@ -30,10 +31,12 @@
 ## Built‑in Protections
 
 ### File Path Security
-- **Allowed Directory**: Only `~/.model-context-lab/` directory permitted for file operations
+- **Secure by Default**: File operations disabled without explicit root configuration
+- **Configuration Required**: Configure roots via MCP client or `SWI_MCP_ALLOWED_ROOTS` environment variable
+- **Environment Variable**: `SWI_MCP_ALLOWED_ROOTS=/path/one,/path/two` (comma-separated absolute paths)
 - **System Directory Blocking**: Automatically blocks access to `/etc`, `/usr`, `/bin`, `/var`, `/sys`, `/proc`, `/boot`, `/dev`, `/root`
-- **Pre-validation**: File paths are checked before any Prolog interaction
-- **Clear Error Messages**: `Security Error: Files can only be loaded from ~/.model-context-lab/`
+- **Pre-validation**: File paths are strictly validated against configured roots before any Prolog interaction
+- **Clear Error Messages**: Helpful messages guide users to configure roots when file access is attempted without configuration
 
 ### Dangerous Predicate Detection
 - **Pre-execution Blocking**: Dangerous operations caught before execution, not during timeout
