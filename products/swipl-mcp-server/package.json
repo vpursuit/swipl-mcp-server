@@ -1,6 +1,6 @@
 {
   "name": "@vpursuit/swipl-mcp-server",
-  "version": "3.0.1-beta.4",
+  "version": "3.0.1-beta.5",
   "type": "module",
   "icon": "https://raw.githubusercontent.com/vpursuit/model-context-lab/main/products/swipl-mcp-server/images/logo.svg",
   "description": "SWI-Prolog integration for Model Context Protocol - orchestrator package",
@@ -41,7 +41,7 @@
   ],
   "scripts": {
     "build:plugins": "cd ../.. && npm run build -w @vpursuit/mcp-server-core -w @vpursuit/mcp-server-prolog -w @vpursuit/mcp-server-roots",
-    "build": "npm run build:plugins && rollup -c",
+    "build": "npm run build:plugins && rollup -c && node -e \"require('fs').chmodSync('dist/index.js', 0o755)\"",
     "build:full": "npm run build",
     "clean": "rm -rf dist *.tsbuildinfo",
     "test": "cd ../.. && vitest run --project=swipl-mcp-server",
@@ -49,7 +49,7 @@
     "test:npx": "cd ../.. && vitest run --project=swipl-mcp-server -t 'NPX Integration'",
     "server": "npm run build && node dist/index.js",
     "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
-    "prepublishOnly": "test -d dist || (echo 'Error: dist directory not found. Run npm run build first.' && exit 1)"
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.20.2"
