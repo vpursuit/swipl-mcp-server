@@ -42,14 +42,14 @@ Before running `release:*`:
 
 After pushing the tag, check:
 
-1. **GitHub Actions**: https://github.com/vpursuit/swipl-mcp-server/actions
+1. **GitHub Actions**: https://github.com/vpursuit/model-context-lab/actions
    - Verify the workflow ran successfully
    - Check all jobs (security-audit, build-and-test, publish)
 
 2. **NPM Package**: https://www.npmjs.com/package/@vpursuit/swipl-mcp-server
    - Verify new version appears
 
-3. **GitHub Releases**: https://github.com/vpursuit/swipl-mcp-server/releases
+3. **GitHub Releases**: https://github.com/vpursuit/model-context-lab/releases
    - Release should be created automatically
 
 ## Troubleshooting

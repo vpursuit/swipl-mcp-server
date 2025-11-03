@@ -3,7 +3,7 @@
 ## Log Levels
 
 - `MCP_LOG_LEVEL`: `debug` | `info` | `warn` | `error` | `silent` (default `warn`).
-- `DEBUG`: enable debug logs by namespace; set to `swipl-mcp-server`.
+- `DEBUG`: enable debug logs by namespace; set to `swipl-mcp-server` (package name unchanged).
 
 ## Wire/Child Tracing
 

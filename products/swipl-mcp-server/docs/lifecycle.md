@@ -32,16 +32,16 @@ This is the expected behavior for `stdio` MCP servers. Clients that rely on shar
 
 ## Durable Knowledge Base (optional)
 
-If you want state to survive restarts, use an explicit dump/restore pattern under the allowed directory `~/.swipl-mcp-server/`:
+If you want state to survive restarts, use an explicit dump/restore pattern under the allowed directory `~/.model-context-lab/`:
 
 1. Save snapshot:
-   - Call `knowledge_base_dump` and write the result into a file in `~/.swipl-mcp-server/`.
+   - Call `knowledge_base_dump` and write the result into a file in `~/.model-context-lab/`.
 2. Restore on startup:
    - Either script your client to call `knowledge_base_load` for the snapshot file, or
    - Replay facts via `knowledge_base_assert_many` after connection initialization.
 
 Notes:
-- The server enforces file path restrictions; only `~/.swipl-mcp-server/` is permitted for file operations.
+- The server enforces file path restrictions; only `~/.model-context-lab/` is permitted for file operations.
 - Avoid secrets or sensitive paths; data under the allowed directory is considered non‑sensitive for the purpose of this server.
 
 ## Troubleshooting

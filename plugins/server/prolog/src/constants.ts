@@ -20,7 +20,7 @@ export const MAX_BUFFER_SIZE = 1024 * 1024; // 1MB
 export const MAX_QUERY_PROMISES = 100;
 
 // Security: Default allowed directory for file operations
-export const ALLOWED_DIR = path.join(os.homedir(), '.swipl-mcp-server');
+export const ALLOWED_DIR = path.join(os.homedir(), '.model-context-lab');
 
 // Prolog server markers and protocol strings
 export const READY_MARKER = "@@READY@@";

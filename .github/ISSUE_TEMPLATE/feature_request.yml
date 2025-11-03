@@ -2,7 +2,7 @@ name: Feature Request
 description: Suggest a new feature or enhancement for the SWI-Prolog MCP Server
 title: "[Feature]: "
 labels: ["enhancement", "needs-triage"]
-projects: ["swipl-mcp-server"]
+projects: ["model-context-lab"]
 assignees: []
 
 body:

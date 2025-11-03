@@ -75,7 +75,7 @@ All predicates are validated through SWI-Prolog's `library(sandbox)`:
 
 **Example:**
 ```prolog
-% In ~/.swipl-mcp-server/puzzle.pl
+% In ~/.model-context-lab/puzzle.pl
 :- use_module(library(clpfd)).  % ✓ Allowed
 
 solve_sudoku(Rows) :-
@@ -92,7 +92,7 @@ solve_sudoku(Rows) :-
 ### 4. File Path Restrictions
 
 File operations restricted to allowed directories:
-- Default: `~/.swipl-mcp-server/`
+- Default: `~/.model-context-lab/`
 - System directories blocked: `/etc`, `/usr`, `/bin`, `/var`, etc.
 - Path traversal protection
 - Configurable via `SWI_MCP_ALLOWED_ROOTS`
@@ -201,7 +201,7 @@ dangerous :- shell('cat /etc/passwd').
 If you discover a security vulnerability in @vpursuit/mcp-server-prolog:
 
 1. **Do not** open a public GitHub issue
-2. Use [GitHub Security Advisories](https://github.com/vpursuit/swipl-mcp-server/security/advisories/new) for private reporting
+2. Use [GitHub Security Advisories](https://github.com/vpursuit/model-context-lab/security/advisories/new) for private reporting
 3. Include:
    - Affected version
    - Proof of Concept (minimal Prolog code)

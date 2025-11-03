@@ -54,7 +54,7 @@ maybeDescribe("Security: File Path Restrictions", () => {
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
     expect(result.content[0].text).toContain("Files can only be loaded from");
-    expect(result.content[0].text).toContain(path.join(os.homedir(), '.swipl-mcp-server'));
+    expect(result.content[0].text).toContain(path.join(os.homedir(), '.model-context-lab'));
     expect(result.structuredContent.error_code).toBe("file_path_violation");
     expect(result.structuredContent.blocked_path).toBe("/etc/passwd");
   });
@@ -74,13 +74,13 @@ maybeDescribe("Security: File Path Restrictions", () => {
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
     expect(result.content[0].text).toContain("Files can only be loaded from");
-    expect(result.content[0].text).toContain(path.join(os.homedir(), '.swipl-mcp-server'));
+    expect(result.content[0].text).toContain(path.join(os.homedir(), '.model-context-lab'));
     expect(result.structuredContent.error_code).toBe("file_path_violation");
   });
 
   test("should allow loading files from allowed directory", async () => {
     const homeDir = os.homedir();
-    const allowedDir = path.join(homeDir, '.swipl-mcp-server');
+    const allowedDir = path.join(homeDir, '.model-context-lab');
     const testFile = path.join(allowedDir, "test.pl");
 
     console.log(`Home directory: ${homeDir}`);
@@ -225,8 +225,8 @@ maybeDescribe("Security: Error Message Quality", () => {
   });
 
   test("allowed directory should be clearly communicated", () => {
-    const allowedDir = path.join(os.homedir(), '.swipl-mcp-server');
+    const allowedDir = path.join(os.homedir(), '.model-context-lab');
     expect(allowedDir).toContain(os.homedir());
-    expect(allowedDir).toContain(".swipl-mcp-server");
+    expect(allowedDir).toContain(".model-context-lab");
   });
 });

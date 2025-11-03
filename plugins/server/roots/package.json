@@ -15,12 +15,12 @@
   "license": "BSD-3-Clause",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vpursuit/swipl-mcp-server.git",
+    "url": "git+https://github.com/vpursuit/model-context-lab.git",
     "directory": "plugins/server/roots"
   },
-  "homepage": "https://github.com/vpursuit/swipl-mcp-server/tree/main/plugins/server/roots#readme",
+  "homepage": "https://github.com/vpursuit/model-context-lab/tree/main/plugins/server/roots#readme",
   "bugs": {
-    "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
+    "url": "https://github.com/vpursuit/model-context-lab/issues"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

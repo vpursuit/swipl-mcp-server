@@ -82,7 +82,7 @@ git push origin client-v1.0.0
 
 **4. Monitor GitHub Actions**
 
-- Go to [GitHub Actions](https://github.com/vpursuit/swipl-mcp-server/actions)
+- Go to [GitHub Actions](https://github.com/vpursuit/model-context-lab/actions)
 - Watch "Publish to NPM" workflow
 - Workflow runs:
   1. Upgrade npm to v11 (for workspace protocol support)
@@ -151,7 +151,7 @@ Use this for testing or publishing without creating a git tag.
 
 **1. Go to GitHub Actions**
 
-- Navigate to: https://github.com/vpursuit/swipl-mcp-server/actions
+- Navigate to: https://github.com/vpursuit/model-context-lab/actions
 - Click "Publish to NPM" workflow
 - Click "Run workflow" button
 

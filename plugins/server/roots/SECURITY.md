@@ -318,7 +318,7 @@ if (validation.allowed) {
 If you discover a security vulnerability in @vpursuit/mcp-server-roots:
 
 1. **Do not** open a public GitHub issue
-2. Use [GitHub Security Advisories](https://github.com/vpursuit/swipl-mcp-server/security/advisories/new) for private reporting
+2. Use [GitHub Security Advisories](https://github.com/vpursuit/model-context-lab/security/advisories/new) for private reporting
 3. Include:
    - Affected version
    - Proof of Concept (file path that bypasses validation)
@@ -338,13 +338,13 @@ assert(result.error.includes('blocked system directory'));
 
 **Test Path Traversal:**
 ```typescript
-const result = await manager.validatePath('~/.swipl-mcp-server/../../../etc/passwd');
+const result = await manager.validatePath('~/.model-context-lab/../../../etc/passwd');
 assert(result.allowed === false);
 ```
 
 **Test Valid Paths:**
 ```typescript
-const result = await manager.validatePath('~/.swipl-mcp-server/data.pl');
+const result = await manager.validatePath('~/.model-context-lab/data.pl');
 assert(result.allowed === true);
 assert(result.matchedRoot !== undefined);
 ```
@@ -352,7 +352,7 @@ assert(result.matchedRoot !== undefined);
 **Test Strict Mode:**
 ```typescript
 process.env.SWI_MCP_STRICT_ROOTS = 'true';
-const result = await manager.validatePath('~/.swipl-mcp-server/data.pl');
+const result = await manager.validatePath('~/.model-context-lab/data.pl');
 // Should fail if no explicit roots configured
 assert(result.allowed === false);
 ```

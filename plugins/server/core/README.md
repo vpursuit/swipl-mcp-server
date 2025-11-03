@@ -2,7 +2,7 @@
 
 **Internal plugin system for Model Context Protocol (MCP) servers.**
 
-> ⚠️ **Internal Package**: This plugin is private to the [@vpursuit/swipl-mcp-server](https://github.com/vpursuit/swipl-mcp-server) monorepo and is bundled into the main product. It is not published separately to npm.
+> ⚠️ **Internal Package**: This plugin is private to the [@vpursuit/swipl-mcp-server](https://github.com/vpursuit/model-context-lab) monorepo and is bundled into the main product. It is not published separately to npm.
 
 ## Overview
 
@@ -14,8 +14,8 @@
 
 ```bash
 # Clone the monorepo
-git clone https://github.com/vpursuit/swipl-mcp-server.git
-cd swipl-mcp-server
+git clone https://github.com/vpursuit/model-context-lab.git
+cd model-context-lab
 npm install
 npm run build
 ```

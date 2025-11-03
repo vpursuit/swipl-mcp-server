@@ -51,7 +51,7 @@ This project implements a comprehensive logging system that uses the Model Conte
    - `packages/mcp-roots/src/logger.ts` - Logger for Roots plugin
    - Both wrap the core MCP logger with package-specific names
 
-3. **Server Configuration** - `packages/swipl-mcp-server/src/index.ts`
+3. **Server Configuration** - `products/swipl-mcp-server/src/index.ts`
    - Declares `capabilities: { logging: {} }` to enable MCP logging
    - Plugins set their serverRef in onInit hooks
 
@@ -200,7 +200,7 @@ console.error("[fallback] Message");       // stderr fallback - OK for pre-init
 
 1. Start the MCP Inspector:
    ```bash
-   npx @modelcontextprotocol/inspector node packages/swipl-mcp-server/dist/index.js
+   npx @modelcontextprotocol/inspector node products/swipl-mcp-server/dist/index.js
    ```
 
 2. Check for errors in the Inspector console:

@@ -2,7 +2,7 @@
 
 **Internal SWI-Prolog integration plugin for Model Context Protocol servers.**
 
-> ⚠️ **Internal Package**: This plugin is private to the [@vpursuit/swipl-mcp-server](https://github.com/vpursuit/swipl-mcp-server) monorepo and is bundled into the main product. It is not published separately to npm.
+> ⚠️ **Internal Package**: This plugin is private to the [@vpursuit/swipl-mcp-server](https://github.com/vpursuit/model-context-lab) monorepo and is bundled into the main product. It is not published separately to npm.
 
 ## Overview
 
@@ -14,8 +14,8 @@
 
 ```bash
 # Clone the monorepo
-git clone https://github.com/vpursuit/swipl-mcp-server.git
-cd swipl-mcp-server
+git clone https://github.com/vpursuit/model-context-lab.git
+cd model-context-lab
 npm install
 npm run build
 ```
@@ -84,7 +84,7 @@ const result = await prologInterface.executeCommand('parent(X, mary)');
 
 ### Security
 
-- File operations restricted to `~/.swipl-mcp-server/`
+- File operations restricted to `~/.model-context-lab/`
 - Dangerous predicates blocked (shell, system, call, halt)
 - Pre-execution validation via `library(sandbox)`
 - Timeout protection against infinite loops
@@ -95,7 +95,7 @@ const result = await prologInterface.executeCommand('parent(X, mary)');
 
 ```typescript
 // Load a Prolog file
-await toolHandlers.knowledge_base_load({ filename: '~/.swipl-mcp-server/family.pl' });
+await toolHandlers.knowledge_base_load({ filename: '~/.model-context-lab/family.pl' });
 
 // Add facts
 await toolHandlers.knowledge_base_assert({ fact: 'parent(john, mary)' });
@@ -128,7 +128,7 @@ await toolHandlers.query_close();
 
 ## Documentation
 
-Full documentation available in the [swipl-mcp-server monorepo](https://github.com/vpursuit/swipl-mcp-server).
+Full documentation available in the [swipl-mcp-server monorepo](https://github.com/vpursuit/model-context-lab).
 
 ## Related Components
 

@@ -47,11 +47,11 @@
   "license": "BSD-3-Clause",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vpursuit/swipl-mcp-server.git"
+    "url": "git+https://github.com/vpursuit/model-context-lab.git"
   },
-  "homepage": "https://github.com/vpursuit/swipl-mcp-server#readme",
+  "homepage": "https://github.com/vpursuit/model-context-lab#readme",
   "bugs": {
-    "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
+    "url": "https://github.com/vpursuit/model-context-lab/issues"
   },
   "engines": {
     "node": ">=20.0.0"

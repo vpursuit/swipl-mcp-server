@@ -67,7 +67,7 @@ IMPORTANT - AVAILABLE PREDICATES:
 - Check 'capabilities' resource for full details
 
 SECURITY AWARENESS (from capabilities resource):
-- File operations restricted to ~/.swipl-mcp-server/
+- File operations restricted to ~/.model-context-lab/
 - Dangerous predicates blocked: shell(), system(), call(), halt()
 - Use only safe predicates in knowledge_base module
 - All queries executed in sandboxed environment

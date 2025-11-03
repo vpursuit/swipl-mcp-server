@@ -119,7 +119,7 @@ If you cloned the repo, you may use this configuration. Note: change `<path to y
   "mcpServers": {
     "swipl": {
       "command": "node",
-      "args": ["<path to your development directory>/swipl-mcp-server/dist/index.js"],
+      "args": ["<path to your development directory>/model-context-lab/products/swipl-mcp-server/dist/index.js"],
       "env": {
         "SWI_MCP_READY_TIMEOUT_MS": "10000",
         "SWI_MCP_QUERY_TIMEOUT_MS": "120000",
@@ -165,8 +165,8 @@ sudo apt-get install swi-prolog
 - Check file permissions on configuration directories
 
 **File access errors:**
-- Files must be placed in `~/.swipl-mcp-server/` directory
-- Create the directory if it doesn't exist: `mkdir -p ~/.swipl-mcp-server`
+- Files must be placed in `~/.model-context-lab/` directory
+- Create the directory if it doesn't exist: `mkdir -p ~/.model-context-lab`
 - Check file permissions for read access
 
 ### Debug Mode
@@ -191,7 +191,7 @@ This provides detailed logs of:
 
 ### Getting Help
 
-- Check existing [issues](https://github.com/vpursuit/swipl-mcp-server/issues)
+- Check existing [issues](https://github.com/vpursuit/model-context-lab/issues)
 - Review [examples](examples.md) for usage patterns
 - Test with MCP Inspector for isolated debugging
 - Include debug logs when reporting issues

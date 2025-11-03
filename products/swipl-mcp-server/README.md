@@ -2,7 +2,7 @@
 
 # SWI-Prolog MCP Server
 
-[![Build Status](https://github.com/vpursuit/swipl-mcp-server/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/vpursuit/swipl-mcp-server/actions/workflows/npm-publish.yml)
+[![Build Status](https://github.com/vpursuit/model-context-lab/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/vpursuit/model-context-lab/actions/workflows/npm-publish.yml)
 
 | Package | License | Node |
 |---------|---------|------|
@@ -105,7 +105,7 @@ If you cloned the repo, you may use this configuration. Note: change <path to yo
   "mcpServers": {
     "swipl": {
       "command": "node",
-      "args": ["<path to your development directory>/swipl-mcp-server/products/swipl-mcp-server/dist/index.js"],
+      "args": ["<path to your development directory>/model-context-lab/products/swipl-mcp-server/dist/index.js"],
       "env": {
         "SWI_MCP_READY_TIMEOUT_MS": "10000",
         "SWI_MCP_QUERY_TIMEOUT_MS": "120000",
@@ -136,7 +136,7 @@ Configure timeouts, logging, and behavior via environment variables:
 - Shutdown: the server exits on `SIGINT`/`SIGTERM` or when the client closes stdio. On stdio close, a small grace (~25ms) allows final responses to flush before exit.
 - Stateful per connection: asserted facts/rules live in memory for the lifetime of the MCP connection (one Node process and one SWI‑Prolog child). When the client disconnects and the server exits, in‑memory state is reset on next start.
 - Client guidance: keep a single stdio connection open for workflows that depend on shared state across multiple tool calls; avoid closing stdin immediately after a request.
-- Durability (optional): if persistent Knowledge Base is desired across restarts, use `knowledge_base_dump` to save to `~/.swipl-mcp-server/` and `knowledge_base_load` (or `knowledge_base_assert_many`) to restore on startup. See [docs/lifecycle.md](./docs/lifecycle.md) for patterns.
+- Durability (optional): if persistent Knowledge Base is desired across restarts, use `knowledge_base_dump` to save to `~/.model-context-lab/` and `knowledge_base_load` (or `knowledge_base_assert_many`) to restore on startup. See [docs/lifecycle.md](./docs/lifecycle.md) for patterns.
 
 ## Features
 
@@ -191,9 +191,9 @@ All standard SWI-Prolog predicates are available (lists, arithmetic, meta-predic
 
 ### Loading and Querying Knowledge Base
 
-Load a Prolog file (files must be in `~/.swipl-mcp-server/`):
+Load a Prolog file (files must be in `~/.model-context-lab/`):
 ```json
-knowledge_base_load { "filename": "~/.swipl-mcp-server/family.pl" }
+knowledge_base_load { "filename": "~/.model-context-lab/family.pl" }
 ```
 
 Start a query and iterate through solutions:
@@ -280,7 +280,7 @@ For the detailed state transition diagram, see [docs/session-state.md](./docs/se
 The server implements multiple security layers to protect your system:
 
 ### File Path Restrictions
-- **Allowed Directory**: Files can only be loaded from `~/.swipl-mcp-server/`
+- **Allowed Directory**: Files can only be loaded from `~/.model-context-lab/`
 - **Blocked Directories**: System directories (`/etc`, `/usr`, `/bin`, `/var`, etc.) are automatically blocked
 - **Example**:
   ```json
@@ -362,7 +362,7 @@ BSD‑3‑Clause. See [LICENSE](./LICENSE) for details.
 
 ## Links
 
-- [GitHub Repository](https://github.com/vpursuit/swipl-mcp-server)
+- [GitHub Repository](https://github.com/vpursuit/model-context-lab)
 - [NPM Package](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server)
 - [Model Context Protocol](https://modelcontextprotocol.io)
 - [SWI-Prolog](https://www.swi-prolog.org)

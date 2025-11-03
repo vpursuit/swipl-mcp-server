@@ -35,7 +35,7 @@ import { validateStringInput } from "./utils/validation.js";
 import { createErrorResponse, createSuccessResponse, formatClauseResults, type ClauseOperationResult } from "./utils/response.js";
 
 // Security: Only allow files within the designated directory
-const ALLOWED_DIR = path.join(os.homedir(), '.swipl-mcp-server');
+const ALLOWED_DIR = path.join(os.homedir(), '.model-context-lab');
 
 function validateFilePath(filename: string): { allowed: boolean; error?: string } {
   try {
@@ -166,7 +166,7 @@ export function getCapabilitiesSummary(): CapabilitiesSummary {
     security: {
       module: "knowledge_base",
       file_restrictions: {
-        allowed_directory: "~/.swipl-mcp-server/",
+        allowed_directory: "~/.model-context-lab/",
         blocked_directories: [
           "/etc",
           "/usr",
@@ -271,7 +271,7 @@ export const tools: ToolDefinitions = {
         ],
         safety: [
           "Enhanced Security Model:",
-          "- File Path Restrictions: Only ~/.swipl-mcp-server/ directory allowed for file operations",
+          "- File Path Restrictions: Only ~/.model-context-lab/ directory allowed for file operations",
           "- Dangerous Predicate Blocking: Pre-execution detection of shell(), system(), call(), etc.",
           "- User code asserted into module 'knowledge_base' with unknown=fail",
           "- Files loaded via guarded consult (facts/rules only; directives rejected)",
@@ -283,7 +283,7 @@ export const tools: ToolDefinitions = {
         security: [
           "Security Architecture:",
           "- File Path Restrictions: System directories (/etc, /usr, /bin, /var, etc.) blocked",
-          "- Only ~/.swipl-mcp-server/ directory allowed for file loading",
+          "- Only ~/.model-context-lab/ directory allowed for file loading",
           "- Pre-execution validation catches dangerous predicates before execution",
           "- Most built-ins validated by library(sandbox)",
           "- Safe built-ins: arithmetic, lists, term operations, logic, string/atom helpers",
@@ -341,7 +341,7 @@ export const tools: ToolDefinitions = {
           "Filesystem Roots:",
           "- MCP root discovery integration for dynamic path management",
           "- Supports multiple allowed directories via roots/list",
-          "- Fallback to ~/.swipl-mcp-server/ when no roots provided",
+          "- Fallback to ~/.model-context-lab/ when no roots provided",
           "- Environment override: SWI_MCP_ALLOWED_ROOTS (comma-separated paths)",
           "- System directories always blocked for security",
         ],

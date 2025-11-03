@@ -1,6 +1,6 @@
 # MCP Ecosystem by vpursuit
 
-[![Build Status](https://github.com/vpursuit/swipl-mcp-server/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/vpursuit/swipl-mcp-server/actions/workflows/npm-publish.yml)
+[![Build Status](https://github.com/vpursuit/model-context-lab/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/vpursuit/model-context-lab/actions/workflows/npm-publish.yml)
 
 This monorepo contains Model Context Protocol (MCP) packages and products that enable AI assistants to work with SWI-Prolog, filesystems, and extensible plugin systems.
 
@@ -67,7 +67,7 @@ await loadPlugins(server, [prologPlugin, rootsPlugin]);
 This is a monorepo managed with **npm workspaces**. Each package can be developed, tested, and published independently.
 
 ```
-swipl-mcp-server/
+model-context-lab/
 ├── products/
 │   └── swipl-mcp-server/    # Main MCP server (published to npm)
 ├── plugins/
@@ -98,8 +98,8 @@ Each package has:
 
 ```bash
 # Clone repository
-git clone https://github.com/vpursuit/swipl-mcp-server.git
-cd swipl-mcp-server
+git clone https://github.com/vpursuit/model-context-lab.git
+cd model-context-lab
 
 # Install all dependencies
 npm install
@@ -187,7 +187,7 @@ See [LICENSE](./LICENSE) file for details.
 
 ## 🔗 Links
 
-- **GitHub**: [vpursuit/swipl-mcp-server](https://github.com/vpursuit/swipl-mcp-server)
+- **GitHub**: [vpursuit/model-context-lab](https://github.com/vpursuit/model-context-lab)
 - **NPM Organization**: [@vpursuit](https://www.npmjs.com/org/vpursuit)
 - **Model Context Protocol**: [modelcontextprotocol.io](https://modelcontextprotocol.io)
 - **SWI-Prolog**: [swi-prolog.org](https://www.swi-prolog.org)
@@ -201,16 +201,16 @@ npx @vpursuit/swipl-mcp-server
 
 **For monorepo developers**: Work with the plugin system
 ```bash
-git clone https://github.com/vpursuit/swipl-mcp-server.git
-cd swipl-mcp-server
+git clone https://github.com/vpursuit/model-context-lab.git
+cd model-context-lab
 npm install
 npm run build
 ```
 
 **For contributors**: Set up the development environment
 ```bash
-git clone https://github.com/vpursuit/swipl-mcp-server.git
-cd swipl-mcp-server
+git clone https://github.com/vpursuit/model-context-lab.git
+cd model-context-lab
 npm install
 npm run build
 npm test
@@ -218,4 +218,4 @@ npm test
 
 ---
 
-**Questions?** Open an [issue](https://github.com/vpursuit/swipl-mcp-server/issues) or see our [documentation](./products/swipl-mcp-server#readme).
+**Questions?** Open an [issue](https://github.com/vpursuit/model-context-lab/issues) or see our [documentation](./products/swipl-mcp-server#readme).

@@ -6,7 +6,7 @@ export const ROOT_CACHE_TTL_MS = 300000; // 5 minutes
 /**
  * Default fallback directory (relative to home directory)
  */
-export const DEFAULT_FALLBACK_DIR = ".swipl-mcp-server";
+export const DEFAULT_FALLBACK_DIR = ".model-context-lab";
 
 /**
  * System directories that should never be accessible

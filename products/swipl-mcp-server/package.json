@@ -1,6 +1,6 @@
 {
   "name": "@vpursuit/swipl-mcp-server",
-  "version": "3.0.1-beta.0",
+  "version": "3.0.1-beta.1",
   "type": "module",
   "icon": "./images/logo.svg",
   "description": "SWI-Prolog integration for Model Context Protocol - orchestrator package",
@@ -17,12 +17,12 @@
   "license": "BSD-3-Clause",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vpursuit/swipl-mcp-server.git",
+    "url": "git+https://github.com/vpursuit/model-context-lab.git",
     "directory": "products/swipl-mcp-server"
   },
-  "homepage": "https://github.com/vpursuit/swipl-mcp-server#readme",
+  "homepage": "https://github.com/vpursuit/model-context-lab#readme",
   "bugs": {
-    "url": "https://github.com/vpursuit/swipl-mcp-server/issues"
+    "url": "https://github.com/vpursuit/model-context-lab/issues"
   },
   "bin": {
     "swipl-mcp-server": "./dist/index.js"

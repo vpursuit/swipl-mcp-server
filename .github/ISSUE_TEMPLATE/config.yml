@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: 📚 Documentation
-    url: https://github.com/vpursuit/swipl-mcp-server/blob/main/README.md
+    url: https://github.com/vpursuit/model-context-lab/blob/main/README.md
     about: Check the README and documentation first
   - name: 🔧 MCP Inspector
     url: https://github.com/modelcontextprotocol/inspector
     about: Use MCP Inspector to debug MCP protocol issues
   - name: 💬 Discussions
-    url: https://github.com/vpursuit/swipl-mcp-server/discussions
+    url: https://github.com/vpursuit/model-context-lab/discussions
     about: Ask questions and discuss ideas with the community

@@ -7,19 +7,19 @@ This monorepo contains multiple Model Context Protocol (MCP) packages with varyi
 For detailed security information specific to each package, please refer to the individual security documentation:
 
 ### Products
-- **[@vpursuit/swipl-mcp-server](./packages/swipl-mcp-server/SECURITY.md)** - Comprehensive security policy for Prolog execution, sandboxing, file path restrictions, and dangerous predicate blocking
+- **[@vpursuit/swipl-mcp-server](./products/swipl-mcp-server/SECURITY.md)** - Comprehensive security policy for Prolog execution, sandboxing, file path restrictions, and dangerous predicate blocking
 
 ### Libraries
-- **[@vpursuit/mcp-server-prolog](./packages/mcp-prolog/)** - Prolog integration plugin security considerations
-- **[@vpursuit/mcp-server-core](./packages/mcp-core/)** - Plugin system security considerations
-- **[@vpursuit/mcp-server-roots](./packages/mcp-roots/)** - Filesystem access control and path validation security
+- **[@vpursuit/mcp-server-prolog](./plugins/server/prolog/)** - Prolog integration plugin security considerations
+- **[@vpursuit/mcp-server-core](./plugins/server/core/)** - Plugin system security considerations
+- **[@vpursuit/mcp-server-roots](./plugins/server/roots/)** - Filesystem access control and path validation security
 
 ## Reporting a Vulnerability
 
 We take security vulnerabilities seriously. If you discover a security issue in any package within this monorepo:
 
 ### Preferred Method: Private Disclosure
-1. **GitHub Security Advisories** (Recommended): Use [GitHub's private vulnerability reporting](https://github.com/vpursuit/swipl-mcp-server/security/advisories/new) to report security issues privately
+1. **GitHub Security Advisories** (Recommended): Use [GitHub's private vulnerability reporting](https://github.com/vpursuit/model-context-lab/security/advisories/new) to report security issues privately
 2. **Issue Tracker**: If you cannot use Security Advisories, open an issue and mark it as security-related (we will move discussion to a private channel)
 
 ### What to Include
@@ -105,15 +105,15 @@ For enhanced security and stability, consider installing from source:
 
 ```bash
 # Clone the repository
-git clone https://github.com/vpursuit/swipl-mcp-server.git
-cd swipl-mcp-server
+git clone https://github.com/vpursuit/model-context-lab.git
+cd model-context-lab
 
 # Optional: checkout a specific release tag
 # git checkout swipl-mcp-server@3.0.0
 
 # Review source code before building
 cat README.md
-cat packages/swipl-mcp-server/SECURITY.md
+cat products/swipl-mcp-server/SECURITY.md
 
 # Install and build
 npm install
@@ -159,7 +159,7 @@ Each package includes its own test suite. To run security-related tests:
 npm test
 
 # Run tests for specific package
-npm test -w packages/swipl-mcp-server
+npm test -w products/swipl-mcp-server
 ```
 
 See individual package SECURITY.md files for package-specific security test examples.
@@ -174,6 +174,6 @@ We appreciate responsible disclosure of security vulnerabilities. Contributors w
 ## Resources
 
 - [Model Context Protocol Specification](https://modelcontextprotocol.io)
-- [GitHub Security Advisories](https://github.com/vpursuit/swipl-mcp-server/security/advisories)
+- [GitHub Security Advisories](https://github.com/vpursuit/model-context-lab/security/advisories)
 - [NPM Security Best Practices](https://docs.npmjs.com/security)
 - [Node.js Security Best Practices](https://nodejs.org/en/docs/guides/security/)

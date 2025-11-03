@@ -12,7 +12,7 @@ const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
 maybeDescribe("Safe Library Loading: library(clpfd)", () => {
   const homeDir = os.homedir();
-  const allowedDir = path.join(homeDir, '.swipl-mcp-server');
+  const allowedDir = path.join(homeDir, '.model-context-lab');
   const testFile = path.join(allowedDir, "test_clpfd.pl");
 
   beforeEach(async () => {
@@ -177,7 +177,7 @@ unique_values(List) :-
 
 maybeDescribe("Safe Library Loading: Other Safe Libraries", () => {
   const homeDir = os.homedir();
-  const allowedDir = path.join(homeDir, '.swipl-mcp-server');
+  const allowedDir = path.join(homeDir, '.model-context-lab');
   const testFile = path.join(allowedDir, "test_safe_libs.pl");
 
   beforeEach(async () => {
@@ -304,7 +304,7 @@ test_assoc(Value) :-
 
 maybeDescribe("Unsafe Library Blocking", () => {
   const homeDir = os.homedir();
-  const allowedDir = path.join(homeDir, '.swipl-mcp-server');
+  const allowedDir = path.join(homeDir, '.model-context-lab');
   const testFile = path.join(allowedDir, "test_unsafe_libs.pl");
 
   beforeEach(async () => {
@@ -405,7 +405,7 @@ test_rule :- true.
 
 maybeDescribe("Edge Cases: Library Loading", () => {
   const homeDir = os.homedir();
-  const allowedDir = path.join(homeDir, '.swipl-mcp-server');
+  const allowedDir = path.join(homeDir, '.model-context-lab');
   const testFile = path.join(allowedDir, "test_edge_cases.pl");
 
   beforeEach(async () => {

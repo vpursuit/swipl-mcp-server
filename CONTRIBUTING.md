@@ -11,8 +11,8 @@ Prerequisites
 
 Setup
 -----
-- Clone: git clone https://github.com/vpursuit/swipl-mcp-server.git
-- Install: cd swipl-mcp-server && npm install
+- Clone: git clone https://github.com/vpursuit/model-context-lab.git
+- Install: cd model-context-lab && npm install
 
 Quick Dev Loop
 --------------

@@ -5,7 +5,7 @@
 **Use this tool at your own risk.** This SWI-Prolog MCP Server provides controlled access to a Prolog environment and executes user-provided queries and code. While comprehensive security measures have been implemented including sandboxing and blacklisting, **no security system is perfect**. 
 
 **Security Layer:** This server includes an enhanced security framework that:
-- **File Path Restrictions**: Only allows file access within `~/.swipl-mcp-server/` directory
+- **File Path Restrictions**: Only allows file access within `~/.model-context-lab/` directory
 - **Dangerous Predicate Blocking**: Pre-execution detection and blocking of dangerous operations
 - Validates predicates using SWI-Prolog's `library(sandbox)`
 - Maintains an explicit blacklist of dangerous operations
@@ -30,10 +30,10 @@
 ## Built‑in Protections
 
 ### File Path Security
-- **Allowed Directory**: Only `~/.swipl-mcp-server/` directory permitted for file operations
+- **Allowed Directory**: Only `~/.model-context-lab/` directory permitted for file operations
 - **System Directory Blocking**: Automatically blocks access to `/etc`, `/usr`, `/bin`, `/var`, `/sys`, `/proc`, `/boot`, `/dev`, `/root`
 - **Pre-validation**: File paths are checked before any Prolog interaction
-- **Clear Error Messages**: `Security Error: Files can only be loaded from ~/.swipl-mcp-server/`
+- **Clear Error Messages**: `Security Error: Files can only be loaded from ~/.model-context-lab/`
 
 ### Dangerous Predicate Detection
 - **Pre-execution Blocking**: Dangerous operations caught before execution, not during timeout
@@ -72,7 +72,7 @@ For enhanced security and stability, consider **downloading from GitHub** instea
 ### GitHub Installation:
 ```bash
 # Clone the repository
-git clone https://github.com/vpursuit/swipl-mcp-server.git
+git clone https://github.com/vpursuit/model-context-lab.git
 cd swipl-mcp-server
 
 # Optional: checkout a specific release tag for stability
@@ -96,7 +96,7 @@ pwd  # Shows your current directory path
   "mcpServers": {
     "swipl": {
       "command": "node",
-      "args": ["/full/path/to/swipl-mcp-server/dist/index.js"]
+      "args": ["/full/path/to/model-context-lab/products/swipl-mcp-server/dist/index.js"]
     }
   }
 }
@@ -140,7 +140,7 @@ Publishing is exclusively handled through our [GitHub Actions workflow](../../.g
   - Example: `knowledge_base_load({ filename: "/etc/passwd" })` → `Security Error: Access to system directories is blocked`
   - Example: `knowledge_base_load({ filename: "/usr/bin/ls" })` → `Security Error: Access to system directories is blocked`
 - Verify allowed directory works:
-  - Example: `knowledge_base_load({ filename: "~/.swipl-mcp-server/test.pl" })` → should work (if file exists)
+  - Example: `knowledge_base_load({ filename: "~/.model-context-lab/test.pl" })` → should work (if file exists)
 
 ### Dangerous Predicate Testing
 - Verify pre-execution blocking:

@@ -226,7 +226,7 @@ Machine-readable summary of server capabilities.
     "available": ["prolog://knowledge_base/predicates", ...]
   },
   "security": {
-    "file_restrictions": "~/.swipl-mcp-server/ only",
+    "file_restrictions": "~/.model-context-lab/ only",
     "dangerous_predicates_blocked": true,
     "sandbox_validation": true
   },
@@ -267,7 +267,7 @@ Get machine-readable summary of tools, modes, environment, and safety features.
 Load a Prolog file into the knowledge base.
 
 **Arguments:**
-- `filename` (required, string) - Path to Prolog file (must be in `~/.swipl-mcp-server/`)
+- `filename` (required, string) - Path to Prolog file (must be in `~/.model-context-lab/`)
 
 **Security:** File path validation ensures access only to allowed directory.
 
@@ -389,7 +389,7 @@ The server maintains session state with mutual exclusion between query modes:
 ## Security Model
 
 ### File Path Restrictions
-- **Allowed:** `~/.swipl-mcp-server/` directory only
+- **Allowed:** `~/.model-context-lab/` directory only
 - **Blocked:** System directories (`/etc`, `/usr`, `/bin`, `/var`, etc.)
 - **Validation:** Pre-execution path validation with realpath resolution
 

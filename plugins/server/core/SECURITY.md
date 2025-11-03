@@ -282,7 +282,7 @@ const plugin: Plugin = {
 If you discover a security vulnerability in @vpursuit/mcp-server-core:
 
 1. **Do not** open a public GitHub issue
-2. Use [GitHub Security Advisories](https://github.com/vpursuit/swipl-mcp-server/security/advisories/new) for private reporting
+2. Use [GitHub Security Advisories](https://github.com/vpursuit/model-context-lab/security/advisories/new) for private reporting
 3. Include:
    - Affected version
    - Proof of Concept (TypeScript code)

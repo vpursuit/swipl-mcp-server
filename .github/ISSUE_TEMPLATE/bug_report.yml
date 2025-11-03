@@ -2,7 +2,7 @@ name: Bug Report
 description: Report a bug to help us improve the SWI-Prolog MCP Server
 title: "[Bug]: "
 labels: ["bug", "needs-triage"]
-projects: ["swipl-mcp-server"]
+projects: ["model-context-lab"]
 assignees: []
 
 body:

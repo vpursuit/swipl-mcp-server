@@ -15,7 +15,7 @@ Quick health check that verifies the server starts and lists available tools.
 
 **Usage:**
 ```bash
-cd packages/swipl-mcp-server
+cd products/swipl-mcp-server
 node scripts/mcp_quickcheck.mjs
 ```
 
@@ -35,7 +35,7 @@ Comprehensive demo showing MCP client interaction with the server.
 
 **Usage:**
 ```bash
-cd packages/swipl-mcp-server
+cd products/swipl-mcp-server
 node scripts/mcp_prolog_demo.mjs
 ```
 
