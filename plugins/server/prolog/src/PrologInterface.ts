@@ -8,6 +8,7 @@ import {
   DEFAULT_READY_TIMEOUT_MS,
   CLEANUP_TIMEOUT_MS,
   STOP_KILL_DELAY_MS,
+  STOP_MAX_WAIT_MS,
   READY_MARK,
   TERM_SOLUTION,
   TERM_ERROR,
@@ -1067,11 +1068,25 @@ export class PrologInterface {
       }
     }, STOP_KILL_DELAY_MS);
 
+    // Hard timeout - use SIGKILL if process doesn't exit within max wait time
+    const maxWaitTimer = setTimeout(() => {
+      if (!proc.killed && proc.exitCode === null) {
+        logger.warn(`Process did not exit after ${STOP_MAX_WAIT_MS}ms, forcing SIGKILL`);
+        try {
+          proc.kill("SIGKILL");
+        } catch {}
+      }
+    }, STOP_MAX_WAIT_MS);
+
     try {
-      // ✅ WAIT for process to actually exit
-      await exitPromise;
+      // ✅ WAIT for process to actually exit (with timeout)
+      await Promise.race([
+        exitPromise,
+        new Promise<void>(resolve => setTimeout(resolve, STOP_MAX_WAIT_MS + 100))
+      ]);
     } finally {
       clearTimeout(killTimer);
+      clearTimeout(maxWaitTimer);
     }
 
     // ✅ NOW remove listeners (process is dead)

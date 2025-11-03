@@ -411,9 +411,6 @@ maybeDescribe("Edge Cases: Library Loading", () => {
   beforeEach(async () => {
     await prologInterface.stop();
 
-    // Give CI environments extra time to clean up after error cases
-    await new Promise(resolve => setTimeout(resolve, 100));
-
     if (!existsSync(allowedDir)) {
       mkdirSync(allowedDir, { recursive: true });
     }
@@ -448,9 +445,6 @@ test_rule :- true.
   });
 
   test("should allow multiple safe library imports", async () => {
-    // Add extra cleanup time before this test
-    await new Promise(resolve => setTimeout(resolve, 200));
-
     const fileContent = `:- use_module(library(lists)).
 :- use_module(library(apply)).
 :- use_module(library(clpfd)).

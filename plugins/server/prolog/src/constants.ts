@@ -33,4 +33,5 @@ export const TERM_ERROR = "error("; // Alias for compatibility
 export const NO_MORE_SOLUTIONS = "no_more_solutions";
 
 // Process management
-export const STOP_KILL_DELAY_MS = 50; // 50ms delay before SIGKILL
+export const STOP_KILL_DELAY_MS = 50; // 50ms delay before SIGTERM
+export const STOP_MAX_WAIT_MS = 5000; // Maximum 5 seconds to wait for process exit before SIGKILL
