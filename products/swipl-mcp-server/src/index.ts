@@ -66,6 +66,9 @@ async function main(): Promise<void> {
     version: resolvePackageVersion(),
     capabilities: {
       logging: {},
+      prompts: {},
+      resources: {},
+      tools: {},
     },
   });
 

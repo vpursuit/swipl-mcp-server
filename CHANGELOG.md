@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [3.0.1-beta.7] - 2025-11-03
+
+### Bug Fixes
+
+- fix prompt capability advertisement to enable MCP client access (products/swipl-mcp-server/src/index.ts:67-72)
+  - Added `prompts: {}` to server capabilities object
+  - Prompts were registered but not advertised, preventing protocol-compliant clients from discovering them
+  - MCP Inspector could still access prompts by directly probing endpoints
+
 ## [3.0.1-beta.4] - 2025-11-03
 
 ### Features
