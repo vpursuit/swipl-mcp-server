@@ -166,6 +166,7 @@ Only **products** are published to npm under the `@vpursuit` scope:
 - **Plugins** are internal dependencies bundled within products (not published separately)
 - Releases use semantic versioning: `v<version>` (e.g., `v3.0.0`)
 - Automated publishing via GitHub Actions
+- **Supply chain security**: All packages published with npm provenance attestation
 - See [PUBLISHING.md](./PUBLISHING.md) for complete details
 
 ## 🔒 Security
@@ -176,6 +177,11 @@ All packages implement security best practices:
 - Pre-execution validation
 - Timeout protection
 - Module isolation
+
+**Supply Chain Security:**
+- Published with npm provenance attestation for build transparency
+- OIDC-based publishing (no long-lived tokens)
+- Cryptographically signed packages via Sigstore
 
 See [SECURITY.md](./SECURITY.md) for complete security documentation and reporting.
 

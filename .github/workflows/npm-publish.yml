@@ -74,6 +74,9 @@ jobs:
       - name: Check for high/critical vulnerabilities
         run: npm run security:check
 
+      - name: Verify npm package signatures
+        run: npm audit signatures
+
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-22.04

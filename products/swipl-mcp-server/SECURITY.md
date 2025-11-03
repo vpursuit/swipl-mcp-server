@@ -127,6 +127,26 @@ Recent security incidents in the NPM ecosystem have highlighted vulnerabilities 
 
 Publishing is exclusively handled through our [GitHub Actions workflow](../../.github/workflows/npm-publish.yml) with automatic security validation.
 
+### Verifying Package Provenance
+
+All packages published from this repository include **npm provenance attestations** - cryptographic proof linking published packages to source code and build environment.
+
+**How to Verify:**
+```bash
+npm audit signatures
+npm view @vpursuit/swipl-mcp-server --json | jq .dist.attestations
+```
+
+**What to Look For:**
+- ✅ Registry signature verified
+- ✅ Provenance attestation verified
+- 📦 Source: github.com/vpursuit/model-context-lab
+- 🔨 Build: GitHub Actions
+
+If verification fails, **do not use the package** and report via [security advisory](#reporting-a-vulnerability).
+
+**Learn More:** [npm Provenance Documentation](https://docs.npmjs.com/generating-provenance-statements)
+
 ## Configuration
 - `MCP_LOG_LEVEL`: `debug|info|warn|error|silent` (default `warn`).
 - `DEBUG`: include `swipl-mcp-server` to enable debug logging.

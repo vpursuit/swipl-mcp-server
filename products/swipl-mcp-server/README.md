@@ -8,6 +8,8 @@
 |---------|---------|------|
 | [@vpursuit/swipl-mcp-server](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server) | BSD-3-Clause | ≥20.0.0 |
 
+> 🔒 **Supply Chain Security**: This package is published with [npm provenance attestation](https://docs.npmjs.com/generating-provenance-statements), providing cryptographic proof of build integrity and source verification. Look for the ✓ badge on [npm](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server).
+
 An MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It supports loading Prolog files, adding/removing facts and rules, listing symbols, and running queries with two modes: deterministic pagination and true engine backtracking.
 
 ## Table of Contents
@@ -301,6 +303,20 @@ The server implements multiple security layers to protect your system:
 - Library(sandbox) validation for built-in predicates
 - Timeout protection against infinite loops
 - Module isolation in dedicated `knowledge_base` namespace
+
+### Supply Chain Security
+
+This package is published with **npm provenance attestation**, providing:
+- **Build Transparency**: Cryptographic proof packages are built from source in GitHub Actions
+- **Source Verification**: Direct link between published package and source repository commit
+- **Signature Verification**: Packages signed by Sigstore, logged in public transparency ledger
+
+**Verify Package Provenance:**
+```bash
+npm view @vpursuit/swipl-mcp-server --json | jq .dist.attestations
+```
+
+**Learn More:** [Our Security Policy](./SECURITY.md#npm-publishing-security) | [npm Provenance Docs](https://docs.npmjs.com/generating-provenance-statements)
 
 See [SECURITY.md](./SECURITY.md) for complete security documentation.
 
