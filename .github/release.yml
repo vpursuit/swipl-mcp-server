@@ -1,0 +1,34 @@
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+      - duplicate
+      - invalid
+    authors:
+      - dependabot
+
+  categories:
+    - title: Breaking Changes
+      labels:
+        - breaking-change
+        - breaking
+
+    - title: Features
+      labels:
+        - enhancement
+        - feature
+        - new
+
+    - title: Bug Fixes
+      labels:
+        - bug
+        - fix
+
+    - title: Performance Improvements
+      labels:
+        - performance
+        - perf
+
+    - title: Other Changes
+      labels:
+        - "*"

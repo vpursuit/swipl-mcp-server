@@ -121,11 +121,12 @@ npm run release:prerelease  # Bump prerelease version (3.0.0 → 3.0.1-beta.0)
 #### What These Scripts Do
 
 Each script automatically:
-1. Updates version in `products/swipl-mcp-server/package.json`
-2. Creates a git commit with the version change
-3. **Creates an annotated git tag** (e.g., `v3.0.1-beta.0`)
-4. Pushes the commit to `main`
-5. Pushes all tags to trigger the publish workflow
+1. **Generates updated CHANGELOG.md** from git commits
+2. Updates version in `products/swipl-mcp-server/package.json`
+3. Creates a git commit with both changes
+4. **Creates an annotated git tag** (e.g., `v3.0.1-beta.0`)
+5. Pushes the commit to `main`
+6. Pushes all tags to trigger the publish workflow
 
 #### Example Usage
 
@@ -173,6 +174,95 @@ Click "Run workflow" to start the process.
 - Dry run mode shows package contents without publishing
 - Live mode publishes to npm and creates GitHub releases
 
+## Changelog and Release Notes
+
+### Automatic Changelog Generation
+
+This repository uses an **automated changelog system** that generates release notes from git commits:
+
+- **CHANGELOG.md**: Maintained in the repository root with all historical releases
+- **GitHub Releases**: Auto-generated release notes showing changes between tags
+- **npm Descriptions**: Package releases reference the changelog
+
+### How It Works
+
+The changelog is automatically generated from git commits when you run release scripts:
+
+1. **Preversion hook** runs `scripts/generate-changelog.js`
+2. **Changelog updated** from git commits since last tag
+3. **CHANGELOG.md committed** with the version bump
+4. **GitHub release created** with auto-generated notes
+
+### Commit Message Format
+
+The changelog extracts important changes from commit messages using **conventional commits**:
+
+```bash
+feat: add new feature          # → Features section
+fix: resolve bug              # → Bug Fixes section
+perf: improve performance     # → Performance Improvements section
+BREAKING CHANGE: ...          # → Breaking Changes section (highlighted)
+
+chore: routine task           # Excluded from changelog
+docs: update docs             # Excluded from changelog
+test: add tests               # Excluded from changelog
+```
+
+### Viewing the Changelog
+
+**In the repository:**
+```bash
+cat CHANGELOG.md
+```
+
+**On GitHub:**
+- [Releases page](https://github.com/vpursuit/model-context-lab/releases) shows auto-generated notes
+- Each release links to full CHANGELOG.md
+
+**On npm:**
+- Package description references changelog
+- Links back to GitHub releases
+
+### Manual Changelog Generation
+
+The changelog is automatically generated during releases, but you can generate it manually if needed:
+
+```bash
+# Update CHANGELOG.md with all releases
+npm run changelog
+
+# Generate changelog for specific version (output to stdout)
+node scripts/generate-changelog.js --version v3.0.0 --output
+
+# View help
+node scripts/generate-changelog.js --help
+```
+
+### Changelog Format
+
+The changelog follows [Keep a Changelog](https://keepachangelog.com/) format with minimal, focused entries:
+
+```markdown
+## [3.0.1] - 2025-11-03
+
+### Breaking Changes
+- major: breaking API change (abc1234)
+
+### Features
+- add new feature (abc1234)
+
+### Bug Fixes
+- fix critical bug (abc1234)
+
+### Performance Improvements
+- optimize query processing (abc1234)
+```
+
+Each entry includes:
+- **Type category** (Features, Bug Fixes, etc.)
+- **Brief description** from commit message
+- **Commit hash** for reference
+
 ## Versioning Strategy
 
 ### Semantic Versioning
@@ -213,13 +303,14 @@ All packages follow [semantic versioning](https://semver.org/):
 Before publishing any package:
 
 - [ ] All tests pass locally (`npm test`)
-- [ ] Version bumped in `package.json`
-- [ ] CHANGELOG updated (if exists)
-- [ ] Breaking changes documented
+- [ ] Use conventional commit messages (feat:, fix:, perf:) for changelog
+- [ ] Breaking changes marked in commits (BREAKING CHANGE:)
 - [ ] Dependencies up to date
 - [ ] Security audit clean (`npm audit`)
 - [ ] README accurate
 - [ ] SECURITY.md reflects current security model
+
+**Note:** Version bumping and changelog updates are handled automatically by the release scripts.
 
 ## Troubleshooting
 

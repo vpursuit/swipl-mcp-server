@@ -34,6 +34,8 @@
     "security:audit": "npm audit --workspaces --audit-level=moderate",
     "security:check": "npm audit --workspaces --audit-level=high --json | jq -r '.vulnerabilities | length' | xargs -I {} test {} -eq 0",
     "security:update": "npm update --workspaces && npm audit fix --workspaces",
+    "changelog": "node scripts/generate-changelog.js",
+    "preversion": "npm run changelog && git add CHANGELOG.md",
     "version:patch": "npm version patch -w @vpursuit/swipl-mcp-server --git-tag-version=true",
     "version:minor": "npm version minor -w @vpursuit/swipl-mcp-server --git-tag-version=true",
     "version:major": "npm version major -w @vpursuit/swipl-mcp-server --git-tag-version=true",

@@ -161,6 +161,9 @@ jobs:
       - name: Build all packages
         run: npm run build
 
+      - name: Generate changelog
+        run: node scripts/generate-changelog.js
+
       - name: Detect packages to publish
         id: detect_packages
         run: |
@@ -275,7 +278,7 @@ jobs:
             PACKAGE_VERSION=$(node -p "require('./$PACKAGE_DIR/$FIRST_PKG/package.json').version")
             TAG="${GITHUB_REF#refs/tags/}"
 
-            # Create release notes file
+            # Create minimal release notes header
             cat > release_notes.md <<EOF
           Released to NPM as $PACKAGE_NAME@$PACKAGE_VERSION
 
@@ -293,9 +296,19 @@ jobs:
               echo "- SWI-Prolog installed and available in PATH" >> release_notes.md
             fi
 
+            # Add changelog link
+            cat >> release_notes.md <<EOF
+
+          ## Changes
+
+          See [CHANGELOG.md](https://github.com/vpursuit/model-context-lab/blob/main/CHANGELOG.md) for full details.
+          EOF
+
+            # Create release with auto-generated notes
             gh release create "$TAG" \
               --title "Release $TAG" \
-              --notes-file release_notes.md
+              --notes-file release_notes.md \
+              --generate-notes
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
