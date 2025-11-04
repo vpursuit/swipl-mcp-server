@@ -223,7 +223,7 @@ cd model-context-lab
 
 # Review source code before building
 cat README.md
-cat products/swipl-mcp-server/SECURITY.md
+cat SECURITY.md
 
 # Install and build
 npm install

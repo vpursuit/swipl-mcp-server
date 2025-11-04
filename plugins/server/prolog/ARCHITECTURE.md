@@ -1,5 +1,7 @@
 # mcp-prolog Architecture
 
+**Note for End Users:** This document contains implementation details for plugin developers. For user-facing architecture documentation, see [SWI-Prolog MCP Server Architecture](../../../products/swipl-mcp-server/docs/architecture.md).
+
 ## Overview
 
 The `mcp-prolog` package implements a secure, sandboxed SWI-Prolog execution environment for MCP servers. The architecture uses a **two-module design** to enforce security boundaries while enabling dynamic library loading for advanced features like CLP(FD).

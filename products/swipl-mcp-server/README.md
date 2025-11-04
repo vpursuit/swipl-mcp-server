@@ -223,8 +223,8 @@ Prompts guide AI assistants to help you with Prolog programming, knowledge base 
 
 **Slash Commands:** In some MCP clients (Claude Code CLI, Gemini), prompts are available as convenient slash commands:
 - Type `/` in the chat to see all available commands and prompts
-- You may see the prompts prefixed by `swipl-`
-- Example: `/swipl-expert` to initialize expert Prolog assistance
+- You may see the prompts prefixed by `swipl-mcp-server-`
+- Example: `/swipl-mcp-server-expert` to initialize expert Prolog assistance
 
 **Client Compatibility (at the time of this writing):**
 - ✅ **Claude Code CLI** - Full prompt support with slash commands
@@ -499,23 +499,18 @@ For security practices, reporting, and hardening guidance, see [SECURITY.md](../
 
 ## Documentation
 
-- **[Installation](#installation)** — Complete setup for all MCP clients (see above)
-- **[Configuration](#configuration)** — Filesystem roots, environment variables
-- **[Troubleshooting](#troubleshooting)** — Common issues and debug mode
-- **[Features Reference](./docs/features.md)** — Detailed prompts, resources, and tools documentation
-- **[Examples](./docs/examples.md)** — Copy-paste usage examples
-- **[Architecture](./docs/architecture.md)** — Components, modes, and wire protocol
-- **[Lifecycle](./docs/lifecycle.md)** — Server lifecycle, state, and persistence patterns
-- **[Deployment](./docs/deployment.md)** — Release, packaging, and install from source
+**[Complete Documentation Index](./docs/README.md)** - Full navigation guide
 
-## Internal Architecture
+**Quick Links:**
+- **[Installation](#installation)** — Complete setup for all MCP clients
+- **[Configuration](./docs/configuration.md)** — Comprehensive configuration reference
+- **[Troubleshooting](#troubleshooting)** — Common issues and solutions
+- **[Features Reference](./docs/features.md)** — Prompts, resources, and tools
+- **[Examples](./docs/examples.md)** — Practical usage examples
+- **[Architecture](./docs/architecture.md)** — System design and internals
+- **[Logging & Debugging](./docs/logging.md)** — Comprehensive debugging guide
+- **[Deployment](./docs/deployment.md)** — Release quick reference
 
-This package bundles three internal plugins (not published separately):
-- **@vpursuit/mcp-server-core** - Plugin system for MCP servers
-- **@vpursuit/mcp-server-prolog** - Prolog integration plugin
-- **@vpursuit/mcp-server-roots** - Filesystem roots management
-
-These components are private to the monorepo and bundled into the main package during the build process.
 
 ## License
 
