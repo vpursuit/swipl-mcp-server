@@ -238,20 +238,23 @@ knowledge_base_load { "filename": "/Users/you/prolog/family.pl" }
 Start a query and iterate through solutions:
 ```json
 query_start { "query": "parent(X, mary)" }
-query_next()  // Get first solution
-query_next()  // Get next solution
+query_next()  // Returns {solution: "X=john", status: "success"}
+query_next()  // Returns {solution: "X=bob", status: "success"}
+query_next()  // Returns {solution: null, status: "done"}
 query_close() // Close when done
 ```
+
+Use the standard iterator pattern - call `query_next()` repeatedly until `status === "done"`.
 
 ### Engine Mode (True Backtracking)
 
 For queries requiring all solutions or complex backtracking:
 ```json
 query_startEngine { "query": "member(X, [1,2,3])" }
-query_next()  // X = 1
-query_next()  // X = 2
-query_next()  // X = 3
-query_next()  // No more solutions
+query_next()  // Returns {solution: "X=1", status: "success"}
+query_next()  // Returns {solution: "X=2", status: "success"}
+query_next()  // Returns {solution: "X=3", status: "success"}
+query_next()  // Returns {solution: null, status: "done"}
 query_close()
 ```
 

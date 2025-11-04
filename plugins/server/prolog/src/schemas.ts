@@ -151,7 +151,7 @@ export const symbolsListOutputSchema = {
 
 export const queryNextOutputSchema = {
   solution: z.string().nullable().describe("The solution or null if no more"),
-  more_solutions: z.boolean().describe("Whether more solutions are available"),
+  status: z.enum(["success", "done"]).describe("Iterator status: 'success' for solution available, 'done' when exhausted"),
   processing_time_ms: z.number(),
 } as const;
 

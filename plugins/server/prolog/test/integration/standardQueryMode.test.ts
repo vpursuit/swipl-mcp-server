@@ -30,7 +30,7 @@ maybeDescribe("Standard Query Mode Tools", () => {
       result = await toolHandlers.queryNext();
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
-      expect(result.content[0].text).toContain("More solutions:");
+      expect(result.content[0].text).toContain("Status:");
 
       // Get second solution
       result = await toolHandlers.queryNext();

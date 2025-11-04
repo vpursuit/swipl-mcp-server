@@ -435,7 +435,7 @@ This tests performance with large data structures.
 ### Query Session Management
 - Always `query_close` queries when done to free resources
 - Use step-by-step retrieval for potentially large result sets
-- Check "more_solutions" flag to know when to stop
+- Use standard iterator pattern: call `query_next()` until `status === "done"`
 
 ### Error Prevention
 - Validate file paths before `knowledge_base_load`

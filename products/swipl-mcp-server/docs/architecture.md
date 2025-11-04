@@ -18,6 +18,7 @@
 - Requests: `cmd(ID, Term)`; Replies: `id(ID, Reply)`.
 - Backward compatible: bare terms accepted; client always envelopes.
 - Reply shapes: `ok`, `done`, `no_more_solutions`, `solution(Bindings)`, `error(Term)`.
+- MCP response format: query_next returns `{solution, status, processing_time_ms}` where status is 'success' or 'done'.
 
 ## Security
 

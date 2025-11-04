@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [3.0.1-beta.8] - 2025-11-04
+
+### BREAKING CHANGES
+
+- **query_next iterator pattern**: Removed `more_solutions` boolean field in favor of standard iterator pattern
+  - Response now uses `status` enum field: `"success"` when solution available, `"done"` when exhausted
+  - Response format: `{solution: string | null, status: "success" | "done", processing_time_ms: number}`
+  - Migration: Replace `if (!result.more_solutions)` with `if (result.status === "done")`
+  - Affects: All code using `query_next` tool responses (both standard and engine modes)
+  - Benefits: Standard iterator pattern familiar to developers, eliminates ambiguity about solution availability
+
+### Documentation
+
+- Updated all examples to demonstrate standard iterator pattern with `status` field checking
+- Enhanced help tool, README files, and feature documentation with iterator usage examples
+
 ## [3.0.1-beta.7] - 2025-11-03
 
 ### Bug Fixes

@@ -343,11 +343,15 @@ Start a new query session using engine mode (true backtracking via SWI-Prolog en
 
 #### `query_next`
 
-Get the next solution from the current query session.
+Get the next solution from the current query session using standard iterator pattern.
 
 **Arguments:** None
 
-**Returns:** Next solution or "No more solutions available" when exhausted.
+**Returns:**
+- When solution available: `{solution: "X=value", status: "success", processing_time_ms: N}`
+- When exhausted: `{solution: null, status: "done", processing_time_ms: N}`
+
+**Usage Pattern:** Call repeatedly until `status === "done"` to iterate through all solutions.
 
 #### `query_close`
 

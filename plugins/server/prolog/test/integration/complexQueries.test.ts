@@ -45,7 +45,7 @@ maybeDescribe("Complex Query Fixes", () => {
         if (!nextResult.isError && nextResult.structuredContent?.solution) {
           solutions.push(nextResult.structuredContent.solution);
         }
-      } while (nextResult.structuredContent?.more_solutions);
+      } while (nextResult.structuredContent?.status !== "done");
 
       expect(solutions).toHaveLength(3);
       expect(solutions).toEqual(
@@ -91,7 +91,7 @@ maybeDescribe("Complex Query Fixes", () => {
         if (!nextResult.isError && nextResult.structuredContent?.solution) {
           solutions.push(nextResult.structuredContent.solution);
         }
-      } while (nextResult.structuredContent?.more_solutions);
+      } while (nextResult.structuredContent?.status !== "done");
 
       expect(solutions.length).toBeGreaterThan(0);
       // Each solution should have X, Y, Z
@@ -242,7 +242,7 @@ maybeDescribe("Complex Query Fixes", () => {
         // If engine creation succeeds, execution should return no solutions (not an error)
         const nextResult = await toolHandlers.queryNext();
         expect(nextResult.isError).toBeFalsy(); // Should not be an error
-        expect(nextResult.structuredContent?.more_solutions).toBe(false); // Should have no more solutions
+        expect(nextResult.structuredContent?.status).toBe("done"); // Should have no more solutions
         await toolHandlers.queryClose();
       }
     });
@@ -290,7 +290,7 @@ maybeDescribe("Complex Query Fixes", () => {
         if (!nextResult.isError && nextResult.structuredContent?.solution) {
           solutions.push(nextResult.structuredContent.solution);
         }
-      } while (nextResult.structuredContent?.more_solutions);
+      } while (nextResult.structuredContent?.status !== "done");
 
       const endTime = Date.now();
 

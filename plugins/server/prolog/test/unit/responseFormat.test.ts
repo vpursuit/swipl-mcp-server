@@ -208,11 +208,11 @@ describe("Response Format Parsing", () => {
       // Simulate the parsing logic from PrologInterface.nextSolution
       const simulateNextSolution = (response: string) => {
         if (response === "no_more_solutions") {
-          return { more_solutions: false };
+          return { solution: null, status: "done" as const };
         }
 
         if (response.startsWith("error(")) {
-          return { error: response, more_solutions: false };
+          return { solution: null, error: response, status: "done" as const };
         }
 
         if (response.startsWith("solution(")) {
@@ -226,33 +226,33 @@ describe("Response Format Parsing", () => {
 
             return {
               solution: formattedBindings || "true",
-              more_solutions: true,
+              status: "success" as const,
             };
           } else {
             return {
               solution: response,
-              more_solutions: true,
+              status: "success" as const,
             };
           }
         }
 
         return {
           solution: response,
-          more_solutions: true,
+          status: "success" as const,
         };
       };
 
       // Test various response types
       const result1 = simulateNextSolution("solution(['X'=john,'Y'=mary])");
       expect(result1.solution).toBe("X=john, Y=mary");
-      expect(result1.more_solutions).toBe(true);
+      expect(result1.status).toBe("success");
 
       const result2 = simulateNextSolution("no_more_solutions");
-      expect(result2.more_solutions).toBe(false);
+      expect(result2.status).toBe("done");
 
       const result3 = simulateNextSolution("error(no_active_query)");
       expect(result3.error).toBe("error(no_active_query)");
-      expect(result3.more_solutions).toBe(false);
+      expect(result3.status).toBe("done");
     });
   });
 });

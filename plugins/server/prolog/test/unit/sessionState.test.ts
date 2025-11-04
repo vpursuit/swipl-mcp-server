@@ -29,7 +29,7 @@ describe("Session state behavior", () => {
     (iface as any).queryActive = false;
     (iface as any).sessionState = "query_completed";
     const res = await iface.nextSolution();
-    expect(res.more_solutions).toBe(false);
+    expect(res.status).toBe("done");
     expect(res.error).toBeUndefined();
   });
 
@@ -40,7 +40,7 @@ describe("Session state behavior", () => {
     (iface as any).engineReachedEOF = true;
     (iface as any).sessionState = "engine_completed";
     const res = await iface.nextEngine();
-    expect(res.more_solutions).toBe(false);
+    expect(res.status).toBe("done");
     expect(res.error).toBeUndefined();
   });
 });

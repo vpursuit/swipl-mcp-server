@@ -55,7 +55,7 @@ maybeDescribe("Engine Tool Handlers", () => {
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
-      expect(result.content[0].text).toContain("More solutions:");
+      expect(result.content[0].text).toContain("Status:");
     });
 
     test("should handle no active engine", async () => {

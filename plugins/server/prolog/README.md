@@ -103,9 +103,14 @@ await toolHandlers.knowledge_base_assert({ fact: 'parent(john, mary)' });
 // Start query
 await toolHandlers.query_start({ query: 'parent(X, mary)' });
 
-// Get solutions
-await toolHandlers.query_next(); // First solution
-await toolHandlers.query_next(); // Next solution
+// Iterate through solutions using standard iterator pattern
+let result;
+do {
+  result = await toolHandlers.query_next();
+  if (result.structuredContent?.status === 'success') {
+    console.log(result.structuredContent.solution);
+  }
+} while (result.structuredContent?.status !== 'done');
 
 // Close query
 await toolHandlers.query_close();
@@ -117,11 +122,14 @@ await toolHandlers.query_close();
 // Start engine query
 await toolHandlers.query_startEngine({ query: 'member(X, [1,2,3])' });
 
-// Iterate through all solutions
-await toolHandlers.query_next(); // X = 1
-await toolHandlers.query_next(); // X = 2
-await toolHandlers.query_next(); // X = 3
-await toolHandlers.query_next(); // No more solutions
+// Iterate using standard iterator pattern
+let result;
+do {
+  result = await toolHandlers.query_next();
+  if (result.structuredContent?.status === 'success') {
+    console.log(result.structuredContent.solution); // X=1, X=2, X=3
+  }
+} while (result.structuredContent?.status !== 'done');
 
 await toolHandlers.query_close();
 ```
