@@ -10,7 +10,7 @@
 
 > 🔒 **Supply Chain Security**: This package is published with [npm provenance attestation](https://docs.npmjs.com/generating-provenance-statements), providing cryptographic proof of build integrity and source verification. Look for the ✓ badge on [npm](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server).
 
-An MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It supports loading Prolog files, adding/removing facts and rules, listing symbols, and running queries with two modes: deterministic pagination and true engine backtracking.
+A MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It supports loading Prolog files, adding/removing facts and rules, listing symbols, and running queries with two modes: deterministic pagination and true engine backtracking.
 
 ## Table of Contents
 
@@ -19,8 +19,8 @@ An MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It s
   - [Claude Code CLI](#claude-code-cli)
   - [Claude Desktop](#claude-desktop)
   - [Cline (VS Code Extension)](#cline-vs-code-extension)
-  - [Codex](#codex)
-  - [Gemini](#gemini)
+  - [Codex CLI](#codex-cli)
+  - [Gemini CLI](#gemini-cli)
   - [MCP Inspector (for testing)](#mcp-inspector-for-testing)
   - [Development Setup](#development-setup)
 - [Configuration](#configuration)
@@ -104,7 +104,7 @@ claude mcp list
 ```
 Configure via Cline's MCP settings in VS Code.
 
-### Codex
+### Codex CLI
 ```toml
 [mcp_servers.swipl-mcp-server]
 transport = "stdio"
@@ -114,7 +114,7 @@ args = ["@vpursuit/swipl-mcp-server"]
 ```
 Add to `~/.codex/config.toml`
 
-### Gemini
+### Gemini CLI
 ```json
 {
   "mcpServers": {
@@ -223,19 +223,25 @@ Prompts guide AI assistants to help you with Prolog programming, knowledge base 
 
 **Slash Commands:** In some MCP clients (Claude Code CLI, Gemini), prompts are available as convenient slash commands:
 - Type `/` in the chat to see all available commands and prompts
-- Type `/swipl` to see all SWI-Prolog prompts
-- Example: `/expert` to initialize expert Prolog assistance
+- You may see the prompts prefixed by `swipl-`
+- Example: `/swipl-expert` to initialize expert Prolog assistance
 
 **Client Compatibility (at the time of this writing):**
 - ✅ **Claude Code CLI** - Full prompt support with slash commands
-- ✅ **Gemini** - Full prompt support with slash commands
-- ❌ **Codex** - Does not currently support prompts
+- ✅ **Gemini CLI** - Full prompt support with slash commands
+- ❌ **Codex CLI** - Does not currently support prompts
 
 Available prompts:
-- **`expert`** - Expert guidance (mode: 'expert') or comprehensive server reference (mode: 'reference')
-- **`knowledge`** - Build (mode: 'build') or analyze (mode: 'analyze') knowledge bases with guided construction
-- **`optimize`** - Optimize Prolog queries for performance and efficiency
+- **`expert`** - Expert guidance with optional task focus
+  - `task` (optional): Specific task to focus expert setup
+  - `mode` (optional): 'expert' (default) for guidance, 'reference' for complete overview
+- **`knowledge`** - Build or analyze knowledge bases
+  - `domain` (optional): Domain to model (required when mode='build')
+  - `mode` (optional): 'build' (default) to create KB, 'analyze' to examine existing KB
+- **`optimize`** - Optimize Prolog queries for performance
+  - `query` (required): The Prolog query to analyze and optimize
 - **`puzzle`** - Solve logic puzzles using constraint programming
+  - `puzzle` (optional): The logic puzzle to solve with numbered clues. If empty, agent chooses an interesting puzzle
 
 ### MCP Resources
 Dynamic and static resources for knowledge base access:

@@ -10,7 +10,7 @@ This monorepo contains Model Context Protocol (MCP) packages and products that e
 
 **Full-featured MCP server with Prolog knowledge base integration**
 
-An MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It supports loading Prolog files, adding/removing facts and rules, listing symbols, and running queries with two modes: deterministic pagination and true engine backtracking.
+A MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It supports loading Prolog files, adding/removing facts and rules, listing symbols, and running queries with two modes: deterministic pagination and true engine backtracking.
 
 - 📦 **NPM**: [`@vpursuit/swipl-mcp-server`](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server)
 - 📖 **Documentation**: [products/swipl-mcp-server](./products/swipl-mcp-server)
@@ -19,7 +19,7 @@ An MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It s
 **Features:**
 - Knowledge base management (load, assert, retract, dump)
 - Two query modes: standard (`call_nth/2`) and engine (true backtracking)
-- Expert Prolog assistance prompts
+- Expert Prolog assistance prompts (e.g. solving logic puzzles)
 - Comprehensive security sandboxing
 - Dynamic filesystem roots
 - Plugin-based architecture
