@@ -28,120 +28,25 @@ export interface PrologPrompt {
 }
 
 export const prologPrompts: Record<string, PrologPrompt> = {
-  // Initialize expert mode (optionally focused on a task)
-  initExpert: {
-    name: "prolog_init_expert",
-    title: "Initialize Expert Context",
-    description: "Set up expert context; optionally focus on a specific task",
+  // Expert guidance and reference (merged initExpert + quickReference)
+  expert: {
+    name: "expert",
+    title: "Expert Guidance",
+    description: "Get expert Prolog guidance or comprehensive server reference",
     arguments: [
-      { name: "task", description: "Optional task to focus expert setup and reasoning", required: false },
+      { name: "task", description: "Optional task to focus expert setup", required: false },
+      { name: "mode", description: "Mode: 'expert' (default) for guidance, 'reference' for complete overview", required: false },
     ],
-    messages: (args = {}) => [
-      {
-        role: "user",
-        content: {
-          type: "text",
-          text: `You are a Prolog and logic programming expert.${args.task ? ` Focus on this task: ${args.task}` : ''}
+    messages: (args = {}) => {
+      const mode = args.mode || "expert";
 
-Recommended first step — Discovery:
-1. List all available resources to understand the server
-2. Read the 'capabilities' resource (reference://capabilities) for server features and security
-3. Read the 'help' resource (reference://help) for comprehensive usage guidelines
-4. Check 'knowledge-base-predicates' resource (prolog://knowledge_base/predicates) for current knowledge base predicates
-5. Review 'knowledge-base-dump' resource (prolog://knowledge_base/dump) for full knowledge base content
-
-EXPERT KNOWLEDGE - You are an expert in:
-- SWI-Prolog syntax: facts, rules, queries, unification, DCGs
-- Logic programming paradigms and best practices
-- Knowledge representation and automated reasoning
-- Query optimization: cuts, indexing, goal ordering
-- Debugging: trace/spy, deterministic vs non-deterministic predicates
-- Built-in predicates: findall/3, bagof/3, setof/3, member/2, append/3, between/3, permutation/2
-
-IMPORTANT - AVAILABLE PREDICATES:
-- All standard SWI-Prolog predicates are available
-- library(clpfd) available: Constraint Logic Programming over Finite Domains
-- Load with :- use_module(library(clpfd)) in .pl files
-- Standard alternatives also work: between/3 for domains, is/2 for arithmetic, permutation/2 for uniqueness
-- Both constraint propagation (CLP(FD)) and generate-and-test patterns supported
-- Check 'capabilities' resource for full details
-
-SECURITY AWARENESS (from capabilities resource):
-- File operations restricted to ~/.model-context-lab/
-- Dangerous predicates blocked: shell(), system(), call(), halt()
-- Use only safe predicates in knowledge_base module
-- All queries executed in sandboxed environment
-
-EFFICIENT TOOL USAGE (token‑aware):
-- Use knowledge_base_assert_many for batch fact loading (more efficient than single assertions)
-- Prefer query_startEngine for complex queries with backtracking
-- Check symbols_list to see available predicates before defining new ones
-- Use knowledge_base_dump to export and verify knowledge base state
-- Validate file paths before knowledge_base_load operations
-\nToken hygiene: prefer summarizing resources (e.g. list predicates, skim dump headers) and quote only minimal snippets.
-
-Always check resources first for context, then use tools based on discovered capabilities.`
-        }
-      }
-    ]
-  },
-
-  // Knowledge base analysis - uses resources
-  analyzeKnowledgeBase: {
-    name: "prolog_analyze_knowledge_base",
-    title: "Analyze Knowledge Base",
-    description: "Analyze the current Prolog knowledge base using resources and provide insights",
-    arguments: [],
-    messages: () => [
-      {
-        role: "user",
-        content: {
-          type: "text",
-          text: `Analyze the current Prolog knowledge base comprehensively:
-
-STEP 1 - Resource Discovery:
-First, read these resources to understand the current state:
-- 'knowledge-base-predicates' resource: See what predicates are currently defined
-- 'knowledge-base-dump' resource: Review all facts and rules in detail
-- 'capabilities' resource: Understand security constraints and features
-
-STEP 2 - Analysis:
-Based on the resource content, analyze:
-- What domains/concepts are modeled in the current KB?
-- What base facts exist and how are they structured?
-- What inference rules are defined and their logical relationships?
-- Are there recursive predicates? Are they well-formed with proper base cases?
-- What built-in predicates are being used effectively?
-- Are there any performance optimization opportunities?
-
-STEP 3 - Recommendations:
-Suggest improvements based on Prolog best practices:
-- Missing predicates that would be useful for the domain
-- Optimization opportunities (goal ordering, cuts, indexing)
-- Additional facts or rules that would enhance reasoning
-- Query patterns that would be most effective
-
-STEP 4 - Example Queries:
-Provide example queries that demonstrate the KB's capabilities and suggest new ones to try.`
-        }
-      }
-    ]
-  },
-
-  // expertReasoning removed — merged into initExpert via optional 'task'
-
-  // Quick reference prompt
-  quickReference: {
-    name: "prolog_quick_reference",
-    title: "Quick Reference Guide",
-    description: "Get a comprehensive overview of all server resources, tools, and capabilities",
-    arguments: [],
-    messages: () => [
-      {
-        role: "user",
-        content: {
-          type: "text",
-          text: `Provide a comprehensive quick reference guide for this Prolog server:
+      if (mode === "reference") {
+        return [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Provide a comprehensive quick reference guide for this Prolog server:
 
 PHASE 1 - Resource Discovery:
 List all available resources and read each one completely:
@@ -182,34 +87,120 @@ After reading all resources, provide:
    - Security do's and don'ts
 
 6. PREDICATE AVAILABILITY:
-   - Confirm all standard SWI-Prolog predicates are available
-   - Note that CLP(FD) library(clpfd) is NOT available
+   - All standard SWI-Prolog predicates are available
+   - library(clpfd) is available
    - List standard alternatives for constraint problems
 
 This will serve as a complete orientation to the server's capabilities.`
-        }
+            }
+          }
+        ];
       }
-    ]
+
+      // Default: expert mode
+      return [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `You are a Prolog and logic programming expert.${args.task ? ` Focus on this task: ${args.task}` : ''}
+
+Recommended first step — Discovery:
+1. List all available resources to understand the server
+2. Read the 'capabilities' resource (reference://capabilities) for server features and security
+3. Read the 'help' resource (reference://help) for comprehensive usage guidelines
+4. Check 'knowledge-base-predicates' resource (prolog://knowledge_base/predicates) for current knowledge base predicates
+5. Review 'knowledge-base-dump' resource (prolog://knowledge_base/dump) for full knowledge base content
+
+EXPERT KNOWLEDGE - You are an expert in:
+- SWI-Prolog syntax: facts, rules, queries, unification, DCGs
+- Logic programming paradigms and best practices
+- Knowledge representation and automated reasoning
+- Query optimization: cuts, indexing, goal ordering
+- Debugging: trace/spy, deterministic vs non-deterministic predicates
+- Built-in predicates: findall/3, bagof/3, setof/3, member/2, append/3, between/3, permutation/2
+
+IMPORTANT - AVAILABLE PREDICATES:
+- All standard SWI-Prolog predicates are available
+- library(clpfd) is available
+
+SECURITY AWARENESS (from capabilities resource):
+- File operations restricted to ~/.model-context-lab/
+- Dangerous predicates blocked: shell(), system(), call(), halt()
+- Use only safe predicates in knowledge_base module
+- All queries executed in sandboxed environment
+
+EFFICIENT TOOL USAGE (token‑aware):
+- Use knowledge_base_assert_many for batch fact loading (more efficient than single assertions)
+- Prefer query_startEngine for complex queries with backtracking
+- Check symbols_list to see available predicates before defining new ones
+- Use knowledge_base_dump to export and verify knowledge base state
+- Validate file paths before knowledge_base_load operations
+\nToken hygiene: prefer summarizing resources (e.g. list predicates, skim dump headers) and quote only minimal snippets.
+
+Always check resources first for context, then use tools based on discovered capabilities.`
+          }
+        }
+      ];
+    }
   },
 
-  // Knowledge base builder with resource awareness
-  knowledgeBaseBuilder: {
-    name: "prolog_knowledge_base_builder",
-    title: "Build Knowledge Base",
-    description: "Build a comprehensive knowledge base for a domain using server resources",
+  // Knowledge base operations (merged builder + analyzer)
+  knowledge: {
+    name: "knowledge",
+    title: "Knowledge Base Operations",
+    description: "Build or analyze knowledge bases with expert guidance",
     arguments: [
-      {
-        name: "domain",
-        description: "The domain to model (e.g., family relationships, expert system, planning)",
-        required: true
-      }
+      { name: "domain", description: "Domain to model (required when mode='build')", required: false },
+      { name: "mode", description: "Mode: 'build' (default) to create KB, 'analyze' to examine existing KB", required: false },
     ],
-    messages: (args = {}) => [
-      {
-        role: "user",
-        content: {
-          type: "text",
-          text: `Build a comprehensive Prolog knowledge base for domain: ${args.domain || '[Please specify a domain to model]'}
+    messages: (args = {}) => {
+      const mode = args.mode || "build";
+
+      if (mode === "analyze") {
+        return [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `Analyze the current Prolog knowledge base comprehensively:
+
+STEP 1 - Resource Discovery:
+First, read these resources to understand the current state:
+- 'knowledge-base-predicates' resource: See what predicates are currently defined
+- 'knowledge-base-dump' resource: Review all facts and rules in detail
+- 'capabilities' resource: Understand security constraints and features
+
+STEP 2 - Analysis:
+Based on the resource content, analyze:
+- What domains/concepts are modeled in the current KB?
+- What base facts exist and how are they structured?
+- What inference rules are defined and their logical relationships?
+- Are there recursive predicates? Are they well-formed with proper base cases?
+- What built-in predicates are being used effectively?
+- Are there any performance optimization opportunities?
+
+STEP 3 - Recommendations:
+Suggest improvements based on Prolog best practices:
+- Missing predicates that would be useful for the domain
+- Optimization opportunities (goal ordering, cuts, indexing)
+- Additional facts or rules that would enhance reasoning
+- Query patterns that would be most effective
+
+STEP 4 - Example Queries:
+Provide example queries that demonstrate the KB's capabilities and suggest new ones to try.`
+            }
+          }
+        ];
+      }
+
+      // Default: build mode
+      return [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Build a comprehensive Prolog knowledge base for domain: ${args.domain || '[Please specify a domain to model]'}
 
 PREPARATION PHASE:
 1. Read 'capabilities' resource: Understand security constraints and available features
@@ -218,10 +209,8 @@ PREPARATION PHASE:
 4. Read 'help' resource: Get guidance on best practices
 
 IMPORTANT - Predicate Availability:
-- All standard SWI-Prolog predicates are available (member/2, append/3, between/3, etc.)
-- library(clpfd) available: Load with :- use_module(library(clpfd)) for constraint programming
-- Standard alternatives: between/3, is/2, permutation/2 for generate-and-test pattern
-- Choose approach based on problem size: CLP(FD) for complex constraints, standard predicates for simpler cases
+- All standard SWI-Prolog predicates are available
+- library(clpfd) is available
 
 DESIGN PHASE:
 1. Domain Analysis:
@@ -271,14 +260,15 @@ VALIDATION PHASE:
    - Provide example queries
 
 Create a robust, well-structured knowledge base following Prolog best practices.`
+          }
         }
-      }
-    ]
+      ];
+    }
   },
 
-  // Query optimization expert
-  queryOptimizer: {
-    name: "prolog_query_optimizer",
+  // Query optimization (renamed from queryOptimizer)
+  optimize: {
+    name: "optimize",
     title: "Optimize Query",
     description: "Optimize Prolog queries for maximum performance and correctness",
     arguments: [
@@ -302,10 +292,8 @@ First, check the current knowledge base state:
 3. Check 'capabilities' resource: Understand system constraints
 
 IMPORTANT - Predicate Availability:
-- All standard SWI-Prolog predicates are available for optimization
-- library(clpfd) available: Load with :- use_module(library(clpfd)) for constraint optimization
-- Standard alternatives: between/3 for domain generation, is/2 for arithmetic, permutation/2 for uniqueness
-- Consider both constraint propagation (CLP(FD)) and generate-and-test patterns based on problem characteristics
+- All standard SWI-Prolog predicates are available
+- library(clpfd) is available
 
 OPTIMIZATION STRATEGY:
 1. Goal Ordering Analysis:
@@ -355,11 +343,11 @@ Provide the optimized query with detailed explanations of each optimization deci
     ]
   },
 
-  // Logic puzzle solver using CLP(FD)
-  logicPuzzleSolver: {
-    name: "prolog_logic_puzzle_solver",
+  // Logic puzzle solver (renamed from logicPuzzleSolver)
+  puzzle: {
+    name: "puzzle",
     title: "Solve Logic Puzzle",
-    description: "Solve logic puzzles using the server's CLP(FD) capabilities and tools",
+    description: "Solve logic puzzles using Prolog and constraint programming",
     arguments: [
       {
         name: "puzzle",
@@ -372,10 +360,10 @@ Provide the optimized query with detailed explanations of each optimization deci
         role: "user",
         content: {
           type: "text",
-          text: `You are a Prolog expert with access to a SWI-Prolog MCP server. Solve the following logic puzzle using the server's CLP(FD) capabilities.
+          text: `You are a Prolog expert with access to a SWI-Prolog MCP server. Solve the following logic puzzle using constraint programming.
 
 PREPARATION:
-If you have access to the 'capabilities' tool and haven't checked it yet, read it first to understand available CLP(FD) features and server constraints.
+If you have access to the 'capabilities' tool and haven't checked it yet, read it first to understand available features and server constraints.
 
 ${args.puzzle ? `PUZZLE:\n${args.puzzle}` : `PUZZLE:\nChoose an interesting logic puzzle (e.g., Zebra puzzle, Einstein's riddle, or similar constraint problem). State the puzzle clearly with numbered clues.`}
 

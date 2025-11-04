@@ -30,9 +30,10 @@ export interface PathValidationResult {
  * - Discovery of roots from MCP client via listRoots()
  * - Caching with 5-minute TTL for performance
  * - Notification-based cache invalidation (when client supports roots/list_changed)
- * - Fallback to ~/.swipl-mcp-server when roots unavailable
+ * - Environment variable configuration (SWI_MCP_ALLOWED_ROOTS)
  * - Path validation against allowed roots
  * - System directory blocking for security
+ * - Secure by default (explicit configuration required)
  *
  * Cache Strategy:
  * - Always uses 5-minute cache TTL (protects against excessive MCP calls)

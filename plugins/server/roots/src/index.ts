@@ -17,9 +17,10 @@ export { serverRef, logger } from "./logger.js";
  *
  * Provides dynamic filesystem root discovery with:
  * - Client-provided roots via MCP protocol
- * - Fallback to ~/.swipl-mcp-server
+ * - Environment variable configuration (SWI_MCP_ALLOWED_ROOTS)
  * - Path validation and security checks
  * - Root change notifications
+ * - Secure by default (explicit configuration required)
  */
 export const plugin: Plugin = {
   name: "mcp-roots",

@@ -5,7 +5,7 @@ Thanks for your interest in improving the SWI‑Prolog MCP Server! This guide co
 
 Prerequisites
 -------------
-- Node.js ≥ 18
+- Node.js ≥ 20.0.0
 - SWI‑Prolog installed and on PATH (run: swipl --version)
 - macOS/Linux recommended (Windows WSL works too)
 

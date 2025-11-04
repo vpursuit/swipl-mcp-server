@@ -139,15 +139,14 @@ export function getCapabilitiesSummary(): CapabilitiesSummary {
     },
     prompts: {
       expert_guidance: [
-        "prolog_init_expert",
-        "prolog_query_optimizer"
+        "expert",
+        "optimize"
       ],
       knowledge_base: [
-        "prolog_analyze_knowledge_base",
-        "prolog_knowledge_base_builder"
+        "knowledge"
       ],
-      orientation: [
-        "prolog_quick_reference"
+      problem_solving: [
+        "puzzle"
       ]
     },
     security: {
@@ -293,25 +292,26 @@ export const tools: ToolDefinitions = {
         ],
         prompts: [
           "Expert Prompts (Start Here!):",
-          "- prolog_init_expert: Initialize as Prolog expert (recommended first step)",
-          "  Sets you up with full context from resources and expert knowledge",
-          "- prolog_quick_reference: Get complete server overview and capabilities",
-          "- prolog_analyze_knowledge_base: Analyze current knowledge base using resources",
-          "- prolog_init_expert (with task): Expert reasoning for specific tasks",
-          "- prolog_knowledge_base_builder: Build knowledge bases following best practices",
-          "- prolog_query_optimizer: Optimize queries for performance",
+          "- expert: Expert guidance (mode='expert') or server reference (mode='reference')",
+          "  Recommended first step - sets up full context from resources",
+          "- knowledge: Build (mode='build') or analyze (mode='analyze') knowledge bases",
+          "  Provides step-by-step guidance for KB operations",
+          "- optimize: Optimize Prolog queries for performance",
+          "  Analyzes and improves query efficiency",
+          "- puzzle: Solve logic puzzles using constraint programming",
+          "  Direct approach for puzzle solving with CLP(FD)",
           "",
           "Prompt Usage Pattern:",
-          "1. Start with prolog_init_expert to become Prolog expert",
-          "2. The prompt will guide you to read all resources first for context",
+          "1. Start with 'expert' to initialize as Prolog expert",
+          "2. The prompt guides you to read all resources first for context",
           "3. Then use tools efficiently based on discovered capabilities",
-          "4. Use specialized prompts for specific tasks as needed",
+          "4. Use specialized prompts (knowledge, optimize, puzzle) for specific tasks",
         ],
         available_predicates: [
           "Available Predicates:",
           "- All standard SWI-Prolog built-in predicates are available",
           "- Safe libraries can be loaded via :- use_module(library(...)) directives",
-          "- library(clpfd) available: Constraint Logic Programming over Finite Domains",
+          "- library(clpfd) is available",
           "- Other safe libraries: lists, apply, aggregate, assoc, pairs, ordsets, clpb, and more",
           "- See SECURITY.md for complete list of allowed libraries",
           "- Load libraries in Prolog files before loading into knowledge base",

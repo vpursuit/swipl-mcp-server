@@ -8,7 +8,7 @@
 
 `@vpursuit/mcp-server-roots` provides secure, dynamic filesystem access control for MCP servers through:
 - Client-provided roots via MCP protocol
-- Automatic fallback to `~/.swipl-mcp-server`
+- Environment variable configuration (`SWI_MCP_ALLOWED_ROOTS`)
 - Path validation and security checks
 - Root change notifications
 - System directory blocking
@@ -67,16 +67,19 @@ if (result.allowed) {
 
 ### Root Discovery
 
+**Explicit configuration required** - file operations are disabled by default for security.
+
 1. **MCP Client Roots**: Discovers roots via `server.listRoots()` (requires MCP SDK 1.18+)
-2. **Environment Override**: Set `SWI_MCP_ALLOWED_ROOTS` (comma-separated paths)
-3. **Fallback Directory**: `~/.swipl-mcp-server` when no roots available
+2. **Environment Variable**: Set `SWI_MCP_ALLOWED_ROOTS` (comma-separated absolute paths)
+
+**Note:** No automatic fallback directory. Root configuration is mandatory for file operations.
 
 ### Security
 
+- **Secure by Default**: File operations disabled without explicit root configuration
 - **System Directory Blocking**: Automatically blocks `/etc`, `/usr`, `/bin`, etc.
 - **Path Validation**: All paths validated against allowed roots
-- **No Parent Traversal**: Blocks `..` in relative paths from fallback directory
-- **Strict Mode**: Set `SWI_MCP_STRICT_ROOTS=true` to block fallback directory
+- **No Parent Traversal**: Blocks `..` in relative paths
 
 ### Caching & Notifications
 
@@ -89,8 +92,6 @@ if (result.allowed) {
 ### Environment Variables
 
 - `SWI_MCP_ALLOWED_ROOTS`: Comma-separated list of allowed root paths (overrides client roots)
-- `SWI_MCP_STRICT_ROOTS`: Set to `"true"` to disable fallback directory
-- `SWI_MCP_USE_LEGACY_DIR`: Set to `"true"` to force use of fallback directory
 - `DEBUG`: Set to `"mcp-roots"` for debug logging
 
 ## API Reference
@@ -105,7 +106,6 @@ if (result.allowed) {
 - `getRoots()`: Get all discovered roots
 - `validatePath(filePath)`: Validate if path is allowed
 - `invalidateCache()`: Force cache refresh
-- `getFallbackDir()`: Get fallback directory path
 
 ### Types
 

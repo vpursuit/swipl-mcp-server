@@ -43,7 +43,7 @@ export interface CapabilitiesSummary {
   prompts: {
     expert_guidance: readonly string[];
     knowledge_base: readonly string[];
-    orientation: readonly string[];
+    problem_solving: readonly string[];
   };
   security: {
     module: string;

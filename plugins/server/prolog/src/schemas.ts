@@ -115,7 +115,7 @@ export const capabilitiesOutputSchema = {
   prompts: z.object({
     expert_guidance: z.array(z.string()),
     knowledge_base: z.array(z.string()),
-    orientation: z.array(z.string()),
+    problem_solving: z.array(z.string()),
   }),
   security: z.object({
     module: z.string(),
@@ -156,23 +156,21 @@ export const queryNextOutputSchema = {
 } as const;
 
 // Prompt schemas (raw shapes for direct use with MCP SDK)
-export const prologInitExpertSchema = {
-  task: z.string().optional().describe("Optional task to focus expert setup and reasoning"),
+export const expertSchema = {
+  task: z.string().optional().describe("Optional task to focus expert setup"),
+  mode: z.enum(["expert", "reference"]).optional().describe("Mode: 'expert' (default) for guidance, 'reference' for complete overview"),
 } as const;
 
-export const prologQuickReferenceSchema = {} as const;
-
-export const prologAnalyzeKnowledgeBaseSchema = {} as const;
-
-export const prologKnowledgeBaseBuilderSchema = {
-  domain: z.string().describe("The domain to model (e.g., family relationships, expert system, planning)"),
+export const knowledgeSchema = {
+  domain: z.string().optional().describe("Domain to model (required when mode='build')"),
+  mode: z.enum(["build", "analyze"]).optional().describe("Mode: 'build' (default) to create KB, 'analyze' to examine existing KB"),
 } as const;
 
-export const prologQueryOptimizerSchema = {
+export const optimizeSchema = {
   query: z.string().describe("The Prolog query to analyze and optimize"),
 } as const;
 
-export const prologLogicPuzzleSolverSchema = {
+export const puzzleSchema = {
   puzzle: z.string().optional().describe("The logic puzzle to solve (with numbered clues). If empty, agent chooses an interesting puzzle."),
 } as const;
 
@@ -197,12 +195,10 @@ export const zodSchemas = {
   knowledgeBaseLoadLibrary: knowledgeBaseLoadLibrarySchema,
   capabilities: capabilitiesSchema,
   license: licenseSchema,
-  prologInitExpert: prologInitExpertSchema,
-  prologQuickReference: prologQuickReferenceSchema,
-  prologAnalyzeKnowledgeBase: prologAnalyzeKnowledgeBaseSchema,
-  prologKnowledgeBaseBuilder: prologKnowledgeBaseBuilderSchema,
-  prologQueryOptimizer: prologQueryOptimizerSchema,
-  prologLogicPuzzleSolver: prologLogicPuzzleSolverSchema,
+  expert: expertSchema,
+  knowledge: knowledgeSchema,
+  optimize: optimizeSchema,
+  puzzle: puzzleSchema,
 } as const;
 
 /**
@@ -227,10 +223,8 @@ export const jsonSchemas = {
   knowledgeBaseLoadLibrary: zodToJsonSchema(z.object(knowledgeBaseLoadLibrarySchema)),
   capabilities: zodToJsonSchema(z.object(capabilitiesSchema)),
   license: zodToJsonSchema(z.object(licenseSchema)),
-  prologInitExpert: zodToJsonSchema(z.object(prologInitExpertSchema)),
-  prologQuickReference: zodToJsonSchema(z.object(prologQuickReferenceSchema)),
-  prologAnalyzeKnowledgeBase: zodToJsonSchema(z.object(prologAnalyzeKnowledgeBaseSchema)),
-  prologKnowledgeBaseBuilder: zodToJsonSchema(z.object(prologKnowledgeBaseBuilderSchema)),
-  prologQueryOptimizer: zodToJsonSchema(z.object(prologQueryOptimizerSchema)),
-  prologLogicPuzzleSolver: zodToJsonSchema(z.object(prologLogicPuzzleSolverSchema)),
+  expert: zodToJsonSchema(z.object(expertSchema)),
+  knowledge: zodToJsonSchema(z.object(knowledgeSchema)),
+  optimize: zodToJsonSchema(z.object(optimizeSchema)),
+  puzzle: zodToJsonSchema(z.object(puzzleSchema)),
 } as const;

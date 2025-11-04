@@ -4,71 +4,58 @@ Complete reference for all SWI-Prolog MCP Server features including prompts, res
 
 ## MCP Prompts
 
-The server provides 5 expert Prolog assistance prompts that follow a resource-first approach, guiding AI agents to discover and use server capabilities efficiently.
+The server provides 4 expert Prolog assistance prompts that follow a resource-first approach, guiding AI agents to discover and use server capabilities efficiently.
 
 ### Slash Command Access
 
-In Claude Code CLI and Codex, these prompts are available as convenient slash commands. Simply type `/swipl` to see all available commands:
+In some MCP clients like Claude Code CLI and Codex, these prompts are available as convenient slash commands. This provides an intuitive way to access expert Prolog assistance without having to remember exact prompt names or syntax.
 
-![SWI-Prolog slash commands in Claude Code CLI](../images/swipl-slash-commands.png)
+### `expert`
 
-This provides an intuitive way to access expert Prolog assistance without having to remember exact prompt names or syntax.
-
-### `prolog_init_expert`
-
-Initialize expert Prolog assistance mode with comprehensive knowledge and optional task focus.
+Expert guidance and comprehensive server reference.
 
 **Arguments:**
-- `task` (optional, string) - Specific task to focus expert setup and reasoning
+- `task` (optional, string) - Specific task to focus expert setup
+- `mode` (optional, string) - Mode: 'expert' (default) for guidance, 'reference' for complete overview
 
 **Purpose:**
-Establishes expert context with comprehensive Prolog knowledge covering:
+When mode='expert', establishes expert context with comprehensive Prolog knowledge covering:
 - SWI-Prolog syntax, unification, and DCGs
 - Logic programming paradigms and best practices
 - Built-in predicates and meta-programming
 - Query optimization techniques
 - Security awareness of server constraints
 
+When mode='reference', provides complete server overview and capabilities orientation.
+
 **Example Usage:**
 ```json
 {
-  "name": "prolog_init_expert",
+  "name": "expert",
   "arguments": {
-    "task": "family relationship modeling"
+    "task": "family relationship modeling",
+    "mode": "expert"
   }
 }
 ```
 
-### `prolog_quick_reference`
+### `knowledge`
 
-Get comprehensive server overview and capabilities orientation.
+Build or analyze knowledge bases with expert guidance.
 
-**Arguments:** None
-
-**Purpose:**
-Provides complete guidance on:
-- Available tools and their usage patterns
-- Security model and file restrictions
-- Session state management
-- Resource discovery and access
-- Best practices for token-efficient interaction
-
-**Example Usage:**
-```json
-{
-  "name": "prolog_quick_reference",
-  "arguments": {}
-}
-```
-
-### `prolog_analyze_knowledge_base`
-
-Analyze current knowledge base state and structure using available resources.
-
-**Arguments:** None
+**Arguments:**
+- `domain` (optional, string) - Domain to model (required when mode='build')
+- `mode` (optional, string) - Mode: 'build' (default) to create KB, 'analyze' to examine existing KB
 
 **Purpose:**
-Performs comprehensive analysis of:
+When mode='build', guides systematic knowledge base construction:
+- Domain modeling best practices
+- Predicate design patterns
+- Fact and rule organization
+- Testing and validation strategies
+- Documentation and maintainability
+
+When mode='analyze', performs comprehensive analysis of:
 - Current predicates and their relationships
 - Knowledge base structure and dependencies
 - Data integrity and consistency
@@ -78,37 +65,15 @@ Performs comprehensive analysis of:
 **Example Usage:**
 ```json
 {
-  "name": "prolog_analyze_knowledge_base",
-  "arguments": {}
-}
-```
-
-### `prolog_knowledge_base_builder`
-
-Build domain-specific knowledge bases with guided construction.
-
-**Arguments:**
-- `domain` (required, string) - Domain to model (e.g., "family relationships", "expert system")
-
-**Purpose:**
-Guides systematic knowledge base construction:
-- Domain modeling best practices
-- Predicate design patterns
-- Fact and rule organization
-- Testing and validation strategies
-- Documentation and maintainability
-
-**Example Usage:**
-```json
-{
-  "name": "prolog_knowledge_base_builder",
+  "name": "knowledge",
   "arguments": {
-    "domain": "medical diagnosis expert system"
+    "domain": "medical diagnosis expert system",
+    "mode": "build"
   }
 }
 ```
 
-### `prolog_query_optimizer`
+### `optimize`
 
 Optimize Prolog queries for performance and efficiency.
 
@@ -126,9 +91,33 @@ Expert query optimization covering:
 **Example Usage:**
 ```json
 {
-  "name": "prolog_query_optimizer",
+  "name": "optimize",
   "arguments": {
     "query": "ancestor(X, Y) :- parent(X, Y). ancestor(X, Z) :- parent(X, Y), ancestor(Y, Z)."
+  }
+}
+```
+
+### `puzzle`
+
+Solve logic puzzles using Prolog and constraint programming.
+
+**Arguments:**
+- `puzzle` (optional, string) - Logic puzzle to solve with numbered clues. If empty, agent chooses an interesting puzzle.
+
+**Purpose:**
+Direct problem-solving approach for logic puzzles using:
+- Constraint programming with library(clpfd)
+- Systematic encoding of puzzle constraints
+- Solution finding and verification
+- Step-by-step explanation
+
+**Example Usage:**
+```json
+{
+  "name": "puzzle",
+  "arguments": {
+    "puzzle": "Einstein's Riddle: There are 5 houses in 5 different colors..."
   }
 }
 ```
@@ -148,33 +137,33 @@ The server provides 5 resources for accessing knowledge base state and server in
 Lists all predicates currently defined in the knowledge_base module.
 
 **Content Format:**
-```
-predicate_name/arity
-another_predicate/2
-fact_name/1
+```prolog
+parent/2
+ancestor/2
+grandparent/2
 ```
 
-**Usage:**
-Access current predicates to understand knowledge base structure before analysis or querying.
+**Use Case:** Check what predicates are available before querying or to avoid name conflicts when adding new rules.
 
 #### `prolog://knowledge_base/dump`
 
 **URI:** `prolog://knowledge_base/dump`
-**MIME Type:** `text/prolog`
+**MIME Type:** `text/plain`
 **Type:** Dynamic
 
-Complete export of the knowledge base as Prolog clauses.
+Complete export of all facts and rules in the knowledge_base module as valid Prolog source code.
 
 **Content Format:**
 ```prolog
-% Exported knowledge base
+:- module(knowledge_base, [parent/2, ancestor/2]).
+
 parent(john, mary).
-parent(mary, alice).
-grandparent(X, Z) :- parent(X, Y), parent(Y, Z).
+parent(mary, susan).
+ancestor(X, Y) :- parent(X, Y).
+ancestor(X, Z) :- parent(X, Y), ancestor(Y, Z).
 ```
 
-**Usage:**
-Export current knowledge base for backup, analysis, or transfer to other systems.
+**Use Case:** Backup knowledge base state, review all defined knowledge, or export for use in other Prolog systems.
 
 ### Reference Resources
 
@@ -184,15 +173,15 @@ Export current knowledge base for backup, analysis, or transfer to other systems
 **MIME Type:** `text/plain`
 **Type:** Static
 
-Usage guidelines and server tips.
+Comprehensive usage guidelines, best practices, and tips for using the SWI-Prolog MCP Server effectively.
 
-**Content:**
-Comprehensive help covering:
-- Tool usage patterns
-- Security considerations
-- Best practices
-- Troubleshooting guidance
-- Session management
+**Topics Covered:**
+- Tool usage patterns and examples
+- Session state management
+- Security model and restrictions
+- Query modes (standard vs engine)
+- Performance optimization tips
+- Troubleshooting common issues
 
 #### `reference://license`
 
@@ -200,53 +189,56 @@ Comprehensive help covering:
 **MIME Type:** `text/plain`
 **Type:** Static
 
-BSD-3-Clause license text for the software.
+Full text of the BSD-3-Clause license under which this server is distributed.
 
 #### `reference://capabilities`
 
 **URI:** `reference://capabilities`
 **MIME Type:** `application/json`
-**Type:** Dynamic
+**Type:** Static
 
-Machine-readable summary of server capabilities.
+Machine-readable summary of all server capabilities, tools, security constraints, and available predicates.
 
-**Content Format:**
+**Content Structure:**
 ```json
 {
+  "server": { "name": "swipl-mcp-server", "version": "..." },
+  "modes": ["standard", "engine"],
+  "predicates": {
+    "standard_prolog": "All standard SWI-Prolog predicates available",
+    "clpfd_available": true
+  },
   "tools": {
-    "count": 13,
-    "categories": ["core", "knowledge_base", "query", "symbols"]
+    "core": ["help", "license", "capabilities"],
+    "knowledge_base": [...],
+    "query": [...],
+    "symbols": [...]
   },
   "prompts": {
-    "count": 5,
-    "available": ["prolog_init_expert", "prolog_quick_reference", ...]
+    "expert_guidance": ["expert", "optimize"],
+    "knowledge_base": ["knowledge"],
+    "problem_solving": ["puzzle"]
   },
-  "resources": {
-    "count": 5,
-    "available": ["prolog://knowledge_base/predicates", ...]
-  },
-  "security": {
-    "file_restrictions": "~/.model-context-lab/ only",
-    "dangerous_predicates_blocked": true,
-    "sandbox_validation": true
-  },
-  "modes": {
-    "available": ["standard", "engine"],
-    "description": "Standard pagination and true backtracking"
-  }
+  "security": {...}
 }
 ```
 
-## Tools Reference
+**Use Case:** Programmatic capability discovery, automated documentation generation, or validation of server features.
+
+## MCP Tools
+
+Complete reference of all available tools organized by category.
 
 ### Core Tools
 
 #### `help`
 
-Get usage guidelines and tips for the server.
+Get comprehensive usage guidelines and best practices.
 
 **Arguments:**
 - `topic` (optional) - Specific help topic: "overview", "standard_mode", "engine_mode", "safety", "security", "examples", "prompts", "troubleshooting"
+
+**Returns:** Detailed help text for the requested topic or general overview.
 
 #### `license`
 
@@ -254,185 +246,219 @@ Get the BSD-3-Clause license text.
 
 **Arguments:** None
 
+**Returns:** Full license text.
+
 #### `capabilities`
 
-Get machine-readable summary of tools, modes, environment, and safety features.
+Get machine-readable server capabilities summary.
 
 **Arguments:** None
 
-### Knowledge Base Tools
+**Returns:** JSON object with complete capability information (see `reference://capabilities` above).
+
+### Knowledge Base Management Tools
 
 #### `knowledge_base_load`
 
-Load a Prolog file into the knowledge base.
+Load Prolog facts and rules from a file into the knowledge_base module.
 
 **Arguments:**
-- `filename` (required, string) - Path to Prolog file (must be in `~/.model-context-lab/`)
+- `filename` (required, string) - Path to Prolog file (must be within configured roots)
 
-**Security:** File path validation ensures access only to allowed directory.
+**Security:** File must be in allowed directory (see Configuration section).
+
+**Behavior:**
+- Consults the file into the knowledge_base module
+- Only accepts facts and rules (directives are rejected for security)
+- Validates all predicates against security constraints
+- Fails if file contains dangerous predicates
 
 #### `knowledge_base_assert`
 
-Add a single clause (fact or rule) to the knowledge base.
+Add a single Prolog fact or rule to the knowledge_base.
 
 **Arguments:**
-- `fact` (required, string) - Prolog clause to assert
+- `fact` (required, string) - Prolog clause to assert (e.g., "parent(john, mary)" or "ancestor(X,Z) :- parent(X,Y), parent(Y,Z)")
 
-**Examples:**
+**Example:**
 ```json
-{"fact": "parent(john, mary)"}
-{"fact": "grandparent(X,Z) :- parent(X,Y), parent(Y,Z)"}
+{
+  "fact": "parent(john, mary)"
+}
 ```
 
 #### `knowledge_base_assert_many`
 
-Add multiple clauses to the knowledge base.
+Add multiple Prolog facts or rules in a single operation (more efficient than individual assertions).
 
 **Arguments:**
 - `facts` (required, array of strings) - List of Prolog clauses to assert
 
+**Example:**
+```json
+{
+  "facts": [
+    "parent(john, mary)",
+    "parent(mary, susan)",
+    "ancestor(X,Y) :- parent(X,Y)",
+    "ancestor(X,Z) :- parent(X,Y), ancestor(Y,Z)"
+  ]
+}
+```
+
 #### `knowledge_base_retract`
 
-Remove a single clause from the knowledge base.
+Remove a single fact or rule from the knowledge_base.
 
 **Arguments:**
 - `fact` (required, string) - Prolog clause to retract
 
 #### `knowledge_base_retract_many`
 
-Remove multiple clauses from the knowledge base.
+Remove multiple facts or rules in a single operation.
 
 **Arguments:**
 - `facts` (required, array of strings) - List of Prolog clauses to retract
 
 #### `knowledge_base_clear`
 
-Remove ALL user-defined facts and rules from the knowledge base.
+Remove all facts and rules from the knowledge_base module.
 
 **Arguments:** None
 
-**Warning:** This operation cannot be undone. Use `knowledge_base_dump` to backup before clearing.
+**Use Case:** Reset to clean state before loading new knowledge.
 
 #### `knowledge_base_dump`
 
-Export current knowledge base as Prolog facts and rules.
+Export all current knowledge base content as Prolog source code.
 
 **Arguments:** None
 
-**Returns:** Complete knowledge base in Prolog syntax for backup or analysis.
+**Returns:** Complete Prolog module source with all facts and rules.
+
+#### `knowledge_base_load_library`
+
+Load a safe SWI-Prolog library into the knowledge_base module.
+
+**Arguments:**
+- `library` (required, string) - Library name (e.g., "clpfd", "lists", "apply")
+
+**Security:** Only sandbox-approved libraries are allowed. See [SECURITY.md](../../../SECURITY.md#swi-prolog-mcp-server-security) for complete security documentation.
 
 ### Query Tools
 
 #### `query_start`
 
-Start a new query session using standard mode (deterministic pagination via `call_nth/2`).
+Start a deterministic query with pagination support (Standard Mode).
 
 **Arguments:**
 - `query` (required, string) - Prolog query to execute
 
-**Session Management:** Only one session type (query or engine) can be active at a time.
-
-#### `query_startEngine`
-
-Start a new query session using engine mode (true backtracking via SWI-Prolog engines).
-
-**Arguments:**
-- `query` (required, string) - Prolog query to execute
-
-**Advantages:** True backtracking, better for complex queries with many solutions.
+**Behavior:**
+- Finds first solution
+- Use `query_next` to get subsequent solutions
+- Automatically limits solutions to prevent infinite loops
+- Must call `query_close` when done
 
 #### `query_next`
 
-Get the next solution from the current query session using standard iterator pattern.
+Get next solution from active query (Standard Mode).
 
 **Arguments:** None
 
-**Returns:**
-- When solution available: `{solution: "X=value", status: "success", processing_time_ms: N}`
-- When exhausted: `{solution: null, status: "done", processing_time_ms: N}`
+**Returns:** Next solution or indication that no more solutions exist.
 
-**Usage Pattern:** Call repeatedly until `status === "done"` to iterate through all solutions.
+**Session State:** Query must be active from `query_start`.
 
 #### `query_close`
 
-Close the current query session and clean up resources.
+Close active query and free resources (Standard Mode).
 
 **Arguments:** None
 
-**Important:** Always close sessions to free resources and allow new sessions to start.
+#### `query_startEngine`
 
-### Symbol Tools
+Start a query using true Prolog backtracking engine (Engine Mode).
+
+**Arguments:**
+- `query` (required, string) - Prolog query to execute
+
+**Behavior:**
+- Creates Prolog engine for true backtracking
+- Use `query_next` to iterate through solutions
+- More powerful than Standard Mode but requires careful resource management
+- Must call `query_close` when done
+
+**Use Case:** Complex queries requiring full backtracking semantics, multiple solution paths, or constraint solving.
+
+### Symbol Inspection Tools
 
 #### `symbols_list`
 
-List predicates available in the knowledge base.
+List all predicates currently defined in the knowledge_base module.
 
 **Arguments:** None
 
-**Returns:** List of currently defined predicates with their arities.
+**Returns:** Array of predicate indicators (e.g., ["parent/2", "ancestor/2"]).
+
+**Use Case:** Verify what predicates are available, check if predicate exists before defining, or explore knowledge base structure.
 
 ## Session State Management
 
-The server maintains session state with mutual exclusion between query modes:
+The server maintains session state to prevent conflicts between query modes:
 
-### States
-- `idle` - No active session
-- `query` - Standard query session active
-- `engine` - Engine query session active
-- `query_completed` - Query exhausted, awaiting close
-- `engine_completed` - Engine exhausted, awaiting close
-- `closing_query` - Query session closing
-- `closing_engine` - Engine session closing
+- **idle**: No active query
+- **query**: Standard mode query active (from `query_start`)
+- **engine**: Engine mode query active (from `query_startEngine`)
+- **query_completed**: Query finished but not closed
+- **engine_completed**: Engine finished but not closed
 
-### Transitions
-- Only one session type can be active at a time
-- Sessions must be explicitly closed before starting new ones
-- Completed sessions keep context until closed
-- Invalid transitions are logged when `SWI_MCP_TRACE=1`
+**Mutual Exclusion:** Cannot start Standard Mode query while Engine Mode is active and vice versa. Must call `query_close` to switch modes.
 
 ## Security Model
 
-### File Path Restrictions
-- **Allowed:** `~/.model-context-lab/` directory only
-- **Blocked:** System directories (`/etc`, `/usr`, `/bin`, `/var`, etc.)
-- **Validation:** Pre-execution path validation with realpath resolution
+### Sandbox Execution
 
-### Dangerous Predicate Blocking
-Pre-execution detection and blocking of dangerous operations:
-- `shell()` - System command execution
-- `system()` - Operating system calls
-- `call()` - Dynamic predicate calls
-- `halt()` - System termination
-- `assert()` - Direct database modification (use knowledge_base tools)
+All Prolog code executes in a sandboxed environment with:
+- Dangerous predicates blocked (shell, system, call, assert, retract, abolish, halt)
+- File operations restricted to configured root directories
+- Pre-execution validation of all queries and assertions
 
-### Additional Protections
-- **Sandbox Validation:** Uses `library(sandbox)` for built-in predicate validation
-- **Timeout Protection:** Configurable timeouts prevent infinite loops
-- **Module Isolation:** Knowledge base runs in dedicated `knowledge_base` module
-- **Input Validation:** Query length limits and syntax validation
+### File Access Control
 
-## Best Practices
+- **Secure by Default:** File operations disabled without explicit configuration
+- **Configuration Required:** Via MCP client roots or `SWI_MCP_ALLOWED_ROOTS` environment variable
+- **Validation:** All file paths validated before execution
 
-### Resource-First Approach
-1. **Discover capabilities** using `reference://capabilities` resource
-2. **Read current state** using knowledge base resources
-3. **Plan actions** based on discovered information
-4. **Execute efficiently** with appropriate tools
+### Predicate Blocking
 
-### Session Management
-1. **Use appropriate mode** - Standard for simple queries, Engine for complex backtracking
-2. **Close sessions explicitly** - Always call `query_close` when done
-3. **Handle errors gracefully** - Sessions are automatically cleaned up on errors
-4. **Monitor state** - Check session state before starting new operations
+Dangerous predicates are detected and blocked before execution:
+- `call/1` - Prevents arbitrary code execution
+- `assert/1`, `retract/1`, `abolish/1` - Use knowledge_base tools instead
+- `system/1`, `shell/1` - No system command execution
+- `halt/1` - Prevents server termination
 
-### Performance Optimization
-1. **Optimize predicate order** - Place most selective predicates first
-2. **Use cuts judiciously** - Balance efficiency with correctness
-3. **Batch operations** - Use `assert_many` for multiple clauses
-4. **Export for backup** - Use `knowledge_base_dump` before major changes
+Error format: `Security Error: Operation blocked - contains dangerous predicate 'X'`
 
-### Security Awareness
-1. **Validate file paths** - Ensure files are in allowed directory
-2. **Review clauses** - Check for dangerous predicates before asserting
-3. **Limit query complexity** - Use timeouts for complex operations
-4. **Monitor resource usage** - Export and analyze knowledge base regularly
+## Performance Considerations
+
+### Query Timeouts
+
+- Default: 30 seconds per query
+- Configurable via `SWI_MCP_QUERY_TIMEOUT_MS` environment variable
+- Circuit breaker activates after consecutive timeouts
+- Automatic recovery with process restart
+
+### Resource Management
+
+- Knowledge base persists across queries within session
+- Query results are stateful (Standard Mode) or engine-based (Engine Mode)
+- Always call `query_close` to free resources
+- Use `knowledge_base_clear` to reset between different problem domains
+
+### Best Practices
+
+- Use `knowledge_base_assert_many` for batch operations (more efficient)
+- Choose appropriate query mode (Standard for simple queries, Engine for complex backtracking)
+- Close queries promptly to free resources
+- Monitor token usage when reading large resources

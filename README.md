@@ -132,10 +132,12 @@ Each package supports:
 - `npm test` - Run Vitest tests
 - `npm run test:watch` - Watch mode for tests
 
-## 📝 Documentation
+## Documentation
 
 ### Product Documentation (swipl-mcp-server)
-- **[Installation Guide](./products/swipl-mcp-server/docs/installation.md)** — Complete setup for all MCP clients
+- **[Installation & Setup](./products/swipl-mcp-server/README.md#installation)** — Complete setup for all MCP clients
+- **[Configuration](./products/swipl-mcp-server/README.md#configuration)** — Filesystem roots, environment variables
+- **[Troubleshooting](./products/swipl-mcp-server/README.md#troubleshooting)** — Common issues and debug mode
 - **[Features Reference](./products/swipl-mcp-server/docs/features.md)** — Detailed prompts, resources, and tools documentation
 - **[Examples](./products/swipl-mcp-server/docs/examples.md)** — Copy-paste usage examples
 - **[Architecture](./products/swipl-mcp-server/docs/architecture.md)** — Components, modes, and wire protocol

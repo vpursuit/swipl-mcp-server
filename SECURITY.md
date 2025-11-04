@@ -4,15 +4,14 @@ This monorepo contains multiple Model Context Protocol (MCP) packages with varyi
 
 ## Package-Specific Security Policies
 
-For detailed security information specific to each package, please refer to the individual security documentation:
-
 ### Products
-- **[@vpursuit/swipl-mcp-server](./products/swipl-mcp-server/SECURITY.md)** - Comprehensive security policy for Prolog execution, sandboxing, file path restrictions, and dangerous predicate blocking
+- **@vpursuit/swipl-mcp-server** - See [SWI-Prolog MCP Server Security](#swi-prolog-mcp-server-security) section below for comprehensive security policy
 
-### Libraries
-- **[@vpursuit/mcp-server-prolog](./plugins/server/prolog/)** - Prolog integration plugin security considerations
-- **[@vpursuit/mcp-server-core](./plugins/server/core/)** - Plugin system security considerations
-- **[@vpursuit/mcp-server-roots](./plugins/server/roots/)** - Filesystem access control and path validation security
+### Plugin Libraries (For Developers)
+For plugin implementation details, see:
+- **[@vpursuit/mcp-server-prolog](./plugins/server/prolog/SECURITY.md)** - Prolog integration plugin implementation security
+- **[@vpursuit/mcp-server-core](./plugins/server/core/SECURITY.md)** - Plugin system implementation security
+- **[@vpursuit/mcp-server-roots](./plugins/server/roots/SECURITY.md)** - Filesystem access control implementation security
 
 ## Reporting a Vulnerability
 
@@ -31,19 +30,14 @@ Please provide the following information in your report:
 - **Impact assessment** (what can an attacker achieve?)
 - **Relevant logs** (please redact secrets, absolute paths, and PII)
 
-### Response Timeline
-- **Acknowledgment**: Within 48 hours
-- **Initial Assessment**: Within 7 days
-- **Fix Timeline**: Varies by severity (critical: immediate, high: 1-2 weeks, medium: 2-4 weeks, low: next release)
-
 ## Supported Versions
 
 | Package | Version | Supported |
 |---------|---------|-----------|
-| @vpursuit/swipl-mcp-server | 3.x | ✅ Yes |
-| @vpursuit/mcp-server-prolog | 3.x | ✅ Yes |
-| @vpursuit/mcp-server-core | 1.x | ✅ Yes |
-| @vpursuit/mcp-server-roots | 1.x | ✅ Yes |
+| @vpursuit/swipl-mcp-server | 3.x | Yes |
+| @vpursuit/mcp-server-prolog | 3.x | Yes |
+| @vpursuit/mcp-server-core | 1.x | Yes |
+| @vpursuit/mcp-server-roots | 1.x | Yes |
 
 - **Main branch**: Actively maintained with latest security fixes
 - **Older versions**: Security patches may be backported for critical vulnerabilities
@@ -70,16 +64,112 @@ Please provide the following information in your report:
 - Avoid exposing internal implementation details in error messages
 - Follow principle of least privilege
 
+## SWI-Prolog MCP Server Security
+
+The `@vpursuit/swipl-mcp-server` package provides Prolog execution capabilities and implements comprehensive security measures to protect against malicious code execution.
+
+### Important Warning
+
+**Use this tool at your own risk.** This server executes user-provided Prolog queries and code. While comprehensive security measures are implemented including sandboxing and blacklisting, **no security system is perfect**.
+
+**All usage is at your own risk.** Review and understand any Prolog code before execution, especially from untrusted sources.
+
+### Threat Model
+
+**Primary Risks:**
+- Untrusted Prolog content provided via file consultation and query execution
+- Potential for arbitrary file/OS access attempts
+- Long-running or looping queries
+- Resource exhaustion (CPU, memory)
+- Information leakage through logs
+
+**Trust Boundaries:**
+- MCP clients are partially trusted (provide queries)
+- Prolog files are untrusted (must be validated)
+- SWI-Prolog process is sandboxed and isolated
+
+### Built-in Security Features
+
+#### File Path Security
+- **Secure by Default**: File operations disabled without explicit root configuration
+- **Configuration Required**: Configure roots via MCP client or `SWI_MCP_ALLOWED_ROOTS` environment variable
+- **Environment Variable**: `SWI_MCP_ALLOWED_ROOTS=/path/one,/path/two` (comma-separated absolute paths)
+- **System Directory Blocking**: Automatically blocks access to `/etc`, `/usr`, `/bin`, `/var`, `/sys`, `/proc`, `/boot`, `/dev`, `/root`
+- **Pre-validation**: File paths are strictly validated against configured roots before any Prolog interaction
+- **Clear Error Messages**: Helpful messages guide users to configure roots when file access is attempted without configuration
+
+#### Dangerous Predicate Detection
+- **Pre-execution Blocking**: Dangerous operations caught before execution, not during timeout
+- **Blocked Predicates**: `shell()`, `system()`, `call()`, `assert()`, `halt()`, `retract()`, `abolish()`
+- **Pattern Detection**: Scans fact/query content for dangerous predicate calls
+- **Clear Error Messages**: `Security Error: Operation blocked - contains dangerous predicate 'X'`
+
+**Example:**
+```prolog
+% This is blocked before execution
+knowledge_base_assert({ "fact": "malware :- shell('rm -rf /')" })
+% Returns: Security Error: Operation blocked - contains dangerous predicate 'shell'
+```
+
+#### Additional Protections
+- **Enhanced Security Model**: Combines `library(sandbox)` validation with explicit blacklist and path restrictions
+  - `library(sandbox)` validates most built-ins as safe/unsafe
+  - Additional blacklist prevents dangerous operations even if sandbox allows them
+  - User-defined predicates in `knowledge_base` module are allowed for recursive definitions
+- **Safe consult**: Only facts/rules are accepted; directives and module-altering terms are rejected
+- **Isolation**: User data lives in `knowledge_base` module; `unknown=fail` to avoid accidental calls
+- **Timeouts**: Node side enforces query timeouts to prevent hangs
+- **Logging hygiene**: Logs go to `stderr`, default to `warn`, and redact absolute paths/PIDs
+
+### Hardening Checklist for Prolog Server
+- Run as a non-privileged user; avoid filesystem write access beyond the working directory
+- Keep Node.js, SWI-Prolog, and dependencies up to date
+- Configure roots to limit file access to specific directories only
+- Set conservative logging in production: `MCP_LOG_LEVEL=warn` or `silent`
+- Do not ingest untrusted `.pl` files from unknown sources without review
+- Monitor resource usage; consider external CPU/time limits if high-risk
+- Set conservative query timeout limits via `SWI_MCP_QUERY_TIMEOUT_MS`
+
+### Security Testing
+
+**File Path Security Testing:**
+```bash
+# Verify system directory blocking
+knowledge_base_load({ "filename": "/etc/passwd" })
+# Expected: Security Error: Access to system directories is blocked
+
+# Verify configured root works (after setting up roots)
+knowledge_base_load({ "filename": "/your/configured/root/test.pl" })
+# Expected: Success (if file exists and root is configured)
+```
+
+**Dangerous Predicate Testing:**
+```bash
+# Verify pre-execution blocking
+knowledge_base_assert({ "fact": "malware :- shell('rm -rf /')" })
+# Expected: Security Error: Operation blocked - contains dangerous predicate 'shell'
+
+# Verify safe operations work
+query_start({ "query": "X is 2 + 3" })
+# Expected: Success with X = 5
+```
+
+**Configuration:**
+- `MCP_LOG_LEVEL`: `debug|info|warn|error|silent` (default `warn`)
+- `DEBUG`: include `swipl-mcp-server` to enable debug logging
+- `SWI_MCP_PROLOG_PATH`: override path to the Prolog server script
+- Security is always enabled and cannot be disabled
+
 ## NPM Publishing Security
 
 All packages in this monorepo use **OIDC (OpenID Connect) Trusted Publishing** for NPM package distribution, representing the most secure authentication method currently available.
 
 ### Security Benefits
-- ✅ **No Long-lived Tokens**: No NPM authentication tokens stored in GitHub secrets
-- ✅ **Temporary Credentials**: Short-lived tokens that automatically expire
-- ✅ **Scoped Access**: Tokens limited to specific packages and organizations
-- ✅ **Provenance Enabled**: Cryptographic proof of build environment included in all packages
-- ✅ **Audit Trail**: Full audit log of all publishing activities
+- **No Long-lived Tokens**: No NPM authentication tokens stored in GitHub secrets
+- **Temporary Credentials**: Short-lived tokens that automatically expire
+- **Scoped Access**: Tokens limited to specific packages and organizations
+- **Provenance Enabled**: Cryptographic proof of build environment included in all packages
+- **Audit Trail**: Full audit log of all publishing activities
 
 ### Why This Matters
 Recent security incidents in the NPM ecosystem have highlighted vulnerabilities in traditional token-based authentication. Our OIDC approach eliminates these risks by:
@@ -100,10 +190,10 @@ npm view @vpursuit/swipl-mcp-server --json | jq .dist.attestations
 ```
 
 **What to Look For:**
-- ✅ Registry signature verified
-- ✅ Provenance attestation verified
-- 📦 Source: github.com/vpursuit/model-context-lab
-- 🔨 Build: GitHub Actions
+- Registry signature verified
+- Provenance attestation verified
+- Source: github.com/vpursuit/model-context-lab
+- Build: GitHub Actions
 
 If verification fails, **do not use the package** and report via [security advisory](#reporting-a-vulnerability).
 
@@ -143,11 +233,11 @@ npm run build
 ```
 
 **Benefits of GitHub Installation:**
-- ✅ Version pinning (no automatic updates)
-- ✅ Source code verification before installation
-- ✅ Supply chain security (avoid potential NPM compromise)
-- ✅ Offline operation capability
-- ✅ Complete audit trail
+- Version pinning (no automatic updates)
+- Source code verification before installation
+- Supply chain security (avoid potential NPM compromise)
+- Offline operation capability
+- Complete audit trail
 
 **Recommended for:**
 - Production environments requiring stability

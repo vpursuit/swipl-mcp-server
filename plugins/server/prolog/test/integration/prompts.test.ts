@@ -12,26 +12,28 @@ function createTestServer() {
 
   // Create actual Zod schemas for testing
   const testSchemas = {
-    // init expert now accepts an optional task
-    prologInitExpert: z.object({ task: z.string().optional() }),
-    prologQuickReference: z.object({}),
-    prologAnalyzeKnowledgeBase: z.object({}),
-    prologKnowledgeBaseBuilder: z.object({
-      domain: z.string().optional()
+    expert: z.object({
+      task: z.string().optional(),
+      mode: z.enum(["expert", "reference"]).optional()
     }),
-    prologQueryOptimizer: z.object({
+    knowledge: z.object({
+      domain: z.string().optional(),
+      mode: z.enum(["build", "analyze"]).optional()
+    }),
+    optimize: z.object({
       query: z.string().optional()
+    }),
+    puzzle: z.object({
+      puzzle: z.string().optional()
     })
   };
 
   // Register prompts like in the main index.ts
   const promptSchemaMap: Record<string, string> = {
-    "prolog_init_expert": "prologInitExpert",
-    "prolog_quick_reference": "prologQuickReference",
-    "prolog_analyze_knowledge_base": "prologAnalyzeKnowledgeBase",
-    // expert reasoning merged into init_expert
-    "prolog_knowledge_base_builder": "prologKnowledgeBaseBuilder",
-    "prolog_query_optimizer": "prologQueryOptimizer"
+    "expert": "expert",
+    "knowledge": "knowledge",
+    "optimize": "optimize",
+    "puzzle": "puzzle"
   };
 
   const registeredPrompts: string[] = [];
@@ -71,25 +73,21 @@ describe("Prompts Integration", () => {
     test("should register all prompts without errors", () => {
       expect(() => {
         const { server: _server, registeredPrompts } = createTestServer();
-        // expert reasoning merged into init expert; total now 5
-        expect(registeredPrompts).toHaveLength(5);
-        expect(registeredPrompts).toContain("prolog_init_expert");
-        expect(registeredPrompts).toContain("prolog_quick_reference");
-        expect(registeredPrompts).toContain("prolog_analyze_knowledge_base");
-        // merged into prolog_init_expert
-        expect(registeredPrompts).toContain("prolog_knowledge_base_builder");
-        expect(registeredPrompts).toContain("prolog_query_optimizer");
+        expect(registeredPrompts).toHaveLength(4);
+        expect(registeredPrompts).toContain("expert");
+        expect(registeredPrompts).toContain("knowledge");
+        expect(registeredPrompts).toContain("optimize");
+        expect(registeredPrompts).toContain("puzzle");
       }).not.toThrow();
     });
 
     test("should have valid schema mapping for all prompts", () => {
       const { testSchemas } = createTestServer();
       const expectedSchemas = [
-        "prologInitExpert",
-        "prologQuickReference",
-        "prologAnalyzeKnowledgeBase",
-        "prologKnowledgeBaseBuilder",
-        "prologQueryOptimizer"
+        "expert",
+        "knowledge",
+        "optimize",
+        "puzzle"
       ];
 
       for (const schemaName of expectedSchemas) {
@@ -107,16 +105,14 @@ describe("Prompts Integration", () => {
 
       expect(prompts).toHaveProperty("expert_guidance");
       expect(prompts).toHaveProperty("knowledge_base");
-      expect(prompts).toHaveProperty("orientation");
+      expect(prompts).toHaveProperty("problem_solving");
 
-      expect(prompts.expert_guidance).toContain("prolog_init_expert");
-      // merged into prolog_init_expert
-      expect(prompts.expert_guidance).toContain("prolog_query_optimizer");
+      expect(prompts.expert_guidance).toContain("expert");
+      expect(prompts.expert_guidance).toContain("optimize");
 
-      expect(prompts.knowledge_base).toContain("prolog_analyze_knowledge_base");
-      expect(prompts.knowledge_base).toContain("prolog_knowledge_base_builder");
+      expect(prompts.knowledge_base).toContain("knowledge");
 
-      expect(prompts.orientation).toContain("prolog_quick_reference");
+      expect(prompts.problem_solving).toContain("puzzle");
     });
 
     test("capabilities should maintain other sections with prompts added", () => {
@@ -177,8 +173,7 @@ describe("Prompts Integration", () => {
       const helpText = helpResponse.content[0].text;
 
       expect(helpText).toContain("Expert Prompts");
-      expect(helpText).toContain("prolog_init_expert");
-      // Wording may change; check stable anchors only
+      expect(helpText).toContain("expert");
       expect(helpText).toContain("Prompt Usage Pattern");
     });
 
@@ -187,12 +182,10 @@ describe("Prompts Integration", () => {
       const helpText = helpResponse.content[0].text;
 
       expect(helpText).toContain("Expert Prompts");
-      expect(helpText).toContain("prolog_init_expert");
-      expect(helpText).toContain("prolog_quick_reference");
-      expect(helpText).toContain("prolog_analyze_knowledge_base");
-      // merged into prolog_init_expert
-      expect(helpText).toContain("prolog_knowledge_base_builder");
-      expect(helpText).toContain("prolog_query_optimizer");
+      expect(helpText).toContain("expert");
+      expect(helpText).toContain("knowledge");
+      expect(helpText).toContain("optimize");
+      expect(helpText).toContain("puzzle");
     });
   });
 
@@ -200,11 +193,10 @@ describe("Prompts Integration", () => {
     test("all prompt schemas should be valid Zod schemas", () => {
       const { testSchemas } = createTestServer();
       const schemaNames = [
-        "prologInitExpert",
-        "prologQuickReference",
-        "prologAnalyzeKnowledgeBase",
-        "prologKnowledgeBaseBuilder",
-        "prologQueryOptimizer"
+        "expert",
+        "knowledge",
+        "optimize",
+        "puzzle"
       ];
 
       for (const schemaName of schemaNames) {
@@ -219,9 +211,10 @@ describe("Prompts Integration", () => {
     test("prompts with arguments should validate correctly", () => {
       const { testSchemas } = createTestServer();
       const testCases = [
-        { schema: "prologInitExpert", validArgs: { task: "test task" } },
-        { schema: "prologKnowledgeBaseBuilder", validArgs: { domain: "test domain" } },
-        { schema: "prologQueryOptimizer", validArgs: { query: "test query" } }
+        { schema: "expert", validArgs: { task: "test task", mode: "expert" } },
+        { schema: "knowledge", validArgs: { domain: "test domain", mode: "build" } },
+        { schema: "optimize", validArgs: { query: "test query" } },
+        { schema: "puzzle", validArgs: { puzzle: "test puzzle" } }
       ];
 
       for (const { schema, validArgs } of testCases) {
@@ -234,6 +227,20 @@ describe("Prompts Integration", () => {
         expect(() => zodSchema.parse({})).not.toThrow();
       }
     });
+
+    test("mode arguments should validate correctly", () => {
+      const { testSchemas } = createTestServer();
+
+      // Expert mode validation
+      const expertSchema = testSchemas.expert;
+      expect(() => expertSchema.parse({ mode: "expert" })).not.toThrow();
+      expect(() => expertSchema.parse({ mode: "reference" })).not.toThrow();
+
+      // Knowledge mode validation
+      const knowledgeSchema = testSchemas.knowledge;
+      expect(() => knowledgeSchema.parse({ mode: "build" })).not.toThrow();
+      expect(() => knowledgeSchema.parse({ mode: "analyze" })).not.toThrow();
+    });
   });
 
   describe("Resource-First Approach", () => {
@@ -241,8 +248,8 @@ describe("Prompts Integration", () => {
       const allPrompts = Object.entries(prologPrompts);
 
       for (const [key, prompt] of allPrompts) {
-        // Logic puzzle solver is action-oriented (solve puzzle), not resource-discovery-oriented
-        if (key === "logicPuzzleSolver") {
+        // Puzzle solver is action-oriented (solve puzzle), not resource-discovery-oriented
+        if (key === "puzzle") {
           continue;
         }
 
@@ -256,10 +263,8 @@ describe("Prompts Integration", () => {
 
     test("prompts should reference specific resources", () => {
       const resourcePrompts = [
-        "quickReference",
-        "analyzeKnowledgeBase",
-        "initExpert",
-        "knowledgeBaseBuilder"
+        "expert",
+        "knowledge"
       ];
 
       for (const promptName of resourcePrompts) {
@@ -270,6 +275,29 @@ describe("Prompts Integration", () => {
         // Should reference specific resources
         expect(text).toMatch(/reference:\/\/|prolog:\/\/|knowledge-base-predicates|knowledge-base-dump|capabilities|help/);
       }
+    });
+  });
+
+  describe("Mode-based Prompt Behavior", () => {
+    test("expert prompt should behave differently based on mode", () => {
+      const prompt = prologPrompts.expert;
+
+      const expertMode = prompt.messages({ mode: "expert" });
+      const referenceMode = prompt.messages({ mode: "reference" });
+
+      expect(expertMode[0].content.text).not.toBe(referenceMode[0].content.text);
+      expect(referenceMode[0].content.text).toContain("reference guide");
+    });
+
+    test("knowledge prompt should behave differently based on mode", () => {
+      const prompt = prologPrompts.knowledge;
+
+      const buildMode = prompt.messages({ mode: "build" });
+      const analyzeMode = prompt.messages({ mode: "analyze" });
+
+      expect(buildMode[0].content.text).not.toBe(analyzeMode[0].content.text);
+      expect(buildMode[0].content.text).toContain("Build");
+      expect(analyzeMode[0].content.text).toContain("Analyze");
     });
   });
 });

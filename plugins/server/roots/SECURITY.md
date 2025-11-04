@@ -80,10 +80,11 @@ process.env.SWI_MCP_ALLOWED_ROOTS = '/app/data,/app/uploads';
 // Trust boundary: developer-controlled, trusted
 ```
 
-**3. Fallback Directory** (Lowest Priority):
+**3. No Fallback** (Secure by Default):
 ```typescript
-// Default safe directory: ~/.swipl-mcp-server
-// Can be disabled with SWI_MCP_STRICT_ROOTS=true
+// No automatic fallback directory
+// Explicit root configuration required for file operations
+// File operations disabled if no roots configured
 ```
 
 ### 4. Caching with Invalidation

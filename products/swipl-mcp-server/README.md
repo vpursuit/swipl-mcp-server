@@ -20,6 +20,7 @@ An MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It s
   - [Claude Desktop](#claude-desktop)
   - [Cline (VS Code Extension)](#cline-vs-code-extension)
   - [Codex](#codex)
+  - [Gemini](#gemini)
   - [MCP Inspector (for testing)](#mcp-inspector-for-testing)
   - [Development Setup](#development-setup)
 - [Configuration](#configuration)
@@ -41,14 +42,30 @@ An MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It s
 
 ## Requirements
 
-- Node.js ≥ 20.0.0
-- SWI‑Prolog installed and available in PATH
+### Node.js
+- Version ≥ 20.0.0
+- [Download Node.js](https://nodejs.org/)
+
+### SWI-Prolog
+- **Required** - Version 9.0 or higher
+- **Installation:** [Official Download Page](https://www.swi-prolog.org/download/stable)
+  - **macOS:** `brew install swi-prolog`
+  - **Ubuntu/Debian:** `sudo apt-get install swi-prolog` or `sudo snap install swi-prolog`
+  - **Windows:** Download and run installer from official page
+- **Verify installation:** `swipl --version`
+
+**Note:** SWI-Prolog must be installed and available in your PATH before using this server.
 
 ## Installation
 
 ### Claude Code CLI
 ```bash
 claude mcp add swipl-mcp-server npx @vpursuit/swipl-mcp-server
+```
+
+**Verification:**
+```bash
+claude mcp list
 ```
 
 ### Claude Desktop
@@ -63,8 +80,12 @@ claude mcp add swipl-mcp-server npx @vpursuit/swipl-mcp-server
 }
 ```
 
-- MacOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Configuration file location:**
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%/Claude/claude_desktop_config.json`
+- Linux: `~/.config/claude/claude_desktop_config.json`
+
+**Restart Required:** After modifying the configuration file, restart Claude Desktop for changes to take effect.
 
 ### Cline (VS Code Extension)
 ```json
@@ -93,12 +114,25 @@ args = ["@vpursuit/swipl-mcp-server"]
 ```
 Add to `~/.codex/config.toml`
 
+### Gemini
+```json
+{
+  "mcpServers": {
+    "swipl-mcp-server": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@vpursuit/swipl-mcp-server"],
+      "trust": true
+    }
+  }
+}
+```
+Add to `.gemini/settings.json`
+
 ### MCP Inspector (for testing)
 ```bash
 npx @modelcontextprotocol/inspector --transport stdio npx @vpursuit/swipl-mcp-server
 ```
-
-### ... and many others may also work
 
 ### Development Setup
 If you cloned the repo, you may use this configuration. Note: change <path to your development directory> to your local setup.
@@ -183,22 +217,25 @@ Configure timeouts, logging, and behavior via environment variables:
 Prompts guide AI assistants to help you with Prolog programming, knowledge base building and query optimization.
 
 **How it works:**
-1. You select a prompt (via `/swipl` command in Claude Code CLI)
+1. You select a prompt through your MCP client
 2. The prompt guides the AI assistant on how to approach your Prolog task
 3. The AI assistant helps you with expert knowledge and step-by-step guidance
 
-*Note: Other AI assistants may access and use these prompts differently depending on their MCP implementation.*
+**Slash Commands:** In some MCP clients (Claude Code CLI, Gemini), prompts are available as convenient slash commands:
+- Type `/` in the chat to see all available commands and prompts
+- Type `/swipl` to see all SWI-Prolog prompts
+- Example: `/expert` to initialize expert Prolog assistance
 
-In Claude Code CLI, these prompts are available as slash commands. Simply type `/swipl` to see all available commands:
-
-![SWI-Prolog slash commands in Claude Code CLI](./images/swipl-slash-commands.png)
+**Client Compatibility (at the time of this writing):**
+- ✅ **Claude Code CLI** - Full prompt support with slash commands
+- ✅ **Gemini** - Full prompt support with slash commands
+- ❌ **Codex** - Does not currently support prompts
 
 Available prompts:
-- **`prolog_init_expert`** - Initialize expert Prolog assistance mode with optional task focus
-- **`prolog_quick_reference`** - Get comprehensive server overview and capabilities
-- **`prolog_analyze_knowledge_base`** - Analyze current knowledge base state and structure
-- **`prolog_knowledge_base_builder`** - Build domain-specific knowledge bases with guided construction
-- **`prolog_query_optimizer`** - Optimize Prolog queries for performance and efficiency
+- **`expert`** - Expert guidance (mode: 'expert') or comprehensive server reference (mode: 'reference')
+- **`knowledge`** - Build (mode: 'build') or analyze (mode: 'analyze') knowledge bases with guided construction
+- **`optimize`** - Optimize Prolog queries for performance and efficiency
+- **`puzzle`** - Solve logic puzzles using constraint programming
 
 ### MCP Resources
 Dynamic and static resources for knowledge base access:
@@ -220,11 +257,7 @@ Dynamic and static resources for knowledge base access:
 
 All standard SWI-Prolog predicates are available (lists, arithmetic, meta-predicates, etc.).
 
-**Note:** CLP(FD) (`library(clpfd)`) is **not available** for security reasons. Use standard Prolog alternatives:
-- `between/3` instead of `X in 1..10`
-- `is/2` instead of `#=`
-- `permutation/2` for generating unique values
-- Generate-and-test pattern instead of constraint propagation
+`library(clpfd)` is available for constraint programming.
 
 ## Examples
 
@@ -322,7 +355,8 @@ For the detailed state transition diagram, see [docs/session-state.md](./docs/se
 The server implements multiple security layers to protect your system:
 
 ### File Path Restrictions
-- **Allowed Directory**: Files can only be loaded from `~/.model-context-lab/`
+- **Secure by Default**: File operations disabled without explicit root configuration
+- **Configuration Required**: Configure roots via MCP client or `SWI_MCP_ALLOWED_ROOTS` environment variable
 - **Blocked Directories**: System directories (`/etc`, `/usr`, `/bin`, `/var`, etc.) are automatically blocked
 - **Example**:
   ```json
@@ -356,19 +390,82 @@ This package is published with **npm provenance attestation**, providing:
 npm view @vpursuit/swipl-mcp-server --json | jq .dist.attestations
 ```
 
-**Learn More:** [Our Security Policy](./SECURITY.md#npm-publishing-security) | [npm Provenance Docs](https://docs.npmjs.com/generating-provenance-statements)
+**Learn More:** [Our Security Policy](../../SECURITY.md#npm-publishing-security) | [npm Provenance Docs](https://docs.npmjs.com/generating-provenance-statements)
 
-See [SECURITY.md](./SECURITY.md) for complete security documentation.
+See [SECURITY.md](../../SECURITY.md) for complete security documentation.
 
 ## Troubleshooting
 
-- "Prolog not found": ensure `swipl --version` works; SWI‑Prolog must be in PATH
-- Startup timeout: increase `SWI_MCP_READY_TIMEOUT_MS`
-- Query timeout: increase `SWI_MCP_QUERY_TIMEOUT_MS`
-- Session conflicts: close current session before starting a different mode
-- `Security Error: ...`: file access blocked or dangerous predicates detected; see Security
-- Custom script path: set `SWI_MCP_PROLOG_PATH`
+### Common Issues
+
+**SWI-Prolog not found:**
+```bash
+# Verify SWI-Prolog installation
+swipl --version
+
+# On macOS with Homebrew
+brew install swi-prolog
+
+# On Ubuntu/Debian
+sudo apt-get install swi-prolog
+
+# On Windows
+# Download from https://www.swi-prolog.org/download/stable
+```
+
+**Server startup timeout:**
+- Increase `SWI_MCP_READY_TIMEOUT_MS` to `10000` or higher
+- Check SWI-Prolog is accessible in PATH
+- Enable debug logging with `DEBUG=swipl-mcp-server`
+
+**Query timeout:**
+- Increase `SWI_MCP_QUERY_TIMEOUT_MS` for complex queries
+- Use `query_close` to terminate long-running queries
+
+**Configuration not loading:**
+- Verify JSON syntax in configuration files
+- Restart the MCP client after configuration changes
+- Check file permissions on configuration directories
+
+**File access errors:**
+- Ensure roots are configured via MCP client or `SWI_MCP_ALLOWED_ROOTS`
+- Verify files are within configured root directories
+- Check file permissions for read access
+- Use `roots_list` tool to verify configured roots
+
+**Session conflicts:**
+- Close current session before starting a different mode
 - Query sessions: after exhausting solutions, `query_next` returns "No more solutions available" until explicitly closed
+
+**Security errors:**
+- File access blocked or dangerous predicates detected; see [Security](#security)
+
+### Debug Mode
+
+Enable comprehensive debugging:
+
+```json
+{
+  "env": {
+    "MCP_LOG_LEVEL": "debug",
+    "DEBUG": "swipl-mcp-server",
+    "SWI_MCP_TRACE": "1"
+  }
+}
+```
+
+This provides detailed logs of:
+- Server startup and initialization
+- Tool calls and responses
+- Prolog process communication
+- Error conditions and stack traces
+
+### Getting Help
+
+- Check existing [issues](https://github.com/vpursuit/model-context-lab/issues)
+- Review [examples](./docs/examples.md) for usage patterns
+- Test with MCP Inspector for isolated debugging
+- Include debug logs when reporting issues
 
 ## Development
 
@@ -392,11 +489,13 @@ Publishing and release workflows are documented in [PUBLISHING.md](../../PUBLISH
 
 See [CONTRIBUTING.md](../../CONTRIBUTING.md) for local setup, workflow, and the PR checklist.
 
-For security practices, reporting, and hardening guidance, see [SECURITY.md](./SECURITY.md).
+For security practices, reporting, and hardening guidance, see [SECURITY.md](../../SECURITY.md).
 
 ## Documentation
 
-- **[Installation Guide](./docs/installation.md)** — Complete setup for all MCP clients
+- **[Installation](#installation)** — Complete setup for all MCP clients (see above)
+- **[Configuration](#configuration)** — Filesystem roots, environment variables
+- **[Troubleshooting](#troubleshooting)** — Common issues and debug mode
 - **[Features Reference](./docs/features.md)** — Detailed prompts, resources, and tools documentation
 - **[Examples](./docs/examples.md)** — Copy-paste usage examples
 - **[Architecture](./docs/architecture.md)** — Components, modes, and wire protocol
