@@ -246,15 +246,15 @@ export const tools: ToolDefinitions = {
           "Standard mode (call_nth/2):",
           "- Tools: query_start → query_next → query_close",
           "- Deterministic pagination of solutions, memory‑efficient",
-          "- Example: query_start {query: 'member(X, [1,2,3])'} then call query_next until 'No more solutions'",
-          "- After exhaustion, query_next returns 'No more solutions available' until explicitly closed",
+          "- Example: query_start {query: 'member(X, [1,2,3])'} then call query_next until status='done'",
+          "- Iterator pattern: query_next returns status='success' with solution, or status='done' when exhausted",
         ],
         engine_mode: [
           "Engine mode (SWI engines):",
           "- Tools: query_startEngine → query_next → query_close",
           "- True backtracking iterator with no recomputation",
           "- Unified query_next and query_close work for both modes",
-          "- After exhaustion, query_next returns 'No more solutions available' until explicitly closed",
+          "- Iterator pattern: Same as standard mode, check status field to terminate iteration",
         ],
         safety: [
           "Enhanced Security Model:",
@@ -286,7 +286,7 @@ export const tools: ToolDefinitions = {
           "Examples:",
           "- Even filter: findall(X, (between(1,10,X), 0 is X mod 2), L) → L=[2,4,6,8,10]",
           "- Collections: findall(X, member(X,[a,b,c]), L) → L=[a,b,c]",
-          "- Engine: query_startEngine {query: '(between(1,6,X), 0 is X mod 2)'} and call query_next",
+          "- Engine: query_startEngine {query: '(between(1,6,X), 0 is X mod 2)'} and call query_next until status='done'",
           "- String helpers: sub_atom('hello_world',6,5,0,S) → S=world",
           "- Recursive rules: ancestor(X,Y) :- parent(X,Y). ancestor(X,Z) :- parent(X,Y), ancestor(Y,Z).",
           "See docs/examples.md for many more.",
@@ -496,9 +496,9 @@ export const tools: ToolDefinitions = {
         await prologInterface.start();
         const result = await prologInterface.startQuery(query);
         return createSuccessResponse(
-          `Query started: ${query}\nStatus: ${result.status}\nSolutions available: ${result.solutions_available}`,
+          `Query started: ${query}\nStatus: ${result.status}`,
           startTime,
-          { query, status: result.status, solutions_available: result.solutions_available }
+          { query, status: result.status }
         );
       } catch (error) {
         return createErrorResponse(
@@ -511,7 +511,7 @@ export const tools: ToolDefinitions = {
 
   query_next: {
     title: "Get Next Solution",
-    description: "Get the next solution from the current query (unified for both modes)",
+    description: "Get the next solution from the current query (unified for both modes). Returns status='success' with solution, or status='done' when exhausted.",
     inputSchema: queryNextSchema,
     outputSchema: queryNextOutputSchema,
     handler: async (_args, _extra): Promise<CallToolResult> => {
@@ -530,34 +530,34 @@ export const tools: ToolDefinitions = {
           return createErrorResponse(
             "No active query session",
             startTime,
-            { more_solutions: false }
+            { solution: null, status: "done" }
           );
         }
 
         const processingTimeMs = Date.now() - startTime;
 
         if (result.error) {
-          return createErrorResponse(result.error, startTime, { more_solutions: false });
+          return createErrorResponse(result.error, startTime, { solution: null, status: "done" });
         }
 
-        if (result.solution) {
+        if (result.status === "success") {
           return {
             content: [
               {
                 type: "text",
-                text: `Solution: ${result.solution}\nMore solutions: ${result.more_solutions}\nProcessing time: ${processingTimeMs}ms`,
+                text: `Solution: ${result.solution}\nStatus: ${result.status}\nProcessing time: ${processingTimeMs}ms`,
               },
             ],
             structuredContent: {
               solution: result.solution,
-              more_solutions: !!result.more_solutions,
+              status: result.status,
               processing_time_ms: processingTimeMs,
             },
           };
         } else {
           return {
-            content: [{ type: "text", text: `No more solutions available\nProcessing time: ${processingTimeMs}ms` }],
-            structuredContent: { solution: null, more_solutions: false, processing_time_ms: processingTimeMs },
+            content: [{ type: "text", text: `No more solutions available\nStatus: done\nProcessing time: ${processingTimeMs}ms` }],
+            structuredContent: { solution: null, status: "done", processing_time_ms: processingTimeMs },
           };
         }
       } catch (error) {

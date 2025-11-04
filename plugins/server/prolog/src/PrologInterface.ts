@@ -469,7 +469,7 @@ export class PrologInterface {
   /**
    * Start a new query session
    */
-  async startQuery(query: string): Promise<{ status: string; solutions_available: boolean }> {
+  async startQuery(query: string): Promise<{ status: string }> {
     if (
       this.queryActive ||
       this.sessionState === "query" ||
@@ -505,21 +505,20 @@ export class PrologInterface {
     // The unified server returns 'ok' on success
     return {
       status: "ready",
-      solutions_available: true,
     };
   }
 
   /**
    * Get the next solution from current query
    */
-  async nextSolution(): Promise<{ solution?: string; more_solutions: boolean; error?: string }> {
+  async nextSolution(): Promise<{ solution: string | null; status: "success" | "done"; error?: string }> {
     if (!this.queryActive && this.sessionState !== "query_completed") {
-      return { error: "No active query. Start a query first.", more_solutions: false };
+      return { solution: null, status: "done", error: "No active query. Start a query first." };
     }
 
     // If query is already completed, return consistent "no more solutions" message
     if (this.sessionState === "query_completed") {
-      return { more_solutions: false };
+      return { solution: null, status: "done" };
     }
 
     this.assertRunning();
@@ -531,19 +530,19 @@ export class PrologInterface {
         // Keep query info but mark as completed instead of clearing everything
         this.queryActive = false;
         this.setSessionState("query_completed");
-        return { more_solutions: false };
+        return { solution: null, status: "done" };
       }
       if (parsed.kind === "error") {
         this.queryActive = false;
         this.currentQuery = null;
         this.setSessionState("idle");
         const parsedError = PrologInterface.parsePrologError(parsed.error);
-        return { error: PrologInterface.formatPrologError(parsedError), more_solutions: false };
+        return { solution: null, status: "done", error: PrologInterface.formatPrologError(parsedError) };
       }
       if (parsed.kind === "solution") {
-        return { solution: parsed.value, more_solutions: true };
+        return { solution: parsed.value, status: "success" };
       }
-      return { solution: parsed.value, more_solutions: true };
+      return { solution: parsed.value, status: "success" };
     } catch (error) {
       this.queryActive = false;
       this.currentQuery = null;
@@ -551,8 +550,9 @@ export class PrologInterface {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const parsedError = PrologInterface.parsePrologError(errorMessage);
       return {
+        solution: null,
+        status: "done",
         error: PrologInterface.formatPrologError(parsedError),
-        more_solutions: false,
       };
     }
   }
@@ -854,14 +854,14 @@ export class PrologInterface {
   /**
    * Get the next solution from current engine
    */
-  async nextEngine(): Promise<{ solution?: string; more_solutions: boolean; error?: string }> {
+  async nextEngine(): Promise<{ solution: string | null; status: "success" | "done"; error?: string }> {
     if (!this.engineActive && this.sessionState !== "engine_completed") {
-      return { error: "No active engine. Start an engine first.", more_solutions: false };
+      return { solution: null, status: "done", error: "No active engine. Start an engine first." };
     }
 
     // If engine is already completed, return consistent "no more solutions" message
     if (this.sessionState === "engine_completed" || this.engineReachedEOF) {
-      return { more_solutions: false };
+      return { solution: null, status: "done" };
     }
 
     this.assertRunning();
@@ -874,19 +874,19 @@ export class PrologInterface {
         this.engineActive = false;
         this.engineReachedEOF = true;
         this.setSessionState("engine_completed");
-        return { more_solutions: false };
+        return { solution: null, status: "done" };
       }
       if (parsed.kind === "error") {
         this.engineActive = false;
         this.engineReachedEOF = true;
         this.setSessionState("idle");
         const parsedError = PrologInterface.parsePrologError(parsed.error);
-        return { error: PrologInterface.formatPrologError(parsedError), more_solutions: false };
+        return { solution: null, status: "done", error: PrologInterface.formatPrologError(parsedError) };
       }
       if (parsed.kind === "solution") {
-        return { solution: parsed.value, more_solutions: true };
+        return { solution: parsed.value, status: "success" };
       }
-      return { solution: parsed.value, more_solutions: true };
+      return { solution: parsed.value, status: "success" };
     } catch (error) {
       this.engineActive = false;
       this.engineReachedEOF = true;
@@ -894,8 +894,9 @@ export class PrologInterface {
       const errorMessage = error instanceof Error ? error.message : String(error);
       const parsedError = PrologInterface.parsePrologError(errorMessage);
       return {
+        solution: null,
+        status: "done",
         error: PrologInterface.formatPrologError(parsedError),
-        more_solutions: false,
       };
     }
   }
