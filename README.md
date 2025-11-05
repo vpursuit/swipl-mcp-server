@@ -4,7 +4,7 @@
 
 This monorepo contains Model Context Protocol (MCP) packages and products that enable AI assistants to work with SWI-Prolog, filesystems, and extensible plugin systems.
 
-## 🚀 Products
+## Products
 
 ### SWI-Prolog MCP Server
 
@@ -24,7 +24,7 @@ A MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It su
 - Dynamic filesystem roots
 - Plugin-based architecture
 
-## 🧩 Architecture
+## Architecture
 
 This repository follows a **products/plugins** architecture:
 
