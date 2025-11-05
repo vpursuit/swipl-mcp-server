@@ -12,9 +12,9 @@ This monorepo contains Model Context Protocol (MCP) packages and products that e
 
 A MCP server that lets tools-enabled LLMs work directly with SWI‑Prolog. It supports loading Prolog files, adding/removing facts and rules, listing symbols, and running queries with two modes: deterministic pagination and true engine backtracking.
 
-- 📦 **NPM**: [`@vpursuit/swipl-mcp-server`](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server)
-- 📖 **Documentation**: [products/swipl-mcp-server](./products/swipl-mcp-server)
-- 🎯 **Quick Start**: `npx @vpursuit/swipl-mcp-server`
+- **NPM**: [`@vpursuit/swipl-mcp-server`](https://www.npmjs.com/package/@vpursuit/swipl-mcp-server)
+- **Documentation**: [products/swipl-mcp-server](./products/swipl-mcp-server)
+- **Quick Start**: `npx @vpursuit/swipl-mcp-server`
 
 **Features:**
 - Knowledge base management (load, assert, retract, dump)
@@ -149,7 +149,7 @@ Each package supports:
 - **[Contributing](./CONTRIBUTING.md)** — Development workflow and guidelines
 - **[Security](./SECURITY.md)** — Security policies and vulnerability reporting
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 - Code of conduct
@@ -160,7 +160,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for:
 
 For security issues, see [SECURITY.md](./SECURITY.md).
 
-## 📦 Publishing
+## Publishing
 
 Only **products** are published to npm under the `@vpursuit` scope:
 
@@ -171,7 +171,7 @@ Only **products** are published to npm under the `@vpursuit` scope:
 - **Supply chain security**: All packages published with npm provenance attestation
 - See [PUBLISHING.md](./PUBLISHING.md) for complete details
 
-## 🔒 Security
+## Security
 
 All packages implement security best practices:
 - File path restrictions
@@ -200,7 +200,7 @@ See [LICENSE](./LICENSE) file for details.
 - **Model Context Protocol**: [modelcontextprotocol.io](https://modelcontextprotocol.io)
 - **SWI-Prolog**: [swi-prolog.org](https://www.swi-prolog.org)
 
-## 💡 Getting Started
+## Getting Started
 
 **For end users**: Install the complete MCP server
 ```bash

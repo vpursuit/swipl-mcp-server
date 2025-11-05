@@ -168,9 +168,12 @@ describe("Prolog Prompts", () => {
       const messages = prompt.messages();
 
       const text = messages[0].content.text;
-      expect(text).toContain("Choose an interesting logic puzzle");
+      // When no puzzle provided, should offer 3 choices
+      expect(text).toContain("3 different interesting logic puzzles");
       expect(text).toContain("constraint programming");
-      expect(text).toContain("knowledge_base_load_library");
+      expect(text).toContain("which puzzle");
+      expect(text).toContain("Zebra Puzzle");
+      expect(text).toContain("N-Queens");
     });
 
     test("puzzle prompt should use provided puzzle argument", () => {
@@ -180,14 +183,18 @@ describe("Prolog Prompts", () => {
 
       const text = messages[0].content.text;
       expect(text).toContain(puzzle);
-      expect(text).not.toContain("Choose an interesting logic puzzle");
+      // When puzzle is provided, should not offer choices
+      expect(text).not.toContain("3 different interesting logic puzzles");
+      expect(text).toContain("knowledge_base_load_library");
+      expect(text).toContain("WORKFLOW");
     });
 
     test("puzzle prompt should include CLP(FD) workflow", () => {
       const prompt = prologPrompts.puzzle;
-      const messages = prompt.messages();
+      // When puzzle is provided, should include workflow details
+      const messagesWithPuzzle = prompt.messages({ puzzle: "Test puzzle" });
 
-      const text = messages[0].content.text;
+      const text = messagesWithPuzzle[0].content.text;
       expect(text).toContain("knowledge_base_assert_many");
       expect(text).toContain("all_different");
       expect(text).toContain("ins");
@@ -260,8 +267,9 @@ describe("Prolog Prompts", () => {
 
     test("puzzle prompt should emphasize MCP tool usage", () => {
       const prompt = prologPrompts.puzzle;
-      const messages = prompt.messages();
-      const text = messages[0].content.text.toLowerCase();
+      // When puzzle is provided, should emphasize MCP tools
+      const messagesWithPuzzle = prompt.messages({ puzzle: "Test puzzle" });
+      const text = messagesWithPuzzle[0].content.text.toLowerCase();
 
       expect(text).toContain("server");
       expect(text).toContain("knowledge_base_assert_many");

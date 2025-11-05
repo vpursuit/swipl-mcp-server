@@ -355,17 +355,53 @@ Provide the optimized query with detailed explanations of each optimization deci
         required: false
       }
     ],
-    messages: (args = {}) => [
-      {
-        role: "user",
-        content: {
-          type: "text",
-          text: `You are a Prolog expert with access to a SWI-Prolog MCP server. Solve the following logic puzzle using constraint programming.
+    messages: (args = {}) => {
+      if (!args.puzzle) {
+        // When no puzzle is provided, offer 3 puzzle choices
+        return [
+          {
+            role: "user",
+            content: {
+              type: "text",
+              text: `You are a Prolog expert with access to a SWI-Prolog MCP server. I'd like to solve a logic puzzle using constraint programming.
+
+Please present me with 3 different interesting logic puzzles to choose from. For each puzzle, provide:
+- A catchy name
+- A brief description (2-3 sentences)
+- The difficulty level (Easy/Medium/Hard)
+- Why it's interesting to solve with Prolog/CLP(FD)
+
+After presenting the options, ask me which puzzle I'd like to solve.
+
+Example puzzles you might suggest (but feel free to choose different ones):
+- The Zebra Puzzle (Einstein's Riddle)
+- The N-Queens Problem
+- Sudoku
+- Magic Squares
+- Send More Money (cryptarithmetic)
+- Graph Coloring
+- Knights and Knaves
+- River Crossing Puzzles
+
+Present 3 compelling options and wait for my choice.`
+            }
+          }
+        ];
+      }
+
+      // When puzzle is provided, proceed with solving
+      return [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `You are a Prolog expert with access to a SWI-Prolog MCP server. Solve the following logic puzzle using constraint programming.
 
 PREPARATION:
 If you have access to the 'capabilities' tool and haven't checked it yet, read it first to understand available features and server constraints.
 
-${args.puzzle ? `PUZZLE:\n${args.puzzle}` : `PUZZLE:\nChoose an interesting logic puzzle (e.g., Zebra puzzle, Einstein's riddle, or similar constraint problem). State the puzzle clearly with numbered clues.`}
+PUZZLE:
+${args.puzzle}
 
 WORKFLOW:
 1. Load library(clpfd) using knowledge_base_load_library({ library: "clpfd" })
@@ -399,8 +435,9 @@ knowledge_base_assert_many with:
 Then query: \`query_startEngine("solve(Solution)")\` to get solutions.
 
 Now solve the puzzle using this approach with knowledge_base_assert_many and query_startEngine.`
+          }
         }
-      }
-    ]
+      ];
+    }
   }
 };
