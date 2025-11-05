@@ -192,25 +192,44 @@ function registerPrompt(
   logger: PluginLoaderConfig["logger"] = defaultLogger
 ): void {
   try {
+    // Build argsSchema from prompt arguments
+    // Workaround for MCP SDK issue #400: When all arguments are optional, the SDK's z.object()
+    // wrapper still requires an object (not undefined), which violates the MCP spec that allows
+    // arguments to be undefined. Solution: Don't provide schema when all args are optional.
+    let argsSchema: Record<string, z.ZodString | z.ZodOptional<z.ZodString>> | undefined;
+
+    const hasArguments = promptDef.arguments && promptDef.arguments.length > 0;
+    const allArgumentsOptional = hasArguments && promptDef.arguments!.every(arg => !arg.required);
+
+    if (hasArguments && !allArgumentsOptional) {
+      // Only provide schema if there are required arguments
+      argsSchema = promptDef.arguments!.reduce((acc, arg) => {
+        const zodSchema = arg.required ? z.string() : z.string().optional();
+        const schemaWithDesc = arg.description
+          ? zodSchema.describe(arg.description)
+          : zodSchema;
+        acc[arg.name] = schemaWithDesc;
+        return acc;
+      }, {} as Record<string, z.ZodString | z.ZodOptional<z.ZodString>>);
+    }
+    // If all arguments are optional, set argsSchema to undefined to skip SDK validation
+    // The handler will still normalize undefined to {} for consistency
+
+    // Wrap handler to normalize undefined to empty object
+    const wrappedHandler = async (args: any, extra: any) => {
+      // MCP spec allows arguments to be undefined when all fields are optional
+      // Normalize to empty object for consistent handling
+      return promptDef.handler(args || {}, extra);
+    };
+
     server.registerPrompt(
       promptDef.name,
       {
         title: promptDef.title || promptDef.name,
         description: promptDef.description,
-        argsSchema: promptDef.arguments?.reduce((acc, arg) => {
-          // Create Zod string schema, make optional if not required
-          const zodSchema = arg.required ? z.string() : z.string().optional();
-
-          // Add description if provided
-          const schemaWithDesc = arg.description
-            ? zodSchema.describe(arg.description)
-            : zodSchema;
-
-          acc[arg.name] = schemaWithDesc;
-          return acc;
-        }, {} as Record<string, z.ZodString | z.ZodOptional<z.ZodString>>),
+        argsSchema,
       },
-      promptDef.handler as any
+      wrappedHandler as any
     );
   } catch (error) {
     logger.error(

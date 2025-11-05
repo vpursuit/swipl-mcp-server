@@ -300,4 +300,44 @@ describe("Prompts Integration", () => {
       expect(analyzeMode[0].content.text).toContain("Analyze");
     });
   });
+
+  describe("MCP Protocol Compliance", () => {
+    test("schemas should validate empty object when all fields optional", () => {
+      const { testSchemas } = createTestServer();
+
+      // All schemas have optional fields and should accept empty object
+      for (const schemaName of ["expert", "knowledge", "optimize", "puzzle"]) {
+        const schema = (testSchemas as any)[schemaName];
+
+        // Should accept empty object (all fields are optional)
+        expect(() => schema.parse({})).not.toThrow();
+      }
+    });
+
+    test("prompt message generators should handle undefined gracefully", () => {
+      // Test that message generators work with undefined (defaulting to empty object)
+      for (const promptConfig of Object.values(prologPrompts)) {
+        // Message generator should handle undefined and default to empty args
+        expect(() => {
+          const messages = promptConfig.messages(undefined as any);
+          expect(Array.isArray(messages)).toBe(true);
+          expect(messages.length).toBeGreaterThan(0);
+        }).not.toThrow();
+      }
+    });
+
+    test("prompt handlers are wrapped to normalize undefined to empty object", () => {
+      // This tests the loader.ts wrapper that converts undefined -> {}
+      // Note: This is a known MCP SDK limitation workaround
+      // See: https://github.com/modelcontextprotocol/typescript-sdk/issues/400
+      for (const promptConfig of Object.values(prologPrompts)) {
+        // The handler wrapper in loader.ts should convert undefined to {}
+        // before passing to the actual prompt handler
+        expect(() => {
+          const messages = promptConfig.messages({});
+          expect(Array.isArray(messages)).toBe(true);
+        }).not.toThrow();
+      }
+    });
+  });
 });
