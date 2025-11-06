@@ -50,8 +50,6 @@ export const prologPrompts: Record<string, PrologPrompt> = {
 
 PHASE 1 - Resource Discovery:
 List all available resources and read each one completely:
-- reference://help: Usage guidelines and best practices
-- reference://license: License information
 - reference://capabilities: Server capabilities, security model, and constraints
 - prolog://knowledge_base/predicates: Currently defined predicates in knowledge base
 - prolog://knowledge_base/dump: Complete knowledge base content (facts and rules)
