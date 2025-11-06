@@ -5,17 +5,17 @@ describe("Prolog Prompts", () => {
   describe("Prompt Structure Validation", () => {
     test("all prompts should have required properties", () => {
       const expectedPrompts = [
-        "expert",
-        "knowledge",
-        "optimize",
-        "puzzle"
+        "genealogy",
+        "scheduling",
+        "puzzle",
+        "grammar"
       ];
 
       const expectedNames = [
-        "expert",
-        "knowledge",
-        "optimize",
-        "puzzle"
+        "genealogy",
+        "scheduling",
+        "puzzle",
+        "grammar"
       ];
 
       expect(Object.keys(prologPrompts)).toHaveLength(expectedPrompts.length);
@@ -39,10 +39,10 @@ describe("Prolog Prompts", () => {
 
     test("prompts with arguments should have proper argument structure", () => {
       const argPrompts = [
-        { name: "expert", args: ["task", "mode"], required: [false, false] },
-        { name: "knowledge", args: ["domain", "mode"], required: [false, false] },
-        { name: "optimize", args: ["query"], required: [true] },
-        { name: "puzzle", args: ["puzzle"], required: [false] }
+        { name: "genealogy", args: ["family_info"], required: [true] },
+        { name: "scheduling", args: ["tasks"], required: [true] },
+        { name: "puzzle", args: ["puzzle"], required: [true] },
+        { name: "grammar", args: ["sentence"], required: [false] }
       ] as const;
 
       for (const { name, args, required } of argPrompts) {
@@ -61,9 +61,9 @@ describe("Prolog Prompts", () => {
   });
 
   describe("Message Generation", () => {
-    test("expert prompt should generate proper message structure", () => {
-      const prompt = prologPrompts.expert;
-      const messages = prompt.messages();
+    test("genealogy prompt should generate proper message structure", () => {
+      const prompt = prologPrompts.genealogy;
+      const messages = prompt.messages({ family_info: "John is Mary's father" });
 
       expect(Array.isArray(messages)).toBe(true);
       expect(messages).toHaveLength(1);
@@ -75,93 +75,43 @@ describe("Prolog Prompts", () => {
       expect(message.content).toHaveProperty("text");
       expect(typeof message.content.text).toBe("string");
 
-      // Check for key content elements
       const text = message.content.text;
-      expect(text).toContain("Prolog");
-      expect(text).toContain("expert");
-      expect(text).toContain("resources");
-      expect(text).toContain("capabilities");
-      expect(text).toContain("security");
+      expect(text).toContain("family tree");
+      expect(text).toContain("John is Mary's father");
+      expect(text).toContain("knowledge_base_assert_many");
+      expect(text).toContain("parent_of");
+      expect(text).toContain("STEP");
     });
 
-    test("expert prompt in reference mode should guide resource discovery", () => {
-      const prompt = prologPrompts.expert;
-      const messages = prompt.messages({ mode: "reference" });
-
-      const text = messages[0].content.text;
-      expect(text).toContain("resources");
-      expect(text).toContain("reference://capabilities");
-      expect(text).toContain("prolog://knowledge_base/predicates");
-      expect(text).toContain("prolog://knowledge_base/dump");
-      expect(text).toContain("PHASE 1");
-      expect(text).toContain("PHASE 2");
-    });
-
-    test("knowledge prompt in analyze mode should emphasize resource reading", () => {
-      const prompt = prologPrompts.knowledge;
-      const messages = prompt.messages({ mode: "analyze" });
-
-      const text = messages[0].content.text;
-      expect(text).toContain("knowledge-base-predicates");
-      expect(text).toContain("knowledge-base-dump");
-      expect(text).toContain("capabilities");
-      expect(text).toContain("STEP 1");
-      expect(text).toContain("Resource Discovery");
-    });
-
-    test("expert prompt should handle missing task argument", () => {
-      const prompt = prologPrompts.expert;
+    test("genealogy prompt should handle missing family_info argument", () => {
+      const prompt = prologPrompts.genealogy;
       const messages = prompt.messages();
 
       const text = messages[0].content.text;
-      // No placeholder expected; should still include discovery cues
-      expect(text).toContain("Discovery");
-      expect(text).toContain("capabilities");
-      expect(text).toContain("security");
+      expect(text).toContain("[Please provide family members and their relationships]");
+      expect(text).toContain("WORKFLOW");
     });
 
-    test("expert prompt should use provided task argument", () => {
-      const prompt = prologPrompts.expert;
-      const messages = prompt.messages({ task: "solve family tree relationships" });
+    test("scheduling prompt should generate proper message structure", () => {
+      const prompt = prologPrompts.scheduling;
+      const messages = prompt.messages({ tasks: "Task1 (5 days), Task2 (3 days) depends on Task1" });
 
       const text = messages[0].content.text;
-      expect(text).toContain("solve family tree relationships");
+      expect(text).toContain("scheduling");
+      expect(text).toContain("Task1 (5 days)");
+      expect(text).toContain("knowledge_base_load_library");
+      expect(text).toContain("clpfd");
+      expect(text).toContain("STEP");
+      expect(text).toContain("constraint");
     });
 
-    test("knowledge prompt in build mode should handle missing domain argument", () => {
-      const prompt = prologPrompts.knowledge;
-      const messages = prompt.messages({ mode: "build" });
-
-      const text = messages[0].content.text;
-      expect(text).toContain("[Please specify a domain to model]");
-      expect(text).toContain("PREPARATION PHASE");
-    });
-
-    test("knowledge prompt in build mode should use provided domain argument", () => {
-      const prompt = prologPrompts.knowledge;
-      const messages = prompt.messages({ domain: "medical diagnosis", mode: "build" });
-
-      const text = messages[0].content.text;
-      expect(text).toContain("medical diagnosis");
-      expect(text).not.toContain("[Please specify a domain to model]");
-    });
-
-    test("optimize prompt should handle missing query argument", () => {
-      const prompt = prologPrompts.optimize;
+    test("scheduling prompt should handle missing tasks argument", () => {
+      const prompt = prologPrompts.scheduling;
       const messages = prompt.messages();
 
       const text = messages[0].content.text;
-      expect(text).toContain("[Please provide a Prolog query to optimize]");
-      expect(text).toContain("ANALYSIS PHASE");
-    });
-
-    test("optimize prompt should use provided query argument", () => {
-      const prompt = prologPrompts.optimize;
-      const messages = prompt.messages({ query: "findall(X, member(X, [1,2,3]), L)" });
-
-      const text = messages[0].content.text;
-      expect(text).toContain("findall(X, member(X, [1,2,3]), L)");
-      expect(text).not.toContain("[Please provide a Prolog query to optimize]");
+      expect(text).toContain("[Please provide tasks with durations and dependencies]");
+      expect(text).toContain("WORKFLOW");
     });
 
     test("puzzle prompt should handle missing puzzle argument", () => {
@@ -169,10 +119,9 @@ describe("Prolog Prompts", () => {
       const messages = prompt.messages();
 
       const text = messages[0].content.text;
-      // When no puzzle provided, should offer 3 choices
-      expect(text).toContain("3 different interesting logic puzzles");
+      // When no puzzle provided, should suggest 3 puzzles
+      expect(text).toContain("3 interesting logic puzzles");
       expect(text).toContain("constraint programming");
-      expect(text).toContain("which puzzle");
       expect(text).toContain("Zebra Puzzle");
       expect(text).toContain("N-Queens");
     });
@@ -184,15 +133,33 @@ describe("Prolog Prompts", () => {
 
       const text = messages[0].content.text;
       expect(text).toContain(puzzle);
-      // When puzzle is provided, should not offer choices
-      expect(text).not.toContain("3 different interesting logic puzzles");
+      expect(text).not.toContain("3 interesting logic puzzles");
       expect(text).toContain("knowledge_base_load_library");
       expect(text).toContain("WORKFLOW");
     });
 
+    test("puzzle prompt should suggest puzzles when given empty string", () => {
+      const prompt = prologPrompts.puzzle;
+      const messages = prompt.messages({ puzzle: "" });
+
+      const text = messages[0].content.text;
+      // Empty string should be treated as "not provided" → suggest puzzles
+      expect(text).toContain("3 interesting logic puzzles");
+      expect(text).not.toContain("WORKFLOW");
+    });
+
+    test("puzzle prompt should suggest puzzles when given whitespace-only string", () => {
+      const prompt = prologPrompts.puzzle;
+      const messages = prompt.messages({ puzzle: "   " });
+
+      const text = messages[0].content.text;
+      // Whitespace-only should be treated as "not provided" → suggest puzzles
+      expect(text).toContain("3 interesting logic puzzles");
+      expect(text).not.toContain("WORKFLOW");
+    });
+
     test("puzzle prompt should include CLP(FD) workflow", () => {
       const prompt = prologPrompts.puzzle;
-      // When puzzle is provided, should include workflow details
       const messagesWithPuzzle = prompt.messages({ puzzle: "Test puzzle" });
 
       const text = messagesWithPuzzle[0].content.text;
@@ -203,79 +170,123 @@ describe("Prolog Prompts", () => {
       expect(text).toContain("solve/1");
       expect(text).toContain("query_startEngine");
     });
+
+    test("grammar prompt should generate proper message structure", () => {
+      const prompt = prologPrompts.grammar;
+      const messages = prompt.messages({ sentence: "the cat sat on the mat" });
+
+      const text = messages[0].content.text;
+      expect(text).toContain("the cat sat on the mat");
+      expect(text).toContain("DCG");
+      expect(text).toContain("phrase/2");
+      expect(text).toContain("knowledge_base_assert_many");
+      expect(text).toContain("STEP");
+    });
+
+    test("grammar prompt should handle missing sentence argument", () => {
+      const prompt = prologPrompts.grammar;
+      const messages = prompt.messages();
+
+      const text = messages[0].content.text;
+      // Should use default sentence
+      expect(text).toContain("the cat sat on the mat");
+      expect(text).toContain("DCG");
+    });
   });
 
   describe("Content Validation", () => {
-    test("all prompts should mention resources for context discovery", () => {
-      const allPrompts = Object.entries(prologPrompts);
-
-      for (const [key, prompt] of allPrompts) {
-        const messages = prompt.messages();
-        const text = messages[0].content.text;
-
-        // Puzzle solver is focused on problem solving, not resource discovery
-        if (key === "puzzle") {
-          continue;
-        }
-
-        // Each prompt should guide users to check resources
-        expect(text.toLowerCase()).toMatch(/resource|capabilities|help|knowledge-base-/);
-      }
-    });
-
-    test("prompts should include security awareness", () => {
-      const securityAwarePrompts = [
-        "expert",
-        "knowledge"
-      ];
-
-      for (const promptName of securityAwarePrompts) {
-        const prompt = prologPrompts[promptName];
-        const messages = prompt.messages();
-        const text = messages[0].content.text.toLowerCase();
-
-        expect(text).toMatch(/security|safe|dangerous|blocked/);
-      }
-    });
-
-    test("prompts should emphasize Prolog expertise", () => {
+    test("all prompts should demonstrate MCP tool usage patterns", () => {
       const allPrompts = Object.values(prologPrompts);
 
       for (const prompt of allPrompts) {
-        const messages = prompt.messages();
+        // Use default args or test args to trigger full workflow
+        const messages = prompt.messages({
+          family_info: "test",
+          tasks: "test",
+          puzzle: "test",
+          sentence: "test"
+        });
         const text = messages[0].content.text.toLowerCase();
 
-        expect(text).toMatch(/prolog|logic programming|expert/);
+        // Each prompt should mention specific MCP tools
+        expect(text).toMatch(/knowledge_base_|query_|symbols_list/);
       }
     });
 
-    test("workflow prompts should have structured phases", () => {
-      const workflowPrompts = [
-        "expert",
-        "knowledge",
-        "optimize"
-      ];
+    test("prompts should emphasize Prolog patterns", () => {
+      const allPrompts = Object.values(prologPrompts);
 
-      for (const promptName of workflowPrompts) {
-        const prompt = prologPrompts[promptName];
-        const messages = prompt.messages();
+      for (const prompt of allPrompts) {
+        const messages = prompt.messages({
+          family_info: "test",
+          tasks: "test",
+          puzzle: "test",
+          sentence: "test"
+        });
+        const text = messages[0].content.text.toLowerCase();
+
+        expect(text).toMatch(/prolog|predicate|query|rules?|facts?/);
+      }
+    });
+
+    test("all prompts should have structured workflows", () => {
+      const allPrompts = Object.values(prologPrompts);
+
+      for (const prompt of allPrompts) {
+        const messages = prompt.messages({
+          family_info: "test",
+          tasks: "test",
+          puzzle: "test",
+          sentence: "test"
+        });
         const text = messages[0].content.text;
 
-        // Should have structured phases/steps
-        expect(text).toMatch(/PHASE|STEP \d|1\.|2\./);
+        // Should have structured steps/workflow
+        expect(text).toMatch(/STEP|WORKFLOW/i);
       }
     });
 
-    test("puzzle prompt should emphasize MCP tool usage", () => {
-      const prompt = prologPrompts.puzzle;
-      // When puzzle is provided, should emphasize MCP tools
-      const messagesWithPuzzle = prompt.messages({ puzzle: "Test puzzle" });
-      const text = messagesWithPuzzle[0].content.text.toLowerCase();
+    test("domain prompts should emphasize tool usage through examples", () => {
+      // All new prompts should demonstrate MCP tools
+      const prompts = ["genealogy", "scheduling", "puzzle", "grammar"];
 
-      expect(text).toContain("server");
-      expect(text).toContain("knowledge_base_assert_many");
-      expect(text).toContain("workflow");
-      expect(text).toContain("query_startengine");
+      for (const promptName of prompts) {
+        const prompt = prologPrompts[promptName];
+        const messages = prompt.messages({
+          family_info: "test",
+          tasks: "test",
+          puzzle: "test",
+          sentence: "test"
+        });
+        const text = messages[0].content.text.toLowerCase();
+
+        expect(text).toContain("knowledge_base_");
+        expect(text).toContain("query_");
+      }
+    });
+
+    test("all prompts should include communication directives", () => {
+      // All prompts with workflows should have execution pattern and result markers
+      const prompts = ["genealogy", "scheduling", "puzzle", "grammar"];
+
+      for (const promptName of prompts) {
+        const prompt = prologPrompts[promptName];
+        const messages = prompt.messages({
+          family_info: "test",
+          tasks: "test",
+          puzzle: "test",
+          sentence: "test"
+        });
+        const text = messages[0].content.text;
+
+        // Should have execution pattern directive
+        expect(text).toContain("EXECUTION PATTERN:");
+        expect(text).toContain("announce action");
+        expect(text).toContain("show tool calls/results");
+
+        // Should have result markers (→) in workflow
+        expect(text).toContain("→");
+      }
     });
   });
 
@@ -294,41 +305,36 @@ describe("Prolog Prompts", () => {
     });
 
     test("prompts should handle extra arguments gracefully", () => {
-      const prompt = prologPrompts.expert;
+      const prompt = prologPrompts.genealogy;
 
       expect(() => prompt.messages({
-        task: "test task",
+        family_info: "John is Mary's father",
         extraArg: "should be ignored",
         anotherExtra: 123
       })).not.toThrow();
 
-      const messages = prompt.messages({ task: "test task", extraArg: "ignored" });
-      expect(messages[0].content.text).toContain("test task");
+      const messages = prompt.messages({ family_info: "John is Mary's father", extraArg: "ignored" });
+      expect(messages[0].content.text).toContain("John is Mary's father");
     });
 
-    test("expert prompt modes should work correctly", () => {
-      const prompt = prologPrompts.expert;
+    test("puzzle prompt should handle both provided and missing arguments", () => {
+      const prompt = prologPrompts.puzzle;
 
-      // Default (expert mode)
-      const expertMessages = prompt.messages();
-      expect(expertMessages[0].content.text).toContain("expert");
+      // Without puzzle - should suggest
+      const withoutPuzzle = prompt.messages();
+      expect(withoutPuzzle[0].content.text).toContain("3 interesting logic puzzles");
 
-      // Reference mode
-      const refMessages = prompt.messages({ mode: "reference" });
-      expect(refMessages[0].content.text).toContain("PHASE 1");
-      expect(refMessages[0].content.text).toContain("reference guide");
+      // With puzzle - should solve
+      const withPuzzle = prompt.messages({ puzzle: "Test puzzle" });
+      expect(withPuzzle[0].content.text).toContain("Test puzzle");
+      expect(withPuzzle[0].content.text).toContain("WORKFLOW");
     });
 
-    test("knowledge prompt modes should work correctly", () => {
-      const prompt = prologPrompts.knowledge;
+    test("grammar prompt should use default sentence when not provided", () => {
+      const prompt = prologPrompts.grammar;
 
-      // Default (build mode)
-      const buildMessages = prompt.messages();
-      expect(buildMessages[0].content.text).toContain("Build");
-
-      // Analyze mode
-      const analyzeMessages = prompt.messages({ mode: "analyze" });
-      expect(analyzeMessages[0].content.text).toContain("Analyze");
+      const messages = prompt.messages();
+      expect(messages[0].content.text).toContain("the cat sat on the mat");
     });
   });
 
@@ -366,15 +372,12 @@ describe("Prolog Prompts", () => {
 
   describe("Prompt Categories", () => {
     test("should have proper categorization of prompts", () => {
-      const expertGuidance = ["expert", "optimize"];
-      const knowledgeBase = ["knowledge"];
-      const problemSolving = ["puzzle"];
+      const domainExamples = ["genealogy", "scheduling", "puzzle", "grammar"];
 
-      // Verify all categories are covered
-      const allCategorized = [...expertGuidance, ...knowledgeBase, ...problemSolving];
+      // Verify all prompts are in domain_examples category
       const allPromptNames = Object.keys(prologPrompts);
 
-      expect(allCategorized.sort()).toEqual(allPromptNames.sort());
+      expect(domainExamples.sort()).toEqual(allPromptNames.sort());
     });
   });
 });

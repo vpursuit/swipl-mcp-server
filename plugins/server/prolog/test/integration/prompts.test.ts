@@ -12,28 +12,26 @@ function createTestServer() {
 
   // Create actual Zod schemas for testing
   const testSchemas = {
-    expert: z.object({
-      task: z.string().optional(),
-      mode: z.enum(["expert", "reference"]).optional()
+    genealogy: z.object({
+      family_info: z.string()
     }),
-    knowledge: z.object({
-      domain: z.string().optional(),
-      mode: z.enum(["build", "analyze"]).optional()
-    }),
-    optimize: z.object({
-      query: z.string().optional()
+    scheduling: z.object({
+      tasks: z.string()
     }),
     puzzle: z.object({
       puzzle: z.string().optional()
+    }),
+    grammar: z.object({
+      sentence: z.string().optional()
     })
   };
 
   // Register prompts like in the main index.ts
   const promptSchemaMap: Record<string, string> = {
-    "expert": "expert",
-    "knowledge": "knowledge",
-    "optimize": "optimize",
-    "puzzle": "puzzle"
+    "genealogy": "genealogy",
+    "scheduling": "scheduling",
+    "puzzle": "puzzle",
+    "grammar": "grammar"
   };
 
   const registeredPrompts: string[] = [];
@@ -74,20 +72,20 @@ describe("Prompts Integration", () => {
       expect(() => {
         const { server: _server, registeredPrompts } = createTestServer();
         expect(registeredPrompts).toHaveLength(4);
-        expect(registeredPrompts).toContain("expert");
-        expect(registeredPrompts).toContain("knowledge");
-        expect(registeredPrompts).toContain("optimize");
+        expect(registeredPrompts).toContain("genealogy");
+        expect(registeredPrompts).toContain("scheduling");
         expect(registeredPrompts).toContain("puzzle");
+        expect(registeredPrompts).toContain("grammar");
       }).not.toThrow();
     });
 
     test("should have valid schema mapping for all prompts", () => {
       const { testSchemas } = createTestServer();
       const expectedSchemas = [
-        "expert",
-        "knowledge",
-        "optimize",
-        "puzzle"
+        "genealogy",
+        "scheduling",
+        "puzzle",
+        "grammar"
       ];
 
       for (const schemaName of expectedSchemas) {
@@ -103,16 +101,12 @@ describe("Prompts Integration", () => {
       expect(capabilities).toHaveProperty("prompts");
       const prompts = capabilities.prompts as any;
 
-      expect(prompts).toHaveProperty("expert_guidance");
-      expect(prompts).toHaveProperty("knowledge_base");
-      expect(prompts).toHaveProperty("problem_solving");
+      expect(prompts).toHaveProperty("domain_examples");
 
-      expect(prompts.expert_guidance).toContain("expert");
-      expect(prompts.expert_guidance).toContain("optimize");
-
-      expect(prompts.knowledge_base).toContain("knowledge");
-
-      expect(prompts.problem_solving).toContain("puzzle");
+      expect(prompts.domain_examples).toContain("genealogy");
+      expect(prompts.domain_examples).toContain("scheduling");
+      expect(prompts.domain_examples).toContain("puzzle");
+      expect(prompts.domain_examples).toContain("grammar");
     });
 
     test("capabilities should maintain other sections with prompts added", () => {
@@ -172,8 +166,7 @@ describe("Prompts Integration", () => {
       const helpResponse = await toolHandlers.help({});
       const helpText = helpResponse.content[0].text;
 
-      expect(helpText).toContain("Expert Prompts");
-      expect(helpText).toContain("expert");
+      expect(helpText).toContain("Prompts");
       expect(helpText).toContain("Prompt Usage Pattern");
     });
 
@@ -181,11 +174,11 @@ describe("Prompts Integration", () => {
       const helpResponse = await toolHandlers.help({ topic: "prompts" });
       const helpText = helpResponse.content[0].text;
 
-      expect(helpText).toContain("Expert Prompts");
-      expect(helpText).toContain("expert");
-      expect(helpText).toContain("knowledge");
-      expect(helpText).toContain("optimize");
+      expect(helpText).toContain("Prompts");
+      expect(helpText).toContain("genealogy");
+      expect(helpText).toContain("scheduling");
       expect(helpText).toContain("puzzle");
+      expect(helpText).toContain("grammar");
     });
   });
 
@@ -193,28 +186,31 @@ describe("Prompts Integration", () => {
     test("all prompt schemas should be valid Zod schemas", () => {
       const { testSchemas } = createTestServer();
       const schemaNames = [
-        "expert",
-        "knowledge",
-        "optimize",
-        "puzzle"
+        "genealogy",
+        "scheduling",
+        "puzzle",
+        "grammar"
       ];
 
       for (const schemaName of schemaNames) {
         const schema = (testSchemas as any)[schemaName];
         expect(schema).toBeDefined();
 
-        // Should be able to parse empty object (since all args are optional)
-        expect(() => schema.parse({})).not.toThrow();
+        // Genealogy and scheduling have required args
+        // Puzzle and grammar have optional args
+        if (schemaName === "puzzle" || schemaName === "grammar") {
+          expect(() => schema.parse({})).not.toThrow();
+        }
       }
     });
 
     test("prompts with arguments should validate correctly", () => {
       const { testSchemas } = createTestServer();
       const testCases = [
-        { schema: "expert", validArgs: { task: "test task", mode: "expert" } },
-        { schema: "knowledge", validArgs: { domain: "test domain", mode: "build" } },
-        { schema: "optimize", validArgs: { query: "test query" } },
-        { schema: "puzzle", validArgs: { puzzle: "test puzzle" } }
+        { schema: "genealogy", validArgs: { family_info: "John is Mary's father" } },
+        { schema: "scheduling", validArgs: { tasks: "Task1 (5 days), Task2 (3 days) depends on Task1" } },
+        { schema: "puzzle", validArgs: { puzzle: "test puzzle" } },
+        { schema: "grammar", validArgs: { sentence: "the cat sat on the mat" } }
       ];
 
       for (const { schema, validArgs } of testCases) {
@@ -222,91 +218,108 @@ describe("Prompts Integration", () => {
 
         // Should accept valid arguments
         expect(() => zodSchema.parse(validArgs)).not.toThrow();
-
-        // Should accept empty object (optional args)
-        expect(() => zodSchema.parse({})).not.toThrow();
       }
     });
 
-    test("mode arguments should validate correctly", () => {
+    test("optional arguments should work correctly", () => {
       const { testSchemas } = createTestServer();
 
-      // Expert mode validation
-      const expertSchema = testSchemas.expert;
-      expect(() => expertSchema.parse({ mode: "expert" })).not.toThrow();
-      expect(() => expertSchema.parse({ mode: "reference" })).not.toThrow();
+      // Puzzle and grammar have optional args
+      const puzzleSchema = testSchemas.puzzle;
+      expect(() => puzzleSchema.parse({})).not.toThrow();
+      expect(() => puzzleSchema.parse({ puzzle: "test" })).not.toThrow();
 
-      // Knowledge mode validation
-      const knowledgeSchema = testSchemas.knowledge;
-      expect(() => knowledgeSchema.parse({ mode: "build" })).not.toThrow();
-      expect(() => knowledgeSchema.parse({ mode: "analyze" })).not.toThrow();
+      const grammarSchema = testSchemas.grammar;
+      expect(() => grammarSchema.parse({})).not.toThrow();
+      expect(() => grammarSchema.parse({ sentence: "test sentence" })).not.toThrow();
     });
   });
 
-  describe("Resource-First Approach", () => {
-    test("all prompts should mention resource discovery", () => {
+  describe("Domain-Specific Tool Patterns", () => {
+    test("all prompts should demonstrate MCP tool usage", () => {
       const allPrompts = Object.entries(prologPrompts);
 
-      for (const [key, prompt] of allPrompts) {
-        // Puzzle solver is action-oriented (solve puzzle), not resource-discovery-oriented
-        if (key === "puzzle") {
-          continue;
-        }
-
-        const messages = prompt.messages({});
+      for (const [_key, prompt] of allPrompts) {
+        // Use sample args to trigger full workflow
+        const messages = prompt.messages({
+          family_info: "test",
+          tasks: "test",
+          puzzle: "test",
+          sentence: "test"
+        });
         const text = messages[0].content.text.toLowerCase();
 
-        // Should mention reading resources
-        expect(text).toMatch(/read.*resource|check.*resource|list.*resource|resource.*discovery/);
+        // Should mention MCP tools
+        expect(text).toMatch(/knowledge_base_|query_/);
       }
     });
 
-    test("prompts should reference specific resources", () => {
-      const resourcePrompts = [
-        "expert",
-        "knowledge"
-      ];
+    test("prompts should show structured workflows", () => {
+      const allPrompts = Object.values(prologPrompts);
 
-      for (const promptName of resourcePrompts) {
-        const prompt = prologPrompts[promptName];
-        const messages = prompt.messages({});
+      for (const prompt of allPrompts) {
+        const messages = prompt.messages({
+          family_info: "test",
+          tasks: "test",
+          puzzle: "test",
+          sentence: "test"
+        });
         const text = messages[0].content.text;
 
-        // Should reference specific resources
-        expect(text).toMatch(/reference:\/\/|prolog:\/\/|knowledge-base-predicates|knowledge-base-dump|capabilities|help/);
+        // Should have structured workflow
+        expect(text).toMatch(/STEP|WORKFLOW/i);
       }
     });
   });
 
-  describe("Mode-based Prompt Behavior", () => {
-    test("expert prompt should behave differently based on mode", () => {
-      const prompt = prologPrompts.expert;
+  describe("Domain-Specific Behavior", () => {
+    test("genealogy prompt should focus on family relationships", () => {
+      const prompt = prologPrompts.genealogy;
+      const messages = prompt.messages({ family_info: "John is Mary's father" });
 
-      const expertMode = prompt.messages({ mode: "expert" });
-      const referenceMode = prompt.messages({ mode: "reference" });
-
-      expect(expertMode[0].content.text).not.toBe(referenceMode[0].content.text);
-      expect(referenceMode[0].content.text).toContain("reference guide");
+      const text = messages[0].content.text.toLowerCase();
+      expect(text).toContain("parent_of");
+      expect(text).toContain("sibling");
+      expect(text).toContain("ancestor");
     });
 
-    test("knowledge prompt should behave differently based on mode", () => {
-      const prompt = prologPrompts.knowledge;
+    test("scheduling prompt should focus on constraints", () => {
+      const prompt = prologPrompts.scheduling;
+      const messages = prompt.messages({ tasks: "Task1, Task2" });
 
-      const buildMode = prompt.messages({ mode: "build" });
-      const analyzeMode = prompt.messages({ mode: "analyze" });
+      const text = messages[0].content.text.toLowerCase();
+      expect(text).toContain("clpfd");
+      expect(text).toContain("constraint");
+      expect(text).toContain("schedule");
+    });
 
-      expect(buildMode[0].content.text).not.toBe(analyzeMode[0].content.text);
-      expect(buildMode[0].content.text).toContain("Build");
-      expect(analyzeMode[0].content.text).toContain("Analyze");
+    test("puzzle prompt should offer choices when no puzzle provided", () => {
+      const prompt = prologPrompts.puzzle;
+      const messagesWithout = prompt.messages({});
+      const messagesWith = prompt.messages({ puzzle: "Test puzzle" });
+
+      expect(messagesWithout[0].content.text).toContain("3 interesting");
+      expect(messagesWith[0].content.text).toContain("Test puzzle");
+      expect(messagesWith[0].content.text).not.toContain("3 interesting");
+    });
+
+    test("grammar prompt should focus on DCG parsing", () => {
+      const prompt = prologPrompts.grammar;
+      const messages = prompt.messages({ sentence: "test sentence" });
+
+      const text = messages[0].content.text.toLowerCase();
+      expect(text).toContain("dcg");
+      expect(text).toContain("phrase");
+      expect(text).toContain("parse");
     });
   });
 
   describe("MCP Protocol Compliance", () => {
-    test("schemas should validate empty object when all fields optional", () => {
+    test("schemas with optional fields should validate empty object", () => {
       const { testSchemas } = createTestServer();
 
-      // All schemas have optional fields and should accept empty object
-      for (const schemaName of ["expert", "knowledge", "optimize", "puzzle"]) {
+      // Puzzle and grammar have optional fields
+      for (const schemaName of ["puzzle", "grammar"]) {
         const schema = (testSchemas as any)[schemaName];
 
         // Should accept empty object (all fields are optional)

@@ -41,9 +41,7 @@ export interface CapabilitiesSummary {
     symbols: readonly string[];
   };
   prompts: {
-    expert_guidance: readonly string[];
-    knowledge_base: readonly string[];
-    problem_solving: readonly string[];
+    domain_examples: readonly string[];
   };
   security: {
     module: string;

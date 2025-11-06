@@ -78,12 +78,10 @@ function convertPromptsToDefinitions(): PromptDefinitions {
  * - reference://capabilities: Capabilities summary (JSON)
  *
  * PROMPTS:
- * - prolog_init_expert: Initialize expert Prolog context
- * - prolog_quick_reference: Get quick reference for common tasks
- * - prolog_analyze_knowledge_base: Analyze current knowledge base
- * - prolog_knowledge_base_builder: Build knowledge base from requirements
- * - prolog_query_optimizer: Optimize Prolog query performance
- * - prolog_logic_puzzle_solver: Solve logic puzzles using CLP(FD)
+ * - genealogy: Build and query family trees using relational logic
+ * - scheduling: Schedule tasks with dependencies using CLP(FD)
+ * - puzzle: Solve logic puzzles using constraint programming
+ * - grammar: Parse natural language using Definite Clause Grammars (DCGs)
  *
  * SECURITY:
  * - File operations restricted to allowed directories

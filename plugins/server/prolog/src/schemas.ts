@@ -113,9 +113,7 @@ export const capabilitiesOutputSchema = {
     symbols: z.array(z.string()),
   }),
   prompts: z.object({
-    expert_guidance: z.array(z.string()),
-    knowledge_base: z.array(z.string()),
-    problem_solving: z.array(z.string()),
+    domain_examples: z.array(z.string()),
   }),
   security: z.object({
     module: z.string(),
@@ -156,22 +154,20 @@ export const queryNextOutputSchema = {
 } as const;
 
 // Prompt schemas (raw shapes for direct use with MCP SDK)
-export const expertSchema = {
-  task: z.string().optional().describe("Optional task to focus expert setup"),
-  mode: z.enum(["expert", "reference"]).optional().describe("Mode: 'expert' (default) for guidance, 'reference' for complete overview"),
+export const genealogySchema = {
+  family_info: z.string().describe("Family members and relationships to model. Provide names and relationships (e.g., 'John is Mary's father, Mary has two children: Alice and Bob')"),
 } as const;
 
-export const knowledgeSchema = {
-  domain: z.string().optional().describe("Domain to model (required when mode='build')"),
-  mode: z.enum(["build", "analyze"]).optional().describe("Mode: 'build' (default) to create KB, 'analyze' to examine existing KB"),
-} as const;
-
-export const optimizeSchema = {
-  query: z.string().describe("The Prolog query to analyze and optimize"),
+export const schedulingSchema = {
+  tasks: z.string().describe("Tasks to schedule with durations and dependencies. Format: 'Task1 (duration X), Task2 (duration Y) depends on Task1, ...'"),
 } as const;
 
 export const puzzleSchema = {
-  puzzle: z.string().optional().describe("The logic puzzle to solve (with numbered clues). If empty, agent chooses an interesting puzzle."),
+  puzzle: z.string().optional().describe("The logic puzzle to solve with numbered clues. If not provided, suggest 3 interesting puzzles."),
+} as const;
+
+export const grammarSchema = {
+  sentence: z.string().optional().describe("Sentence to parse (e.g., 'the cat sat on the mat'). If not provided, use a default example."),
 } as const;
 
 /**
@@ -195,10 +191,10 @@ export const zodSchemas = {
   knowledgeBaseLoadLibrary: knowledgeBaseLoadLibrarySchema,
   capabilities: capabilitiesSchema,
   license: licenseSchema,
-  expert: expertSchema,
-  knowledge: knowledgeSchema,
-  optimize: optimizeSchema,
+  genealogy: genealogySchema,
+  scheduling: schedulingSchema,
   puzzle: puzzleSchema,
+  grammar: grammarSchema,
 } as const;
 
 /**
@@ -223,8 +219,8 @@ export const jsonSchemas = {
   knowledgeBaseLoadLibrary: zodToJsonSchema(z.object(knowledgeBaseLoadLibrarySchema)),
   capabilities: zodToJsonSchema(z.object(capabilitiesSchema)),
   license: zodToJsonSchema(z.object(licenseSchema)),
-  expert: zodToJsonSchema(z.object(expertSchema)),
-  knowledge: zodToJsonSchema(z.object(knowledgeSchema)),
-  optimize: zodToJsonSchema(z.object(optimizeSchema)),
+  genealogy: zodToJsonSchema(z.object(genealogySchema)),
+  scheduling: zodToJsonSchema(z.object(schedulingSchema)),
   puzzle: zodToJsonSchema(z.object(puzzleSchema)),
+  grammar: zodToJsonSchema(z.object(grammarSchema)),
 } as const;

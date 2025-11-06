@@ -1,8 +1,8 @@
 /**
  * MCP Prompts for SWI-Prolog Server
  *
- * These prompts guide agents/LLMs to effectively use the Prolog server
- * by first discovering resources for context, then using tools efficiently.
+ * Domain-specific prompts that teach MCP tool usage through concrete problem-solving.
+ * Each prompt demonstrates key server patterns within a focused problem domain.
  */
 
 export interface PromptArgument {
@@ -28,414 +28,637 @@ export interface PrologPrompt {
 }
 
 export const prologPrompts: Record<string, PrologPrompt> = {
-  // Expert guidance and reference (merged initExpert + quickReference)
-  expert: {
-    name: "expert",
-    title: "Expert Guidance",
-    description: "Get expert Prolog guidance or comprehensive server reference",
+  // Family tree reasoning with relational logic
+  genealogy: {
+    name: "genealogy",
+    title: "Family Tree Reasoning",
+    description: "Build and query family trees using Prolog's relational logic",
     arguments: [
-      { name: "task", description: "Optional task to focus expert setup", required: false },
-      { name: "mode", description: "Mode: 'expert' (default) for guidance, 'reference' for complete overview", required: false },
-    ],
-    messages: (args = {}) => {
-      const mode = args.mode || "expert";
-
-      if (mode === "reference") {
-        return [
-          {
-            role: "user",
-            content: {
-              type: "text",
-              text: `Provide a comprehensive quick reference guide for this Prolog server:
-
-PHASE 1 - Resource Discovery:
-List all available resources and read each one completely:
-- reference://capabilities: Server capabilities, security model, and constraints
-- prolog://knowledge_base/predicates: Currently defined predicates in knowledge base
-- prolog://knowledge_base/dump: Complete knowledge base content (facts and rules)
-
-PHASE 2 - Analysis and Summary:
-After reading all resources, provide:
-
-1. SERVER CAPABILITIES:
-   - Available tools and their specific purposes
-   - Query modes (standard vs engine) and when to use each
-   - Security restrictions and safe operations
-   - File handling capabilities and restrictions
-
-2. CURRENT KNOWLEDGE BASE STATE:
-   - What predicates are defined
-   - What domains/concepts are modeled
-   - Available facts and inference rules
-
-3. BEST PRACTICES (from help resource):
-   - Recommended tool usage patterns
-   - Performance optimization tips
-   - Common pitfalls to avoid
-
-4. EXAMPLE WORKFLOWS:
-   - How to load knowledge from files
-   - How to build knowledge bases programmatically
-   - How to query effectively in both modes
-   - How to debug and optimize queries
-
-5. QUICK REFERENCE CARD:
-   - Most commonly used tools
-   - Essential Prolog built-in predicates available
-   - Security do's and don'ts
-
-6. PREDICATE AVAILABILITY:
-   - All standard SWI-Prolog predicates are available
-   - library(clpfd) is available
-   - List standard alternatives for constraint problems
-
-This will serve as a complete orientation to the server's capabilities.`
-            }
-          }
-        ];
-      }
-
-      // Default: expert mode
-      return [
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `You are a Prolog and logic programming expert.${args.task ? ` Focus on this task: ${args.task}` : ''}
-
-Recommended first step — Discovery:
-1. List all available resources to understand the server
-2. Read the 'capabilities' resource (reference://capabilities) for server features and security
-3. Read the 'help' resource (reference://help) for comprehensive usage guidelines
-4. Check 'knowledge-base-predicates' resource (prolog://knowledge_base/predicates) for current knowledge base predicates
-5. Review 'knowledge-base-dump' resource (prolog://knowledge_base/dump) for full knowledge base content
-
-EXPERT KNOWLEDGE - You are an expert in:
-- SWI-Prolog syntax: facts, rules, queries, unification, DCGs
-- Logic programming paradigms and best practices
-- Knowledge representation and automated reasoning
-- Query optimization: cuts, indexing, goal ordering
-- Debugging: trace/spy, deterministic vs non-deterministic predicates
-- Built-in predicates: findall/3, bagof/3, setof/3, member/2, append/3, between/3, permutation/2
-
-IMPORTANT - AVAILABLE PREDICATES:
-- All standard SWI-Prolog predicates are available
-- library(clpfd) is available
-
-SECURITY AWARENESS (from capabilities resource):
-- File operations restricted to ~/.model-context-lab/
-- Dangerous predicates blocked: shell(), system(), call(), halt()
-- Use only safe predicates in knowledge_base module
-- All queries executed in sandboxed environment
-
-EFFICIENT TOOL USAGE (token‑aware):
-- Use knowledge_base_assert_many for batch fact loading (more efficient than single assertions)
-- Prefer query_startEngine for complex queries with backtracking
-- Check symbols_list to see available predicates before defining new ones
-- Use knowledge_base_dump to export and verify knowledge base state
-- Validate file paths before knowledge_base_load operations
-\nToken hygiene: prefer summarizing resources (e.g. list predicates, skim dump headers) and quote only minimal snippets.
-
-Always check resources first for context, then use tools based on discovered capabilities.`
-          }
-        }
-      ];
-    }
-  },
-
-  // Knowledge base operations (merged builder + analyzer)
-  knowledge: {
-    name: "knowledge",
-    title: "Knowledge Base Operations",
-    description: "Build or analyze knowledge bases with expert guidance",
-    arguments: [
-      { name: "domain", description: "Domain to model (required when mode='build')", required: false },
-      { name: "mode", description: "Mode: 'build' (default) to create KB, 'analyze' to examine existing KB", required: false },
-    ],
-    messages: (args = {}) => {
-      const mode = args.mode || "build";
-
-      if (mode === "analyze") {
-        return [
-          {
-            role: "user",
-            content: {
-              type: "text",
-              text: `Analyze the current Prolog knowledge base comprehensively:
-
-STEP 1 - Resource Discovery:
-First, read these resources to understand the current state:
-- 'knowledge-base-predicates' resource: See what predicates are currently defined
-- 'knowledge-base-dump' resource: Review all facts and rules in detail
-- 'capabilities' resource: Understand security constraints and features
-
-STEP 2 - Analysis:
-Based on the resource content, analyze:
-- What domains/concepts are modeled in the current KB?
-- What base facts exist and how are they structured?
-- What inference rules are defined and their logical relationships?
-- Are there recursive predicates? Are they well-formed with proper base cases?
-- What built-in predicates are being used effectively?
-- Are there any performance optimization opportunities?
-
-STEP 3 - Recommendations:
-Suggest improvements based on Prolog best practices:
-- Missing predicates that would be useful for the domain
-- Optimization opportunities (goal ordering, cuts, indexing)
-- Additional facts or rules that would enhance reasoning
-- Query patterns that would be most effective
-
-STEP 4 - Example Queries:
-Provide example queries that demonstrate the KB's capabilities and suggest new ones to try.`
-            }
-          }
-        ];
-      }
-
-      // Default: build mode
-      return [
-        {
-          role: "user",
-          content: {
-            type: "text",
-            text: `Build a comprehensive Prolog knowledge base for domain: ${args.domain || '[Please specify a domain to model]'}
-
-PREPARATION PHASE:
-1. Read 'capabilities' resource: Understand security constraints and available features
-2. Check 'knowledge-base-predicates' resource: See what predicates already exist to avoid conflicts
-3. Review 'knowledge-base-dump' resource: Understand current knowledge base state
-4. Read 'help' resource: Get guidance on best practices
-
-IMPORTANT - Predicate Availability:
-- All standard SWI-Prolog predicates are available
-- library(clpfd) is available
-
-DESIGN PHASE:
-1. Domain Analysis:
-   - Identify key entities and their relationships
-   - Determine base facts vs derived knowledge (rules)
-   - Plan predicate names following Prolog conventions (lowercase, descriptive)
-   - Consider arity and argument patterns for consistency
-
-2. Knowledge Architecture:
-   - Base facts: atomic, ground terms representing known information
-   - Rules: logical relationships that derive new knowledge
-   - Helper predicates: utility predicates for common operations
-   - Meta-level predicates: for introspection and control
-
-IMPLEMENTATION PHASE:
-1. Create Base Facts:
-   - Use knowledge_base_assert_many for efficient batch loading
-   - Follow consistent naming: predicate(arg1, arg2, ...)
-   - Group related facts together
-
-2. Define Rules:
-   - Start with simple, non-recursive rules
-   - Add recursive rules with proper base cases
-   - Use cuts (!) strategically to control backtracking
-   - Order goals from most restrictive to least restrictive
-
-3. Add Helper Predicates:
-   - List manipulation utilities
-   - Type checking predicates
-   - Domain-specific operations
-
-VALIDATION PHASE:
-1. Verify Implementation:
-   - Use symbols_list to confirm predicates are loaded
-   - Test with sample queries using both query modes
-   - Check with knowledge-base-dump resource to see final structure
-
-2. Testing Strategy:
-   - Test base cases and edge cases
-   - Verify recursive predicates don't cause infinite loops
-   - Test with query_startEngine for complex backtracking scenarios
-   - Validate performance with large datasets
-
-3. Documentation:
-   - Include comments explaining predicate purposes
-   - Document argument patterns and types
-   - Provide example queries
-
-Create a robust, well-structured knowledge base following Prolog best practices.`
-          }
-        }
-      ];
-    }
-  },
-
-  // Query optimization (renamed from queryOptimizer)
-  optimize: {
-    name: "optimize",
-    title: "Optimize Query",
-    description: "Optimize Prolog queries for maximum performance and correctness",
-    arguments: [
-      {
-        name: "query",
-        description: "The Prolog query to analyze and optimize",
-        required: true
-      }
+      { name: "family_info", description: "Family members and relationships to model. Provide names and relationships (e.g., 'John is Mary's father, Mary has two children: Alice and Bob')", required: true },
     ],
     messages: (args = {}) => [
       {
         role: "user",
         content: {
           type: "text",
-          text: `Optimize this Prolog query for performance: ${args.query || '[Please provide a Prolog query to optimize]'}
+          text: `Build a family tree knowledge base and demonstrate Prolog's relational reasoning:
 
-ANALYSIS PHASE:
-First, check the current knowledge base state:
-1. Read 'knowledge-base-predicates' resource: Understand available predicates
-2. Review 'knowledge-base-dump' resource: See data patterns and indexing opportunities
-3. Check 'capabilities' resource: Understand system constraints
+FAMILY INFORMATION:
+${args.family_info || '[Please provide family members and their relationships]'}
 
-IMPORTANT - Predicate Availability:
-- All standard SWI-Prolog predicates are available
-- library(clpfd) is available
+EXECUTION PATTERN: For each step: announce action, show tool calls/results, explain insights.
 
-OPTIMIZATION STRATEGY:
-1. Goal Ordering Analysis:
-   - Identify most restrictive goals (those that reduce search space most)
-   - Move deterministic goals before non-deterministic ones
-   - Place goals with ground arguments early
-   - Consider predicate indexing patterns
+PREREQUISITE: If you haven't already, first read the capabilities:
+- Use the help tool, OR
+- Read reference://capabilities resource
+This shows available tools, security model, and server features.
 
-2. Cut Strategy:
-   - Identify where cuts (!) can eliminate unnecessary backtracking
-   - Ensure cuts don't prevent finding valid solutions
-   - Use green cuts (don't change declarative meaning) vs red cuts
+WORKFLOW - Demonstrate these MCP tool usage patterns:
 
-3. Predicate Design:
-   - Check if auxiliary predicates would improve efficiency
-   - Consider tail recursion optimization opportunities
-   - Evaluate if findall/3, bagof/3, or setof/3 would be better than backtracking
+STEP 1 - Define Base Facts
+Use knowledge_base_assert_many to efficiently add facts for:
+- parent_of(Parent, Child) - parent-child relationships
+- male(Person) / female(Person) - gender information
+- spouse_of(Person1, Person2) - marriage relationships (if provided)
 
-4. Indexing Opportunities:
-   - Arrange arguments to take advantage of first-argument indexing
-   - Consider adding auxiliary predicates with better indexing patterns
+Example:
+knowledge_base_assert_many({
+  facts: [
+    "parent_of(john, mary)",
+    "parent_of(john, alice)",
+    "male(john)",
+    "female(mary)",
+    "female(alice)"
+  ]
+})
 
-IMPLEMENTATION:
-1. Original Query Analysis:
-   - Break down the query structure
-   - Identify potential performance bottlenecks
-   - Estimate computational complexity
+→ Show the facts you added
 
-2. Optimized Version:
-   - Provide reordered version with justification
-   - Add strategic cuts if beneficial
-   - Suggest alternative formulations if applicable
+STEP 2 - Define Inference Rules
+Use knowledge_base_assert_many to add rules that derive relationships:
 
-3. Testing Strategy:
-   - Test with query_start for simple cases
-   - Use query_startEngine for complex backtracking scenarios
-   - Compare performance between original and optimized versions
+Essential Rules:
+\`\`\`prolog
+% Direct parent relationships
+father_of(F, C) :- male(F), parent_of(F, C).
+mother_of(M, C) :- female(M), parent_of(M, C).
 
-4. Alternative Approaches:
-   - Consider different algorithmic approaches
-   - Suggest additional predicates that might help
-   - Recommend query modes based on expected solution patterns
+% Sibling relationships
+sibling_of(X, Y) :- parent_of(P, X), parent_of(P, Y), X \\= Y.
+brother_of(X, Y) :- male(X), sibling_of(X, Y).
+sister_of(X, Y) :- female(X), sibling_of(X, Y).
 
-Provide the optimized query with detailed explanations of each optimization decision.`
+% Grandparent relationships
+grandparent_of(GP, GC) :- parent_of(GP, P), parent_of(P, GC).
+grandfather_of(GF, GC) :- male(GF), grandparent_of(GF, GC).
+grandmother_of(GM, GC) :- female(GM), grandparent_of(GM, GC).
+
+% Ancestor (recursive)
+ancestor_of(A, D) :- parent_of(A, D).
+ancestor_of(A, D) :- parent_of(A, X), ancestor_of(X, D).
+
+% Cousins
+cousin_of(X, Y) :- parent_of(PX, X), parent_of(PY, Y), sibling_of(PX, PY).
+
+% Uncle/Aunt
+uncle_of(U, N) :- male(U), sibling_of(U, P), parent_of(P, N).
+aunt_of(A, N) :- female(A), sibling_of(A, P), parent_of(P, N).
+\`\`\`
+
+→ Display the rules you created
+
+STEP 3 - Verify with symbols_list
+Use symbols_list to confirm all predicates were loaded successfully.
+Check output for: parent_of/2, father_of/2, sibling_of/2, ancestor_of/2, etc.
+
+→ Confirm all predicates loaded successfully
+
+STEP 4 - Query Relationships
+Demonstrate both query modes:
+
+A. Simple queries with query_start:
+   - Find specific relationships: "father_of(john, Who)"
+   - Check relationships: "sibling_of(mary, alice)"
+
+B. Complex queries with query_startEngine:
+   - Find all ancestors: "ancestor_of(Ancestor, alice)"
+   - Find all cousins: "cousin_of(X, Y)"
+   - Multi-hop relationships: "grandfather_of(GF, alice)"
+
+Use query_nextSolution to iterate through multiple results.
+
+NOTE: Starting a new query automatically closes any previous query/engine session.
+While explicit query_close is best practice, it's not strictly required.
+
+→ Show all solutions for each query
+
+STEP 5 - Demonstrate Results
+For each query:
+1. Show the query pattern
+2. Display all solutions found
+3. Explain the logical inference path
+
+Example output format:
+Query: "grandfather_of(Who, alice)"
+Solutions:
+  - Who = john (because john is parent of mary, mary is parent of alice)
+
+→ Present the complete family tree analysis
+
+KEY LEARNING POINTS:
+- knowledge_base_assert_many: Batch loading facts and rules
+- Recursive rules: ancestor_of demonstrates recursive descent
+- Query modes: query_start for simple, query_startEngine for backtracking
+- symbols_list: Verify loaded predicates
+- Logical variables: Use capitalized vars (X, Y, Who) for unknowns
+
+Now build the family tree knowledge base and demonstrate these patterns.`
         }
       }
     ]
   },
 
-  // Logic puzzle solver (renamed from logicPuzzleSolver)
+  // Task scheduling with constraints
+  scheduling: {
+    name: "scheduling",
+    title: "Task Scheduling",
+    description: "Schedule tasks with dependencies and constraints using CLP(FD)",
+    arguments: [
+      { name: "tasks", description: "Tasks to schedule with durations and dependencies. Format: 'Task1 (duration X), Task2 (duration Y) depends on Task1, ...'", required: true },
+    ],
+    messages: (args = {}) => [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: `Create a task scheduling solution using constraint logic programming:
+
+SCHEDULING PROBLEM:
+${args.tasks || '[Please provide tasks with durations and dependencies]'}
+
+EXECUTION PATTERN: For each step: announce action, show tool calls/results, explain insights.
+
+PREREQUISITE: If you haven't already, first read the capabilities:
+- Use the help tool, OR
+- Read reference://capabilities resource
+This shows available tools, security model, and server features.
+
+WORKFLOW - Demonstrate these MCP tool usage patterns:
+
+STEP 1 - Load CLP(FD) Library
+Use knowledge_base_load_library to load constraint programming:
+knowledge_base_load_library({ library: "clpfd" })
+
+This provides:
+- Constraint operators: #=, #<, #>, #=<, #>=, #\\=
+- Domain specification: ins, in
+- Constraint predicates: all_different/1, cumulative/2
+- Search: label/1, labeling/2
+
+→ Show library loaded and constraints available
+
+STEP 2 - Model the Scheduling Problem
+Define a schedule/1 predicate that models tasks as constraint variables.
+
+Task representation:
+- Each task has: Start time, Duration, End time
+- Constraints: End #= Start + Duration
+- Dependencies: TaskB_Start #>= TaskA_End
+
+Example for 3 tasks (Design, Code, Test):
+\`\`\`prolog
+% Task durations
+task_duration(design, 5).
+task_duration(code, 10).
+task_duration(test, 3).
+
+% Dependencies
+depends_on(code, design).
+depends_on(test, code).
+
+% Main scheduling predicate
+schedule(Tasks) :-
+    % Define task start times as variables
+    Tasks = [DesignStart, CodeStart, TestStart],
+
+    % All tasks start at time 0 or later
+    Tasks ins 0..100,
+
+    % Get durations
+    task_duration(design, DD),
+    task_duration(code, CD),
+    task_duration(test, TD),
+
+    % Calculate end times
+    DesignEnd #= DesignStart + DD,
+    CodeEnd #= CodeStart + CD,
+    TestEnd #= TestStart + TD,
+
+    % Dependency constraints
+    CodeStart #>= DesignEnd,    % Code starts after Design ends
+    TestStart #>= CodeEnd,       % Test starts after Code ends
+
+    % Optimize for earliest completion
+    ProjectEnd #= TestEnd,
+
+    % Find solution
+    labeling([min(ProjectEnd)], Tasks).
+\`\`\`
+
+STEP 3 - Add Scheduling Rules
+Use knowledge_base_assert_many to load all predicates at once:
+
+knowledge_base_assert_many({
+  facts: [
+    "task_duration(design, 5)",
+    "task_duration(code, 10)",
+    "task_duration(test, 3)",
+    "depends_on(code, design)",
+    "depends_on(test, code)",
+    "schedule(Tasks) :- Tasks = [DS, CS, TS], Tasks ins 0..100, task_duration(design, DD), task_duration(code, CD), task_duration(test, TD), DE #= DS + DD, CE #= CS + CD, TE #= TS + TD, CS #>= DE, TS #>= CE, PE #= TE, labeling([min(PE)], Tasks)"
+  ]
+})
+
+→ Display the rules and constraints added
+
+STEP 4 - Solve with Constraint Solving
+Use query_startEngine (not query_start) for constraint problems:
+
+query_startEngine({ query: "schedule(Tasks)" })
+
+NOTE: Starting a new query automatically closes any previous query/engine session.
+
+CLP(FD) will:
+1. Set up constraint network
+2. Propagate constraints to prune search space
+3. Use labeling to find optimal solution
+4. Return task start times
+
+→ Show the solution returned by the constraint solver
+
+STEP 5 - Display Schedule
+Format the solution as a Gantt chart or timeline:
+
+Example output:
+\`\`\`
+Optimal Schedule (Project completes at time 18):
+  Design:  Start=0,  End=5   (duration 5)
+  Code:    Start=5,  End=15  (duration 10)
+  Test:    Start=15, End=18  (duration 3)
+
+Critical Path: Design → Code → Test (total: 18 time units)
+\`\`\`
+
+→ Present the complete schedule with timeline visualization
+
+ADVANCED FEATURES (if applicable):
+- Resource constraints: Use cumulative/2 for limited resources
+- Alternative schedules: Use query_nextSolution for other solutions
+- Parallel tasks: Tasks without dependencies can overlap
+
+KEY LEARNING POINTS:
+- knowledge_base_load_library: Load CLP(FD) for constraint solving
+- CLP(FD) operators: #=, #>=, ins for constraint specification
+- labeling/2: Trigger search with optimization (min/max)
+- query_startEngine: Required for constraint solving (not query_start)
+- Constraint propagation: Prolog prunes impossible solutions automatically
+
+Now create the scheduling solution and demonstrate these constraint programming patterns.`
+        }
+      }
+    ]
+  },
+
+  // Logic puzzle solver
   puzzle: {
     name: "puzzle",
-    title: "Solve Logic Puzzle",
-    description: "Solve logic puzzles using Prolog and constraint programming",
+    title: "Logic Puzzle Solver",
+    description: "Solve logic puzzles using constraint programming (CLP(FD))",
     arguments: [
       {
         name: "puzzle",
-        description: "The logic puzzle to solve (with numbered clues). If empty, agent chooses an interesting puzzle.",
-        required: false
+        description: "The logic puzzle to solve with numbered clues. Leave empty or use '?' to get puzzle suggestions.",
+        required: true
       }
     ],
     messages: (args = {}) => {
-      if (!args.puzzle) {
-        // When no puzzle is provided, offer 3 puzzle choices
+      // Treat undefined, null, empty string, and whitespace-only as "not provided"
+      const hasPuzzle = args.puzzle != null && args.puzzle.trim() !== "";
+
+      if (!hasPuzzle) {
         return [
           {
             role: "user",
             content: {
               type: "text",
-              text: `You are a Prolog expert with access to a SWI-Prolog MCP server. I'd like to solve a logic puzzle using constraint programming.
+              text: `Suggest 3 interesting logic puzzles to solve with Prolog constraint programming.
 
-Please present me with 3 different interesting logic puzzles to choose from. For each puzzle, provide:
-- A catchy name
-- A brief description (2-3 sentences)
-- The difficulty level (Easy/Medium/Hard)
-- Why it's interesting to solve with Prolog/CLP(FD)
+For each puzzle provide:
+- Name (catchy and descriptive)
+- Description (2-3 sentences explaining the puzzle)
+- Difficulty (Easy/Medium/Hard)
+- Why it's interesting with CLP(FD) (what constraints make it elegant in Prolog)
 
-After presenting the options, ask me which puzzle I'd like to solve.
+Good puzzle types:
+- Zebra Puzzle (Einstein's Riddle) - classic constraint satisfaction
+- N-Queens - placement with diagonal constraints
+- Sudoku - grid constraints with all_different
+- Send More Money - cryptarithmetic with carry constraints
+- Magic Square - sum constraints in rows/columns/diagonals
+- Graph Coloring - adjacency constraints
 
-Example puzzles you might suggest (but feel free to choose different ones):
-- The Zebra Puzzle (Einstein's Riddle)
-- The N-Queens Problem
-- Sudoku
-- Magic Squares
-- Send More Money (cryptarithmetic)
-- Graph Coloring
-- Knights and Knaves
-- River Crossing Puzzles
-
-Present 3 compelling options and wait for my choice.`
+Present 3 compelling options and wait for selection.`
             }
           }
         ];
       }
 
-      // When puzzle is provided, proceed with solving
       return [
         {
           role: "user",
           content: {
             type: "text",
-            text: `You are a Prolog expert with access to a SWI-Prolog MCP server. Solve the following logic puzzle using constraint programming.
-
-PREPARATION:
-If you have access to the 'capabilities' tool and haven't checked it yet, read it first to understand available features and server constraints.
+            text: `Solve this logic puzzle using Prolog constraint programming:
 
 PUZZLE:
 ${args.puzzle}
 
-WORKFLOW:
-1. Load library(clpfd) using knowledge_base_load_library({ library: "clpfd" })
-2. Design a solve/1 predicate that encodes the puzzle constraints
-3. Use knowledge_base_assert_many to add all rules to the server
-4. Query with query_startEngine to find solutions
-5. Display and explain the results
+EXECUTION PATTERN: For each step: announce action, show tool calls/results, explain insights.
 
-Solution Design Guidelines:
-- Create a solve/1 predicate that unifies its argument with the solution
-- Represent entities as positions in a list (e.g., [H1,H2,H3,H4,H5])
-- Encode each clue as a constraint in the solve/1 body
-- Set up domains (e.g., Vars ins 1..5)
-- Use all_different/1 where appropriate
-- Call label/1 to trigger search
+PREREQUISITE: If you haven't already, first read the capabilities:
+- Use the help tool, OR
+- Read reference://capabilities resource
+This shows available tools, security model, and server features.
 
-Example for N-Queens:
-First, design the rules, then use knowledge_base_assert_many with a list of rule strings:
+WORKFLOW - Demonstrate these MCP tool usage patterns:
 
-\`\`\`
-knowledge_base_assert_many with:
-[
-  "solve(Qs) :- length(Qs, 4), Qs ins 1..4, all_different(Qs), safe(Qs), label(Qs)",
-  "safe([])",
-  "safe([Q|Qs]) :- safe(Qs, Q, 1), safe(Qs)",
-  "safe([], _, _)",
-  "safe([Q|Qs], Q0, D) :- Q0 #\\\\= Q, abs(Q0 - Q) #\\\\= D, D1 #= D + 1, safe(Qs, Q0, D1)"
-]
+STEP 1 - Load CLP(FD)
+Use knowledge_base_load_library to enable constraint programming:
+knowledge_base_load_library({ library: "clpfd" })
+
+→ Show library loaded successfully
+
+STEP 2 - Design solve/1 Predicate Pattern
+\`\`\`prolog
+solve(Vars) :-
+    Vars ins 1..N,              % Set domains
+    % ... add constraints for each clue ...
+    all_different(Vars),         % Uniqueness
+    labeling([ff], Vars).        % Search (use [ff] for performance)
 \`\`\`
 
-Then query: \`query_startEngine("solve(Solution)")\` to get solutions.
+STEP 3 - Assert Rules
+\`\`\`
+knowledge_base_assert_many({
+  facts: [
+    "solve(...) :- ... ins 1..N, constraints..., labeling([ff], ...)"
+  ]
+})
+\`\`\`
 
-Now solve the puzzle using this approach with knowledge_base_assert_many and query_startEngine.`
+→ Display the constraints defined
+
+STEP 4 - Query with query_startEngine
+\`\`\`
+query_startEngine({ query: "solve(Solution)" })
+\`\`\`
+CLP(FD) REQUIRES engine mode (not query_start). Use query_nextSolution for more solutions.
+
+NOTE: Starting a new query automatically closes any previous query/engine session.
+
+PERFORMANCE NOTE:
+- Use labeling([ff], Vars) for first-fail heuristic (2,500x faster)
+- N-Queens: N≤20 is fast, N>25 may timeout
+- Default timeout: 30 seconds
+
+→ Show all solutions found
+
+STEP 5 - Present Solution
+Map variable assignments to puzzle entities and verify constraints are satisfied.
+
+→ Present complete solution
+
+CONCRETE EXAMPLE - 4-Queens Step-by-Step:
+
+Step 1: Load CLP(FD) library
+\`\`\`
+Tool: knowledge_base_load_library({ library: "clpfd" })
+Result: "Successfully loaded library(clpfd)"
+\`\`\`
+
+Step 2: Assert N-Queens predicates
+\`\`\`
+Tool: knowledge_base_assert_many({
+  facts: [
+    "solve(Qs) :- length(Qs, 4), Qs ins 1..4, all_different(Qs), safe(Qs), labeling([ff], Qs)",
+    "safe([])",
+    "safe([Q|Qs]) :- safe(Qs, Q, 1), safe(Qs)",
+    "safe([], _, _)",
+    "safe([Q|Qs], Q0, D) :- Q0 #\\\\= Q, abs(Q0-Q) #\\\\= D, D1 #= D+1, safe(Qs, Q0, D1)"
+  ]
+})
+Result: "Successfully asserted 5 facts/rules"
+\`\`\`
+
+Step 3: Query for solution
+\`\`\`
+Tool: query_startEngine({ query: "solve(Qs)" })
+Result: { Qs: [2,4,1,3] }
+
+Interpretation:
+- Row 1: Queen at column 2
+- Row 2: Queen at column 4
+- Row 3: Queen at column 1
+- Row 4: Queen at column 3
+\`\`\`
+
+This shows the EXACT tool calls and expected results.
+
+KEY POINTS:
+- Load library(clpfd) first
+- Use query_startEngine (not query_start)
+- Pattern: Vars ins 1..N, constraints, labeling([ff], Vars)
+- Use [ff] for first-fail heuristic (much faster)
+
+Now solve the puzzle using these constraint programming patterns.
+
+AFTER SOLVING: Suggest 2-3 related puzzles the user might enjoy next, such as:
+- Sudoku (grid constraints with all_different)
+- Magic Square (sum constraints)
+- Graph Coloring (adjacency constraints)
+- Send More Money (cryptarithmetic)
+- Zebra Puzzle (Einstein's Riddle)
+Choose puzzles that build on similar constraint types or increase complexity.`
           }
         }
       ];
     }
+  },
+
+  // Natural language parsing with DCGs
+  grammar: {
+    name: "grammar",
+    title: "Grammar Parser",
+    description: "Parse natural language using Definite Clause Grammars (DCGs)",
+    arguments: [
+      { name: "sentence", description: "Sentence to parse (e.g., 'the cat sat on the mat'). If not provided, use a default example.", required: false },
+    ],
+    messages: (args = {}) => [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: `Parse a sentence using Prolog's Definite Clause Grammars (DCGs):
+
+SENTENCE TO PARSE:
+${args.sentence || 'the cat sat on the mat'}
+
+EXECUTION PATTERN: For each step: announce action, show tool calls/results, explain insights.
+
+PREREQUISITE: If you haven't already, first read the capabilities:
+- Use the help tool, OR
+- Read reference://capabilities resource
+This shows available tools, security model, and server features.
+
+WORKFLOW - Demonstrate these MCP tool usage patterns:
+
+STEP 1 - Define DCG Grammar Rules
+DCG notation: rule_name --> components.
+
+Basic English grammar structure:
+\`\`\`prolog
+% Sentence structure
+sentence --> noun_phrase, verb_phrase.
+
+% Noun phrase: (Determiner) + (Adjective) + Noun
+noun_phrase --> determiner, noun.
+noun_phrase --> determiner, adjective, noun.
+noun_phrase --> noun.  % For proper nouns
+
+% Verb phrase: Verb + (Prepositional Phrase)
+verb_phrase --> verb.
+verb_phrase --> verb, noun_phrase.
+verb_phrase --> verb, prepositional_phrase.
+verb_phrase --> verb, prepositional_phrase, prepositional_phrase.
+
+% Prepositional phrase
+prepositional_phrase --> preposition, noun_phrase.
+
+% Lexicon (vocabulary)
+determiner --> [the].
+determiner --> [a].
+
+adjective --> [big].
+adjective --> [small].
+adjective --> [happy].
+
+noun --> [cat].
+noun --> [dog].
+noun --> [mat].
+noun --> [house].
+
+verb --> [sat].
+verb --> [ran].
+verb --> [slept].
+
+preposition --> [on].
+preposition --> [in].
+preposition --> [under].
+\`\`\`
+
+STEP 2 - Add Parse Tree Generation
+Enhance DCG to build parse trees:
+
+\`\`\`prolog
+% Parse tree version
+sentence(s(NP, VP)) --> noun_phrase(NP), verb_phrase(VP).
+
+noun_phrase(np(Det, N)) --> determiner(Det), noun(N).
+noun_phrase(np(Det, Adj, N)) --> determiner(Det), adjective(Adj), noun(N).
+
+verb_phrase(vp(V)) --> verb(V).
+verb_phrase(vp(V, NP)) --> verb(V), noun_phrase(NP).
+verb_phrase(vp(V, PP)) --> verb(V), prepositional_phrase(PP).
+
+prepositional_phrase(pp(Prep, NP)) --> preposition(Prep), noun_phrase(NP).
+
+% Lexicon with parse tree nodes
+determiner(det(W)) --> [W], {member(W, [the, a])}.
+noun(n(W)) --> [W], {member(W, [cat, dog, mat])}.
+verb(v(W)) --> [W], {member(W, [sat, ran])}.
+preposition(prep(W)) --> [W], {member(W, [on, in, under])}.
+\`\`\`
+
+STEP 3 - Load Grammar with knowledge_base_assert_many
+Use knowledge_base_assert_many to load all DCG rules:
+
+knowledge_base_assert_many({
+  facts: [
+    "sentence --> noun_phrase, verb_phrase",
+    "noun_phrase --> determiner, noun",
+    "verb_phrase --> verb, prepositional_phrase",
+    "prepositional_phrase --> preposition, noun_phrase",
+    "determiner --> [the]",
+    "determiner --> [a]",
+    "noun --> [cat]",
+    "noun --> [mat]",
+    "verb --> [sat]",
+    "preposition --> [on]"
+  ]
+})
+
+Note: Prolog automatically translates DCG notation into phrase/2 compatible predicates.
+
+→ Show the DCG rules loaded
+
+STEP 4 - Parse with phrase/2
+Use query_start to parse sentences with phrase/2:
+
+The sentence as a word list:
+sentence = [the, cat, sat, on, the, mat]
+
+Query patterns:
+A. Validity check:
+   query_start({ query: "phrase(sentence, [the, cat, sat, on, the, mat])" })
+   Result: true/false (grammatically correct?)
+
+B. With parse tree:
+   query_start({ query: "phrase(sentence(Tree), [the, cat, sat, on, the, mat])" })
+   Result: Tree = s(np(det(the), n(cat)), vp(v(sat), pp(prep(on), np(det(the), n(mat)))))
+
+C. Generate sentences:
+   query_startEngine({ query: "phrase(sentence, Sentence)" })
+   Result: All grammatically valid sentences from the grammar
+
+NOTE: Starting a new query automatically closes any previous query/engine session.
+
+→ Display parse results for each query pattern
+
+STEP 5 - Display Parse Tree
+Format the parse tree hierarchically:
+
+\`\`\`
+Parse Tree for "the cat sat on the mat":
+
+s (sentence)
+├─ np (noun phrase)
+│  ├─ det: "the"
+│  └─ n: "cat"
+└─ vp (verb phrase)
+   ├─ v: "sat"
+   └─ pp (prepositional phrase)
+      ├─ prep: "on"
+      └─ np (noun phrase)
+         ├─ det: "the"
+         └─ n: "mat"
+\`\`\`
+
+Structure:
+- Subject: "the cat" (noun phrase)
+- Action: "sat on the mat" (verb phrase with prepositional phrase)
+
+→ Present the complete parse tree visualization
+
+STEP 6 - Verify with symbols_list
+Use symbols_list to confirm DCG predicates were created:
+- Should see: sentence/2, noun_phrase/2, verb_phrase/2, phrase/2 (built-in)
+
+ADVANCED FEATURES:
+- Semantic actions: Add {Prolog goals} within DCG rules for constraints
+- Ambiguity handling: Use query_nextSolution for multiple parse trees
+- Context-free languages: DCGs can parse any context-free grammar
+
+KEY LEARNING POINTS:
+- DCG notation: --> for grammar rules, [word] for terminals
+- phrase/2: Built-in predicate to invoke DCG parsers
+- Parse trees: Pass arguments to DCG rules to build structure
+- knowledge_base_assert_many: Batch-load grammar rules
+- query_start vs query_startEngine: Start for single parse, Engine for generation
+- Prolog's strength: Pattern matching + backtracking = natural parser
+
+Now parse the sentence and demonstrate these DCG patterns.`
+        }
+      }
+    ]
   }
 };

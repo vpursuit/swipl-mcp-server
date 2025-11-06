@@ -14,35 +14,34 @@ maybeDescribe("Prolog Interface Edge Cases", () => {
     prolog.stop();
   });
 
-  describe("Mutual Exclusion Tests", () => {
-    test("should prevent start_engine when query is active", async () => {
+  describe("Auto-Close Transition Tests", () => {
+    test("should auto-close query when starting engine", async () => {
       await prolog.start();
 
       // Start a regular query session
       await prolog.startQuery("parent(X, Y)");
 
-      // Try to start an engine - should fail
-      await expect(prolog.startEngine("parent(X, Y)")).rejects.toThrow(
-        "A query session is already active. Close the query first.",
-      );
+      // Start an engine - should auto-close query
+      const result = await prolog.startEngine("parent(X, Y)");
+      expect(result.status).toBe("ready");
+      expect(result.engine_ready).toBe(true);
 
       // Cleanup
-      await prolog.closeQuery();
+      await prolog.closeEngine();
     });
 
-    test("should prevent start_query when engine is active", async () => {
+    test("should auto-close engine when starting query", async () => {
       await prolog.start();
 
       // Start an engine session
       await prolog.startEngine("parent(X, Y)");
 
-      // Try to start a regular query - should fail
-      await expect(prolog.startQuery("parent(X, Y)")).rejects.toThrow(
-        "An engine session is already active. Close the engine first.",
-      );
+      // Start a regular query - should auto-close engine
+      const result = await prolog.startQuery("parent(X, Y)");
+      expect(result.status).toBe("ready");
 
       // Cleanup
-      await prolog.closeEngine();
+      await prolog.closeQuery();
     });
 
     test("should allow starting query after closing engine", async () => {
@@ -82,32 +81,31 @@ maybeDescribe("Prolog Interface Edge Cases", () => {
     });
   });
 
-  describe("Double Start Prevention Tests", () => {
-    test("should prevent starting query twice without close", async () => {
+  describe("Auto-Close on Double Start Tests", () => {
+    test("should auto-close first query when starting second query", async () => {
       await prolog.start();
 
       // Start first query
       await prolog.startQuery("parent(X, Y)");
 
-      // Try to start second query - should fail
-      await expect(prolog.startQuery("sibling(X, Y)")).rejects.toThrow(
-        "A query is already active. Close the current query first.",
-      );
+      // Start second query - should auto-close first
+      const result = await prolog.startQuery("sibling(X, Y)");
+      expect(result.status).toBe("ready");
 
       // Cleanup
       await prolog.closeQuery();
     });
 
-    test("should prevent starting engine twice without close", async () => {
+    test("should auto-close first engine when starting second engine", async () => {
       await prolog.start();
 
       // Start first engine
       await prolog.startEngine("parent(X, Y)");
 
-      // Try to start second engine - should fail
-      await expect(prolog.startEngine("sibling(X, Y)")).rejects.toThrow(
-        "An engine is already active. Close the current engine first.",
-      );
+      // Start second engine - should auto-close first
+      const result = await prolog.startEngine("sibling(X, Y)");
+      expect(result.status).toBe("ready");
+      expect(result.engine_ready).toBe(true);
 
       // Cleanup
       await prolog.closeEngine();

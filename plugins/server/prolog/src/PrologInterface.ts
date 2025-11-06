@@ -545,21 +545,48 @@ export class PrologInterface {
 
   /**
    * Start a new query session
+   * Automatically closes any active query or engine session before starting.
    */
   async startQuery(query: string): Promise<{ status: string }> {
+    // Auto-close active query session if present
     if (
       this.queryActive ||
       this.sessionState === "query" ||
       this.sessionState === "closing_query"
     ) {
-      throw new Error("A query is already active. Close the current query first.");
+      const traceEnabled = isOn(process.env['SWI_MCP_TRACE']);
+      if (traceEnabled) {
+        logger.info("Auto-closing active query session before starting new query");
+      }
+      try {
+        await this.closeQuery();
+      } catch (error) {
+        logger.warn(`Auto-close of query failed: ${error instanceof Error ? error.message : String(error)}`);
+        // Reset state to allow new query to start
+        this.queryActive = false;
+        this.currentQuery = null;
+        this.setSessionState("idle");
+      }
     }
+    // Auto-close active engine session if present
     if (
       this.engineActive ||
       this.sessionState === "engine" ||
       this.sessionState === "closing_engine"
     ) {
-      throw new Error("An engine session is already active. Close the engine first.");
+      const traceEnabled = isOn(process.env['SWI_MCP_TRACE']);
+      if (traceEnabled) {
+        logger.info("Auto-closing active engine session before starting new query");
+      }
+      try {
+        await this.closeEngine();
+      } catch (error) {
+        logger.warn(`Auto-close of engine failed: ${error instanceof Error ? error.message : String(error)}`);
+        // Reset state to allow new query to start
+        this.engineActive = false;
+        this.engineReachedEOF = false;
+        this.setSessionState("idle");
+      }
     }
 
     this.assertRunning();
@@ -886,21 +913,48 @@ export class PrologInterface {
 
   /**
    * Start a new engine session
+   * Automatically closes any active query or engine session before starting.
    */
   async startEngine(query: string): Promise<{ status: string; engine_ready: boolean }> {
+    // Auto-close active query session if present
     if (
       this.queryActive ||
       this.sessionState === "query" ||
       this.sessionState === "closing_query"
     ) {
-      throw new Error("A query session is already active. Close the query first.");
+      const traceEnabled = isOn(process.env['SWI_MCP_TRACE']);
+      if (traceEnabled) {
+        logger.info("Auto-closing active query session before starting new engine");
+      }
+      try {
+        await this.closeQuery();
+      } catch (error) {
+        logger.warn(`Auto-close of query failed: ${error instanceof Error ? error.message : String(error)}`);
+        // Reset state to allow new engine to start
+        this.queryActive = false;
+        this.currentQuery = null;
+        this.setSessionState("idle");
+      }
     }
+    // Auto-close active engine session if present
     if (
       this.engineActive ||
       this.sessionState === "engine" ||
       this.sessionState === "closing_engine"
     ) {
-      throw new Error("An engine is already active. Close the current engine first.");
+      const traceEnabled = isOn(process.env['SWI_MCP_TRACE']);
+      if (traceEnabled) {
+        logger.info("Auto-closing active engine session before starting new engine");
+      }
+      try {
+        await this.closeEngine();
+      } catch (error) {
+        logger.warn(`Auto-close of engine failed: ${error instanceof Error ? error.message : String(error)}`);
+        // Reset state to allow new engine to start
+        this.engineActive = false;
+        this.engineReachedEOF = false;
+        this.setSessionState("idle");
+      }
     }
 
     this.assertRunning();

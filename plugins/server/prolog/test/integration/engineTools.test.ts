@@ -29,15 +29,15 @@ maybeDescribe("Engine Tool Handlers", () => {
       expect(result.content[0].text).toContain("Error:");
     });
 
-    test("should prevent double start", async () => {
+    test("should auto-close previous engine on double start", async () => {
       // Start first engine
       await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
 
-      // Try to start second engine
+      // Start second engine (should auto-close first)
       const result = await toolHandlers.queryStartEngine({ query: "sibling(X, Y)" });
 
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain("already active");
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0].text).toContain("Engine started");
     });
   });
 
@@ -122,8 +122,8 @@ maybeDescribe("Engine Tool Handlers", () => {
     });
   });
 
-  describe("Engine vs Query Mode Conflicts", () => {
-    test("should prevent starting engine when query is active", async () => {
+  describe("Engine vs Query Mode Auto-Close", () => {
+    test("should auto-close active query when starting engine", async () => {
       // Set up test data first
       await prologInterface.start();
       await prologInterface.query("assert(parent(john, mary))");
@@ -131,14 +131,14 @@ maybeDescribe("Engine Tool Handlers", () => {
       // Start query session
       await toolHandlers.queryStart({ query: "parent(X, Y)" });
 
-      // Try to start engine
+      // Start engine (should auto-close query)
       const result = await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
 
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain("query session is already active");
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0].text).toContain("Engine started");
     });
 
-    test("should prevent starting query when engine is active", async () => {
+    test("should auto-close active engine when starting query", async () => {
       // Set up test data first
       await prologInterface.start();
       await prologInterface.query("assert(parent(john, mary))");
@@ -146,11 +146,11 @@ maybeDescribe("Engine Tool Handlers", () => {
       // Start engine session
       await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
 
-      // Try to start query
+      // Start query (should auto-close engine)
       const result = await toolHandlers.queryStart({ query: "parent(X, Y)" });
 
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain("engine session is already active");
+      expect(result.isError).toBeFalsy();
+      expect(result.content[0].text).toContain("Query started");
     });
 
     test("should prevent next_solution when engine is active", async () => {

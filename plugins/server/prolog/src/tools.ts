@@ -138,15 +138,11 @@ export function getCapabilitiesSummary(): CapabilitiesSummary {
       symbols: ["symbols_list"],
     },
     prompts: {
-      expert_guidance: [
-        "expert",
-        "optimize"
-      ],
-      knowledge_base: [
-        "knowledge"
-      ],
-      problem_solving: [
-        "puzzle"
+      domain_examples: [
+        "genealogy",
+        "scheduling",
+        "puzzle",
+        "grammar"
       ]
     },
     security: {
@@ -247,6 +243,8 @@ export const tools: ToolDefinitions = {
           "- Deterministic pagination of solutions, memory‑efficient",
           "- Example: query_start {query: 'member(X, [1,2,3])'} then call query_next until status='done'",
           "- Iterator pattern: query_next returns status='success' with solution, or status='done' when exhausted",
+          "- Auto-close: Starting a new query automatically closes any active query or engine",
+          "- Best practice: Explicitly close queries when done (though not strictly required)",
         ],
         engine_mode: [
           "Engine mode (SWI engines):",
@@ -254,6 +252,8 @@ export const tools: ToolDefinitions = {
           "- True backtracking iterator with no recomputation",
           "- Unified query_next and query_close work for both modes",
           "- Iterator pattern: Same as standard mode, check status field to terminate iteration",
+          "- Auto-close: Starting a new engine automatically closes any active query or engine",
+          "- Best practice: Explicitly close engines when done (though not strictly required)",
         ],
         safety: [
           "Enhanced Security Model:",
@@ -291,21 +291,22 @@ export const tools: ToolDefinitions = {
           "See docs/examples.md for many more.",
         ],
         prompts: [
-          "Expert Prompts (Start Here!):",
-          "- expert: Expert guidance (mode='expert') or server reference (mode='reference')",
-          "  Recommended first step - sets up full context from resources",
-          "- knowledge: Build (mode='build') or analyze (mode='analyze') knowledge bases",
-          "  Provides step-by-step guidance for KB operations",
-          "- optimize: Optimize Prolog queries for performance",
-          "  Analyzes and improves query efficiency",
+          "Domain-Specific Prompts:",
+          "- genealogy: Build and query family trees using relational logic",
+          "  Shows: assert_many, recursive rules, query modes, relationship inference",
+          "- scheduling: Schedule tasks with dependencies using CLP(FD) constraints",
+          "  Shows: load_library, constraint solving, optimization with labeling",
           "- puzzle: Solve logic puzzles using constraint programming",
-          "  Direct approach for puzzle solving with CLP(FD)",
+          "  Shows: CLP(FD) workflow, constraint encoding, all_different, label/1",
+          "- grammar: Parse natural language using Definite Clause Grammars (DCGs)",
+          "  Shows: DCG syntax, phrase/2, parse tree generation",
           "",
           "Prompt Usage Pattern:",
-          "1. Start with 'expert' to initialize as Prolog expert",
-          "2. The prompt guides you to read all resources first for context",
-          "3. Then use tools efficiently based on discovered capabilities",
-          "4. Use specialized prompts (knowledge, optimize, puzzle) for specific tasks",
+          "Each prompt demonstrates MCP tool usage through solving domain-specific problems.",
+          "All prompts include:",
+          "- Complete workflow with structured steps",
+          "- Concrete examples showing tool patterns",
+          "- Key learning points for each pattern",
         ],
         available_predicates: [
           "Available Predicates:",
@@ -319,7 +320,7 @@ export const tools: ToolDefinitions = {
         troubleshooting: [
           "Troubleshooting:",
           "- error(unsafe_goal(...)): goal rejected by hybrid security (uses dangerous built-ins)",
-          "- Session conflicts: close current mode before starting the other",
+          "- Session conflicts: now auto-resolved (previous sessions automatically closed)",
           "- Timeouts: configure via environment variables in Claude Desktop config:",
           "  • SWI_MCP_READY_TIMEOUT_MS: server startup (default 5000ms, try 10000ms if slow)",
           "  • SWI_MCP_QUERY_TIMEOUT_MS: query execution (default 30000ms, increase for complex queries)",
