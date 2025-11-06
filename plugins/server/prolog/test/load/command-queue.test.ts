@@ -14,6 +14,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prologInterface } from "@vpursuit/mcp-server-prolog";
+import { findNearestFile } from "@vpursuit/mcp-server-core";
 
 describe("Command Queue Testing", () => {
   beforeAll(async () => {
@@ -196,15 +197,18 @@ describe("Command Queue Testing", () => {
   }, 60000);
 
   it("should handle queued file loads", async () => {
-    // Note: This test requires test files to exist
-    // We'll test with the existing test files
+    // Find the test fixture using core path utilities
+    const testFixture = findNearestFile("test.pl", { customSubdirs: ["test/fixtures", "plugins/server/prolog/test/fixtures"] });
+    if (!testFixture) {
+      throw new Error("Test fixture test.pl not found");
+    }
 
     const promises = [];
 
     // Load the same file multiple times concurrently
     for (let i = 0; i < 10; i++) {
       promises.push(
-        prologInterface.consultFile('packages/mcp-prolog/test/fixtures/test.pl')
+        prologInterface.consultFile(testFixture)
           .catch(() => null) // Ignore errors if file doesn't exist
       );
     }

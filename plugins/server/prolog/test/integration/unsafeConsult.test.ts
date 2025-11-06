@@ -1,5 +1,6 @@
 import { describe, beforeEach, afterEach, test, expect } from "vitest";
 import { toolHandlers, prologInterface } from "@vpursuit/mcp-server-prolog";
+import { findNearestFile } from "@vpursuit/mcp-server-core";
 
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
@@ -15,8 +16,14 @@ maybeDescribe("Unsafe File Consultation", () => {
   test("should detect and reject unsafe directives during file consultation", async () => {
     await prologInterface.start();
 
+    // Find the unsafe test fixture using core path utilities
+    const unsafeFixture = findNearestFile("unsafe_test.pl", { customSubdirs: ["test/fixtures", "plugins/server/prolog/test/fixtures"] });
+    if (!unsafeFixture) {
+      throw new Error("Test fixture unsafe_test.pl not found");
+    }
+
     // Try to consult the unsafe file that contains directives - should be blocked by Prolog
-    const result = await toolHandlers.knowledgeBaseLoad({ filename: "packages/mcp-prolog/test/fixtures/unsafe_test.pl" });
+    const result = await toolHandlers.knowledgeBaseLoad({ filename: unsafeFixture });
 
     // The consult should be blocked by Prolog's security validation
     expect(result.isError).toBeTruthy();

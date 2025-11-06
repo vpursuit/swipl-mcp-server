@@ -90,10 +90,11 @@ describe("Prolog Prompts", () => {
 
       const text = messages[0].content.text;
       expect(text).toContain("resources");
-      expect(text).toContain("reference://help");
       expect(text).toContain("reference://capabilities");
       expect(text).toContain("prolog://knowledge_base/predicates");
       expect(text).toContain("prolog://knowledge_base/dump");
+      expect(text).toContain("PHASE 1");
+      expect(text).toContain("PHASE 2");
     });
 
     test("knowledge prompt in analyze mode should emphasize resource reading", () => {
