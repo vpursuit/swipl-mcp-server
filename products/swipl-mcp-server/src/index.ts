@@ -77,14 +77,10 @@ async function main(): Promise<void> {
     continueOnError: false,
   });
 
-  // Connect transport
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-
-  console.error("[swipl-mcp-server] Server started successfully");
-
   // Setup graceful shutdown
   let shuttingDown = false;
+  let startupComplete = false;
+
   const shutdown = async (reason: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
@@ -104,10 +100,37 @@ async function main(): Promise<void> {
   process.on("SIGINT", () => void shutdown("SIGINT"));
 
   // Handle stdin close (client disconnect)
+  // Only trigger shutdown after startup completes to avoid premature termination
   process.stdin.on("close", () => {
+    if (!startupComplete) {
+      console.error("[swipl-mcp-server] Warning: stdin closed during startup");
+      return;
+    }
     const timer = setTimeout(() => void shutdown("stdin_close"), 25);
     (timer as any).unref?.();
   });
+
+  // Connect transport
+  const transport = new StdioServerTransport();
+
+  // Add transport lifecycle logging
+  transport.onclose = () => {
+    console.error("[swipl-mcp-server] Transport closed");
+    if (startupComplete) {
+      void shutdown("transport_close");
+    }
+  };
+
+  transport.onerror = (error: Error) => {
+    console.error("[swipl-mcp-server] Transport error:", error.message);
+  };
+
+  console.error("[swipl-mcp-server] Connecting transport...");
+  await server.connect(transport);
+
+  // Mark startup as complete
+  startupComplete = true;
+  console.error("[swipl-mcp-server] Server started successfully");
 }
 
 // Start the server

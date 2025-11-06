@@ -2,7 +2,7 @@ import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import fs from "fs";
 import { logger } from "./logger.js";
-import { getPrologScriptPath, prologScriptCandidates } from "./meta.js";
+import { findExecutable, findFile, getFileCandidates } from "@vpursuit/mcp-server-core";
 import {
   DEFAULT_QUERY_TIMEOUT_MS,
   DEFAULT_READY_TIMEOUT_MS,
@@ -45,6 +45,64 @@ export interface PrologError {
 
 // Helper to parse boolean-like env flags
 const isOn = (v?: string) => /^(1|true|yes)$/i.test(String(v || ""));
+
+// Prolog-specific constants
+const PROLOG_SCRIPT = 'prolog_server.pl';
+
+/**
+ * Find SWI-Prolog executable in PATH or common installation locations.
+ * Wrapper around core findExecutable with Prolog-specific paths.
+ */
+function findSwiplExecutable(): string | null {
+  const shouldDebug = process.env['DEBUG']?.includes('swipl-mcp-server') ||
+                      process.env['SWI_MCP_TRACE'] === '1';
+
+  return findExecutable({
+    name: 'swipl',
+    commonPaths: [
+      '/opt/homebrew/bin/swipl',              // Homebrew on Apple Silicon Mac
+      '/usr/local/bin/swipl',                 // Homebrew on Intel Mac, or standard Linux
+      '/usr/bin/swipl',                       // System package manager (Linux)
+      '/opt/local/bin/swipl',                 // MacPorts on Mac
+      'C:\\Program Files\\swipl\\bin\\swipl.exe',       // Windows default
+      'C:\\Program Files (x86)\\swipl\\bin\\swipl.exe', // Windows 32-bit
+    ],
+    debug: shouldDebug
+  });
+}
+
+/**
+ * Get the path to the Prolog server script (prolog_server.pl).
+ * Searches in common plugin locations including test contexts.
+ */
+function getPrologScriptPath(): string | null {
+  return findFile(PROLOG_SCRIPT, {
+    customSubdirs: [
+      'prolog',  // Production: parent/prolog directory
+      'plugins/server/prolog/prolog',  // Test context: from repo root
+      'products/swipl-mcp-server/prolog',  // Product tarball context
+    ],
+    debug: process.env['DEBUG']?.includes('swipl-mcp-server') || process.env['SWI_MCP_TRACE'] === '1'
+  });
+}
+
+/**
+ * Generator that yields candidate paths for the Prolog server script.
+ * Useful for fallback searching with custom logic.
+ */
+function* prologScriptCandidates(): Generator<string> {
+  const candidates = getFileCandidates(PROLOG_SCRIPT, {
+    customSubdirs: [
+      'prolog',
+      'plugins/server/prolog/prolog',
+      'products/swipl-mcp-server/prolog',
+    ]
+  });
+
+  for (const candidate of candidates) {
+    yield candidate;
+  }
+}
 
 function findPrologServerScript(envPath: string | undefined, traceEnabled: boolean): string {
   // Check environment override first
@@ -210,13 +268,32 @@ export class PrologInterface {
       "halt",
     ];
 
+    // Find swipl executable in common locations
+    const swiplExecutable = findSwiplExecutable();
+
+    if (!swiplExecutable) {
+      throw new Error(
+        `SWI-Prolog executable not found!\n\n` +
+        `Searched in:\n` +
+        `  - System PATH\n` +
+        `  - Common installation directories (Homebrew, MacPorts, system package managers)\n\n` +
+        `Please install SWI-Prolog:\n` +
+        `  macOS (Homebrew):       brew install swi-prolog\n` +
+        `  macOS (MacPorts):       sudo port install swi-prolog\n` +
+        `  Linux (Debian/Ubuntu):  sudo apt-get install swi-prolog\n` +
+        `  Linux (Fedora):         sudo dnf install pl\n` +
+        `  Windows:                https://www.swi-prolog.org/download/stable\n\n` +
+        `After installation, restart the MCP server.`
+      );
+    }
+
     try {
-      this.process = spawn("swipl", args, { stdio: ["pipe", "pipe", "pipe"] });
+      this.process = spawn(swiplExecutable, args, { stdio: ["pipe", "pipe", "pipe"] });
     } catch (error) {
       const err = error as NodeJS.ErrnoException;
       if (err.code === "ENOENT") {
         throw new Error(
-          "SWI-Prolog not found in PATH. Please install SWI-Prolog and ensure 'swipl' command is available.",
+          `Failed to start SWI-Prolog process. Please install SWI-Prolog from https://www.swi-prolog.org/download/stable`,
         );
       }
       throw new Error(`Failed to start SWI-Prolog process: ${err.message}`);

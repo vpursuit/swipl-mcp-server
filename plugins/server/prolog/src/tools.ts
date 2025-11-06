@@ -31,7 +31,7 @@ import {
   queryStartEngineSchema,
   knowledgeBaseDumpSchema,
 } from "./schemas.js";
-import { resolvePackageVersion, findNearestFile } from "./meta.js";
+import { resolvePackageVersion, findNearestFile } from "@vpursuit/mcp-server-core";
 import { validateStringInput } from "./utils/validation.js";
 import { createErrorResponse, createSuccessResponse, formatClauseResults, type ClauseOperationResult } from "./utils/response.js";
 

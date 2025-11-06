@@ -106,11 +106,22 @@ export const plugin: Plugin = {
 
     logger.info("Initializing Prolog interface...");
 
-    // Warm-up Prolog process non-blocking to avoid first-call races
+    // Start Prolog process and ensure it's ready before continuing
+    // This blocks plugin initialization to catch startup failures early
     try {
-      void prologInterface.start();
+      await prologInterface.start();
+      logger.info("Prolog interface started successfully");
+
+      // Validate that Prolog is actually healthy after startup
+      if (!prologInterface.isHealthy()) {
+        const healthStatus = prologInterface.getHealthStatus();
+        throw new Error(`Prolog health check failed: ${JSON.stringify(healthStatus)}`);
+      }
+
+      logger.info("Prolog health check passed");
     } catch (error) {
-      logger.warn("Could not pre-start Prolog process", { error: error instanceof Error ? error.message : String(error) });
+      logger.error("Failed to start Prolog process", { error: error instanceof Error ? error.message : String(error) });
+      throw new Error(`Prolog initialization failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     logger.info("Plugin initialized");
