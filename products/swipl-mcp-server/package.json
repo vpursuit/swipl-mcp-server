@@ -40,15 +40,17 @@
   ],
   "scripts": {
     "build:plugins": "cd ../.. && npm run build -w @vpursuit/mcp-server-core -w @vpursuit/mcp-server-prolog -w @vpursuit/mcp-server-roots",
-    "build": "npm run build:plugins && rollup -c && node -e \"require('fs').chmodSync('dist/index.js', 0o755)\"",
+    "build:dist": "npm run build:plugins && rollup -c && node -e \"require('fs').chmodSync('dist/index.js', 0o755)\"",
+    "build:dev": "npm run build:dist",
+    "build": "npm run build:dist && npm pack",
     "build:full": "npm run build",
-    "clean": "rm -rf dist *.tsbuildinfo",
+    "clean": "rm -rf dist *.tsbuildinfo *.tgz",
     "test": "cd ../.. && vitest run --project=swipl-mcp-server",
     "test:watch": "cd ../.. && vitest --project=swipl-mcp-server",
     "test:npx": "cd ../.. && vitest run --project=swipl-mcp-server -t 'NPX Integration'",
-    "server": "npm run build && node dist/index.js",
+    "server": "npm run build:dist && node dist/index.js",
     "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build:dist"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.21.0"
