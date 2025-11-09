@@ -32,7 +32,7 @@ export const prologPrompts: Record<string, PrologPrompt> = {
   genealogy: {
     name: "genealogy",
     title: "Family Tree Reasoning",
-    description: "Build and query family trees using Prolog's relational logic",
+    description: "Build family trees with relational logic. Demonstrates assert_many, recursive rules, query modes, relationship inference.",
     arguments: [
       { name: "family_info", description: "Family members and relationships to model. Provide names and relationships (e.g., 'John is Mary's father, Mary has two children: Alice and Bob')", required: true },
     ],
@@ -162,7 +162,7 @@ Now build the family tree knowledge base and demonstrate these patterns.`
   scheduling: {
     name: "scheduling",
     title: "Task Scheduling",
-    description: "Schedule tasks with dependencies and constraints using CLP(FD)",
+    description: "Schedule tasks with dependencies using CLP(FD) constraints. Demonstrates load_library, constraint solving, labeling optimization.",
     arguments: [
       { name: "tasks", description: "Tasks to schedule with durations and dependencies. Format: 'Task1 (duration X), Task2 (duration Y) depends on Task1, ...'", required: true },
     ],
@@ -313,7 +313,7 @@ Now create the scheduling solution and demonstrate these constraint programming 
   puzzle: {
     name: "puzzle",
     title: "Logic Puzzle Solver",
-    description: "Solve logic puzzles using constraint programming (CLP(FD))",
+    description: "Solve logic puzzles with CLP(FD) constraint programming. Demonstrates constraint encoding, all_different, labeling strategies.",
     arguments: [
       {
         name: "puzzle",
@@ -479,7 +479,7 @@ Choose puzzles that build on similar constraint types or increase complexity.`
   grammar: {
     name: "grammar",
     title: "Grammar Parser",
-    description: "Parse natural language using Definite Clause Grammars (DCGs)",
+    description: "Parse natural language with Definite Clause Grammars (DCGs). Demonstrates DCG syntax, phrase/2, parse tree generation.",
     arguments: [
       { name: "sentence", description: "Sentence to parse (e.g., 'the cat sat on the mat'). If not provided, use a default example.", required: false },
     ],

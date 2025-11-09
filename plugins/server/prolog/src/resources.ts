@@ -40,7 +40,7 @@ export const resources: ResourceDefinitions = {
   "knowledge-base-predicates": {
     uri: "prolog://knowledge_base/predicates",
     name: "Knowledge Base Predicates",
-    description: "List predicates defined in the knowledge_base module",
+    description: "List all user-defined predicates in knowledge_base module with arity",
     mimeType: "text/plain",
     handler: async (uri, _extra): Promise<ReadResourceResult> => {
       await prologInterface.start();
@@ -63,7 +63,7 @@ export const resources: ResourceDefinitions = {
   "knowledge-base-dump": {
     uri: "prolog://knowledge_base/dump",
     name: "Knowledge Base Dump",
-    description: "Export current knowledge base as Prolog clauses",
+    description: "Export all user-defined facts and rules as Prolog source text",
     mimeType: "text/prolog",
     handler: async (uri, _extra): Promise<ReadResourceResult> => {
       await prologInterface.start();
@@ -85,7 +85,7 @@ export const resources: ResourceDefinitions = {
   "help": {
     uri: "reference://help",
     name: "Help",
-    description: "Usage guidelines and tips for this server",
+    description: "Usage guidelines and reference documentation",
     mimeType: "text/plain",
     handler: async (uri, _extra): Promise<ReadResourceResult> => {
       const res = await tools.help.handler({}, _extra);
@@ -109,7 +109,7 @@ export const resources: ResourceDefinitions = {
   "license": {
     uri: "reference://license",
     name: "License",
-    description: "License text for this software",
+    description: "Software license text (BSD 3-Clause)",
     mimeType: "text/plain",
     handler: async (uri, _extra): Promise<ReadResourceResult> => {
       const res = await tools.license.handler({}, _extra);
@@ -133,7 +133,7 @@ export const resources: ResourceDefinitions = {
   "logo": {
     uri: "reference://logo",
     name: "Server Logo",
-    description: "Official swipl-mcp-server logo (SVG)",
+    description: "Server logo image in SVG format",
     mimeType: "image/svg+xml",
     handler: async (uri, _extra): Promise<ReadResourceResult> => {
       const logoPath = findNearestFile("images/logo.svg");
@@ -165,7 +165,7 @@ export const resources: ResourceDefinitions = {
   "capabilities": {
     uri: "reference://capabilities",
     name: "Capabilities",
-    description: "Machine-readable summary of tools, modes, env, and safety",
+    description: "Machine-readable summary of tools, query modes, environment, and security model",
     mimeType: "application/json",
     handler: async (uri, _extra): Promise<ReadResourceResult> => {
       const caps = getCapabilitiesSummary();

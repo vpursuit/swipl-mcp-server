@@ -30,7 +30,7 @@ export const plugin: Plugin = {
   tools: {
     roots_list: {
       title: "List Filesystem Roots",
-      description: "List all filesystem roots currently known to the server",
+      description: "List configured filesystem roots with URI, path, and name. Shows which directories are accessible.",
       inputSchema: {},
       handler: async (_extra) => {
         const manager = RootsManager.getInstance();

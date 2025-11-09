@@ -145,12 +145,14 @@ export const symbolsListOutputSchema = {
   predicates: z.array(z.string()).describe("List of available predicates"),
   raw: z.string().describe("Raw Prolog list string"),
   processing_time_ms: z.number(),
+  error: z.string().optional().describe("Error message if operation failed"),
 } as const;
 
 export const queryNextOutputSchema = {
   solution: z.string().nullable().describe("The solution or null if no more"),
   status: z.enum(["success", "done"]).describe("Iterator status: 'success' for solution available, 'done' when exhausted"),
   processing_time_ms: z.number(),
+  error: z.string().optional().describe("Error message if operation failed"),
 } as const;
 
 // Prompt schemas (raw shapes for direct use with MCP SDK)

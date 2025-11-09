@@ -229,7 +229,7 @@ export function getCapabilitiesSummary(): CapabilitiesSummary {
 export const tools: ToolDefinitions = {
   help: {
     title: "Help",
-    description: "Get usage guidelines and tips for this server (optional topic)",
+    description: "Get usage guidelines. Optional topic: overview, standard_mode, engine_mode, safety, security, examples, prompts, troubleshooting, roots.",
     inputSchema: helpSchema,
     handler: async ({ topic }: { topic?: string } = {}, _extra): Promise<CallToolResult> => {
       const sectionsData: Record<string, string[]> = {
@@ -379,7 +379,7 @@ export const tools: ToolDefinitions = {
 
   license: {
     title: "License",
-    description: "Get the license text for this software",
+    description: "Get software license text",
     inputSchema: licenseSchema,
     handler: async (_args, _extra): Promise<CallToolResult> => {
       try {
@@ -408,7 +408,7 @@ export const tools: ToolDefinitions = {
 
   capabilities: {
     title: "Capabilities",
-    description: "Get a machine-readable summary of tools, modes, env, and safety",
+    description: "Get machine-readable summary of available tools, query modes, environment config, and security model",
     inputSchema: capabilitiesSchema,
     outputSchema: capabilitiesOutputSchema,
     handler: async (_args, _extra): Promise<CallToolResult> => {
@@ -423,7 +423,7 @@ export const tools: ToolDefinitions = {
 
   knowledge_base_load: {
     title: "Load Knowledge Base",
-    description: "Load a Prolog file into the knowledge base",
+    description: "Load Prolog file (.pl) containing facts and rules. File path must be within configured roots.",
     inputSchema: knowledgeBaseLoadSchema,
     handler: async ({ filename }: { filename: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -483,7 +483,7 @@ export const tools: ToolDefinitions = {
 
   query_start: {
     title: "Start Query (Standard Mode)",
-    description: "Start a new Prolog query session (call_nth/2 mode)",
+    description: "Start Prolog query using call_nth/2 pagination. Follow with query_next to iterate solutions, query_close when done.",
     inputSchema: queryStartSchema,
     handler: async ({ query }: { query: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -512,7 +512,7 @@ export const tools: ToolDefinitions = {
 
   query_next: {
     title: "Get Next Solution",
-    description: "Get the next solution from the current query (unified for both modes). Returns status='success' with solution, or status='done' when exhausted.",
+    description: "Get next solution from active query or engine. Returns status='success' with bindings or status='done' when exhausted.",
     inputSchema: queryNextSchema,
     outputSchema: queryNextOutputSchema,
     handler: async (_args, _extra): Promise<CallToolResult> => {
@@ -570,7 +570,12 @@ export const tools: ToolDefinitions = {
               text: `Error: ${error instanceof Error ? error.message : String(error)}\nProcessing time: ${processingTimeMs}ms`,
             },
           ],
-          structuredContent: { error: error instanceof Error ? error.message : String(error), processing_time_ms: processingTimeMs },
+          structuredContent: {
+            solution: null,
+            status: "done" as const,
+            processing_time_ms: processingTimeMs,
+            error: error instanceof Error ? error.message : String(error)
+          },
           isError: true,
         };
       }
@@ -579,7 +584,7 @@ export const tools: ToolDefinitions = {
 
   query_close: {
     title: "Close Query",
-    description: "Close the current query session (unified for both modes)",
+    description: "Close active query or engine session to free resources. Auto-closes on new query but explicit close is best practice.",
     inputSchema: queryCloseSchema,
     handler: async (_args, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -617,7 +622,7 @@ export const tools: ToolDefinitions = {
 
   symbols_list: {
     title: "List Predicates",
-    description: "List predicates available in the knowledge base",
+    description: "List all user-defined predicates currently in the knowledge base. Shows predicate names with arity.",
     inputSchema: symbolsListSchema,
     outputSchema: symbolsListOutputSchema,
     handler: async (_args, _extra): Promise<CallToolResult> => {
@@ -651,7 +656,11 @@ export const tools: ToolDefinitions = {
               text: `Error: ${error instanceof Error ? error.message : String(error)}\nProcessing time: ${processingTimeMs}ms`,
             },
           ],
-          structuredContent: { error: error instanceof Error ? error.message : String(error), processing_time_ms: processingTimeMs },
+          structuredContent: {
+            predicates: [],
+            raw: "",
+            processing_time_ms: processingTimeMs
+          },
           isError: true,
         };
       }
@@ -660,7 +669,7 @@ export const tools: ToolDefinitions = {
 
   knowledge_base_assert: {
     title: "Assert Clause",
-    description: "Add a single clause (fact or rule) to the knowledge base",
+    description: "Add single fact or rule to knowledge base. Use for one-off assertions; see knowledge_base_assert_many for bulk operations.",
     inputSchema: knowledgeBaseAssertSchema,
     handler: async ({ fact }: { fact: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -723,7 +732,7 @@ export const tools: ToolDefinitions = {
 
   knowledge_base_assert_many: {
     title: "Assert Multiple Clauses",
-    description: "Add multiple clauses (facts or rules) to the knowledge base",
+    description: "Add multiple facts or rules in one operation. More efficient than repeated single assertions. Returns per-clause results.",
     inputSchema: knowledgeBaseAssertManySchema,
     handler: async ({ facts }: { facts: string[] }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -790,7 +799,7 @@ export const tools: ToolDefinitions = {
 
   knowledge_base_retract: {
     title: "Retract Clause",
-    description: "Remove a single clause (fact or rule) from the knowledge base",
+    description: "Remove single matching fact or rule from knowledge base. Removes first match only; see knowledge_base_retract_many for bulk.",
     inputSchema: knowledgeBaseRetractSchema,
     handler: async ({ fact }: { fact: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -853,7 +862,7 @@ export const tools: ToolDefinitions = {
 
   knowledge_base_retract_many: {
     title: "Retract Multiple Clauses",
-    description: "Remove multiple clauses (facts or rules) from the knowledge base",
+    description: "Remove multiple matching facts or rules in one operation. More efficient than repeated single retractions. Returns per-clause results.",
     inputSchema: knowledgeBaseRetractManySchema,
     handler: async ({ facts }: { facts: string[] }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -938,7 +947,7 @@ export const tools: ToolDefinitions = {
 
   knowledge_base_clear: {
     title: "Clear Knowledge Base",
-    description: "Remove ALL user-defined facts and rules from the knowledge base",
+    description: "Remove ALL user-defined facts and rules. Destructive operation - use when starting fresh or resetting workspace.",
     inputSchema: knowledgeBaseClearSchema,
     handler: async (_args, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -981,7 +990,7 @@ export const tools: ToolDefinitions = {
 
   knowledge_base_load_library: {
     title: "Load Safe Library",
-    description: "Load a sandbox-approved Prolog library (e.g., clpfd, lists, apply) into the knowledge base module without requiring file operations",
+    description: "Load sandbox-approved library (clpfd, lists, apply, etc.) into knowledge_base module. No file access required.",
     inputSchema: knowledgeBaseLoadLibrarySchema,
     handler: async ({ library }: { library: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -1028,7 +1037,7 @@ export const tools: ToolDefinitions = {
 
   query_startEngine: {
     title: "Start Query (Engine Mode)",
-    description: "Start a new Prolog query session using SWI-Prolog engines for true backtracking",
+    description: "Start Prolog query using SWI-Prolog engine for true backtracking. Follow with query_next to iterate, query_close when done.",
     inputSchema: queryStartEngineSchema,
     handler: async ({ query }: { query: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -1072,7 +1081,7 @@ export const tools: ToolDefinitions = {
 
   knowledge_base_dump: {
     title: "Dump Knowledge Base",
-    description: "Export current knowledge base as Prolog facts",
+    description: "Export all user-defined facts and rules as Prolog source text. Useful for inspecting or backing up current state.",
     inputSchema: knowledgeBaseDumpSchema,
     handler: async (_args, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
