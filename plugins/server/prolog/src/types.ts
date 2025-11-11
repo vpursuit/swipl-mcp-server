@@ -39,6 +39,7 @@ export interface CapabilitiesSummary {
     knowledge_base: readonly string[];
     query: readonly string[];
     symbols: readonly string[];
+    analysis: readonly string[];
   };
   prompts: {
     domain_examples: readonly string[];

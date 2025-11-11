@@ -23,6 +23,7 @@ export enum PrologErrorKind {
   PERMISSION_ERROR = 'permission_error',
   SYNTAX_ERROR = 'syntax_error',
   EXISTENCE_ERROR = 'existence_error',
+  INSTANTIATION_ERROR = 'instantiation_error',
   TIMEOUT = 'timeout',
   SESSION_CONFLICT = 'session_conflict',
   NO_ACTIVE_SESSION = 'no_active_session',
@@ -1339,6 +1340,17 @@ export class PrologInterface {
       };
     }
 
+    // instantiation_error(Message)
+    const instantiationMatch = errorContent.match(/^instantiation_error\((.*)\)$/);
+    if (instantiationMatch) {
+      const message = instantiationMatch[1].replace(/^'|'$/g, ''); // Remove quotes
+      return {
+        kind: PrologErrorKind.INSTANTIATION_ERROR,
+        message: message || 'Variable not sufficiently instantiated',
+        details: { raw: trimmed }
+      };
+    }
+
     // syntax_error(Details)
     const syntaxMatch = errorContent.match(/^syntax_error\((.*)\)$/);
     if (syntaxMatch) {
@@ -1453,6 +1465,8 @@ export class PrologInterface {
    * Format a PrologError into a user-friendly message
    */
   static formatPrologError(error: PrologError): string {
+    // Get the human-readable message
+    let message: string;
     switch (error.kind) {
       case PrologErrorKind.UNSAFE_GOAL:
         const goalText = error.details?.goal;
@@ -1462,43 +1476,45 @@ export class PrologInterface {
           const predicatePart = segments[segments.length - 1];
           const predicate = predicatePart.match(/^(\w+)\(/)?.[1];
           if (predicate) {
-            return `Security Error: Operation blocked - contains dangerous predicate '${predicate}'`;
+            message = `Security Error: Operation blocked - contains dangerous predicate '${predicate}'`;
+            break;
           }
         }
-        return error.message;
+        message = error.message;
+        break;
 
       case PrologErrorKind.PERMISSION_ERROR:
         if (error.details?.operation === 'execute' && error.message.includes('directive')) {
-          return 'Security Error: Directives are not allowed in sandboxed consult';
+          message = 'Security Error: Directives are not allowed in sandboxed consult';
+        } else {
+          message = error.message;
         }
-        return error.message;
-
-      case PrologErrorKind.EXISTENCE_ERROR:
-        return error.message;
+        break;
 
       case PrologErrorKind.SYNTAX_ERROR:
-        return 'Syntax Error: Invalid Prolog syntax';
+        message = 'Syntax Error: Invalid Prolog syntax. If using knowledge_base_assert_many with complex rules (containing :-), try knowledge_base_assert instead.';
+        break;
 
       case PrologErrorKind.TIMEOUT: {
         const ms = error.details?.timeoutMs;
         const base = 'Query timed out';
         const hint = 'Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.';
-        return typeof ms === 'number' && Number.isFinite(ms)
+        message = typeof ms === 'number' && Number.isFinite(ms)
           ? `${base} after ${ms}ms. ${hint}`
           : `${base}. ${hint}`;
+        break;
       }
 
-      case PrologErrorKind.SESSION_CONFLICT:
-        return error.message;
-
-      case PrologErrorKind.NO_ACTIVE_SESSION:
-        return error.message;
-
-      case PrologErrorKind.QUERY_TOO_LARGE:
-        return error.message;
-
       default:
-        return error.message;
+        message = error.message;
     }
+
+    // Return structured JSON for domain-specific error explanation
+    // The MCP Host will detect this format and preserve it for error analyzers
+    return JSON.stringify({
+      kind: error.kind,
+      message,
+      details: error.details || {}
+    });
   }
 }

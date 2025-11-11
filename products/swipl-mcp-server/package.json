@@ -39,7 +39,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build:plugins": "cd ../.. && npm run build -w @vpursuit/mcp-server-core -w @vpursuit/mcp-server-prolog -w @vpursuit/mcp-server-roots",
+    "build:plugins": "cd ../.. && npm run build -w @vpursuit/mcp-server-core -w @vpursuit/mcp-server-sampling -w @vpursuit/mcp-server-prolog -w @vpursuit/mcp-server-roots",
     "build:dist": "npm run build:plugins && rollup -c && node -e \"require('fs').chmodSync('dist/index.js', 0o755)\"",
     "build:dev": "npm run build:dist",
     "build": "npm run build:dist && npm pack",

@@ -30,10 +30,15 @@ import {
   knowledgeBaseLoadLibrarySchema,
   queryStartEngineSchema,
   knowledgeBaseDumpSchema,
+  explainErrorSchema,
+  explainErrorOutputSchema,
 } from "./schemas.js";
 import { resolvePackageVersion, findNearestFile } from "@vpursuit/mcp-server-core";
 import { validateStringInput } from "./utils/validation.js";
 import { createErrorResponse, createSuccessResponse, formatClauseResults, type ClauseOperationResult } from "./utils/response.js";
+import { prologErrorExplainer } from "./errorExplainer.js";
+import { serverRef } from "./logger.js";
+import { isSamplingSupported } from "@vpursuit/mcp-server-sampling";
 
 // Security: Use RootsManager for dynamic root discovery and validation
 async function validateFilePath(filename: string): Promise<{ allowed: boolean; error?: string }> {
@@ -136,6 +141,7 @@ export function getCapabilitiesSummary(): CapabilitiesSummary {
       ],
       query: ["query_start", "query_startEngine", "query_next", "query_close"],
       symbols: ["symbols_list"],
+      analysis: ["explain_error"],
     },
     prompts: {
       domain_examples: [
@@ -219,6 +225,17 @@ export function getCapabilitiesSummary(): CapabilitiesSummary {
       ],
       description: "Sandbox-approved libraries for constraint solving, list manipulation, data structures, and more",
     },
+    state_model: {
+      knowledge_base: "Persistent across all queries until explicitly cleared with knowledge_base_clear",
+      libraries: "Persist for entire session, survive knowledge_base_clear, only removed by server restart",
+      queries: "Temporary iteration state, auto-closed when starting new query or engine",
+      best_practices: [
+        "Use knowledge_base_clear before retrying failed queries to ensure clean state",
+        "Libraries don't need reloading after clear (idempotent if reloaded)",
+        "Use symbols_list or knowledge_base_dump to inspect current state",
+        "Clear KB when switching problem domains to avoid predicate conflicts",
+      ],
+    },
   };
   return caps;
 }
@@ -229,7 +246,7 @@ export function getCapabilitiesSummary(): CapabilitiesSummary {
 export const tools: ToolDefinitions = {
   help: {
     title: "Help",
-    description: "Get usage guidelines. Optional topic: overview, standard_mode, engine_mode, safety, security, examples, prompts, troubleshooting, roots.",
+    description: "Get usage guidelines. Optional topic: overview, standard_mode, engine_mode, safety, security, examples, prompts, state_management, troubleshooting, roots.",
     inputSchema: helpSchema,
     handler: async ({ topic }: { topic?: string } = {}, _extra): Promise<CallToolResult> => {
       const sectionsData: Record<string, string[]> = {
@@ -317,6 +334,31 @@ export const tools: ToolDefinitions = {
           "- See SECURITY.md for complete list of allowed libraries",
           "- Load libraries in Prolog files before loading into knowledge base",
         ],
+        state_management: [
+          "Knowledge Base State Model:",
+          "- Persistent State: Facts and rules accumulate across all queries until explicitly cleared",
+          "- Library Persistence: Libraries remain loaded for entire session, survive knowledge_base_clear",
+          "- Query Sessions: Temporary iteration state, auto-closed when starting new query/engine",
+          "- Clearing Behavior: knowledge_base_clear removes facts/rules but NOT libraries",
+          "",
+          "State Inspection:",
+          "- symbols_list: See what predicates are currently defined",
+          "- knowledge_base_dump: View all current facts and rules (not libraries)",
+          "- Use these to verify state before queries or debug unexpected behavior",
+          "",
+          "Best Practices:",
+          "- Before Retry: Call knowledge_base_clear to reset facts/rules to clean state",
+          "- Library Loading: Only load once per session (reloading is safe but unnecessary)",
+          "- Domain Switching: Clear KB when switching between different problem domains",
+          "- State Awareness: Queries execute against accumulated state, not in isolation",
+          "",
+          "Example Workflow:",
+          "1. Load library: knowledge_base_load_library {library: 'clpfd'}",
+          "2. Assert facts: knowledge_base_assert_many {facts: ['rule1.', 'rule2.']}",
+          "3. Query: query_start {query: 'goal(X)'}",
+          "4. If error, clear and retry: knowledge_base_clear → re-assert → query",
+          "5. Library still loaded after clear, no need to reload",
+        ],
         troubleshooting: [
           "Troubleshooting:",
           "- error(unsafe_goal(...)): goal rejected by hybrid security (uses dangerous built-ins)",
@@ -349,6 +391,7 @@ export const tools: ToolDefinitions = {
         "security",
         "examples",
         "prompts",
+        "state_management",
         "available_predicates",
         "troubleshooting",
         "roots",
@@ -483,7 +526,7 @@ export const tools: ToolDefinitions = {
 
   query_start: {
     title: "Start Query (Standard Mode)",
-    description: "Start Prolog query using call_nth/2 pagination. Follow with query_next to iterate solutions, query_close when done.",
+    description: "Start Prolog query using call_nth/2 pagination. Query executes against the current persistent knowledge base state, which includes all previously asserted facts, loaded rules, and imported libraries. Follow with query_next to iterate solutions, query_close when done.",
     inputSchema: queryStartSchema,
     handler: async ({ query }: { query: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -622,7 +665,7 @@ export const tools: ToolDefinitions = {
 
   symbols_list: {
     title: "List Predicates",
-    description: "List all user-defined predicates currently in the knowledge base. Shows predicate names with arity.",
+    description: "List all user-defined predicates currently in the knowledge base. Shows predicate names with arity. Use this to inspect current KB state, verify what predicates are defined, or check if previous assertions succeeded.",
     inputSchema: symbolsListSchema,
     outputSchema: symbolsListOutputSchema,
     handler: async (_args, _extra): Promise<CallToolResult> => {
@@ -669,7 +712,7 @@ export const tools: ToolDefinitions = {
 
   knowledge_base_assert: {
     title: "Assert Clause",
-    description: "Add single fact or rule to knowledge base. Use for one-off assertions; see knowledge_base_assert_many for bulk operations.",
+    description: "Add single fact or rule to knowledge base. Handles both simple facts and complex rules (with :-). Best for single assertions or when knowledge_base_assert_many fails on complex rules. For bulk operations with simple facts, use knowledge_base_assert_many.",
     inputSchema: knowledgeBaseAssertSchema,
     handler: async ({ fact }: { fact: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -732,7 +775,7 @@ export const tools: ToolDefinitions = {
 
   knowledge_base_assert_many: {
     title: "Assert Multiple Clauses",
-    description: "Add multiple facts or rules in one operation. More efficient than repeated single assertions. Returns per-clause results.",
+    description: "Add multiple facts or simple rules in one operation. More efficient than repeated single assertions. Returns per-clause results. NOTE: If you encounter 'Invalid Prolog syntax' errors with complex rules (containing :-), use knowledge_base_assert instead (handles complex rules better).",
     inputSchema: knowledgeBaseAssertManySchema,
     handler: async ({ facts }: { facts: string[] }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -947,7 +990,7 @@ export const tools: ToolDefinitions = {
 
   knowledge_base_clear: {
     title: "Clear Knowledge Base",
-    description: "Remove ALL user-defined facts and rules. Destructive operation - use when starting fresh or resetting workspace.",
+    description: "Remove ALL user-defined facts and rules. Destructive operation - use when starting fresh or resetting workspace. NOTE: Loaded libraries (e.g., clpfd) persist after clearing and remain available. Use this before retrying failed queries to ensure clean state.",
     inputSchema: knowledgeBaseClearSchema,
     handler: async (_args, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -990,7 +1033,7 @@ export const tools: ToolDefinitions = {
 
   knowledge_base_load_library: {
     title: "Load Safe Library",
-    description: "Load sandbox-approved library (clpfd, lists, apply, etc.) into knowledge_base module. No file access required.",
+    description: "Load sandbox-approved library (clpfd, lists, apply, etc.) into knowledge_base module. Libraries persist for the entire session and remain available after knowledge_base_clear. Reloading an already-loaded library is safe (idempotent). No file access required.",
     inputSchema: knowledgeBaseLoadLibrarySchema,
     handler: async ({ library }: { library: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -1037,7 +1080,7 @@ export const tools: ToolDefinitions = {
 
   query_startEngine: {
     title: "Start Query (Engine Mode)",
-    description: "Start Prolog query using SWI-Prolog engine for true backtracking. Follow with query_next to iterate, query_close when done.",
+    description: "Start Prolog query using SWI-Prolog engine for true backtracking. Query executes against the current persistent knowledge base state, which includes all previously asserted facts, loaded rules, and imported libraries. Follow with query_next to iterate, query_close when done.",
     inputSchema: queryStartEngineSchema,
     handler: async ({ query }: { query: string }, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -1081,7 +1124,7 @@ export const tools: ToolDefinitions = {
 
   knowledge_base_dump: {
     title: "Dump Knowledge Base",
-    description: "Export all user-defined facts and rules as Prolog source text. Useful for inspecting or backing up current state.",
+    description: "Export all user-defined facts and rules as Prolog source text. Shows accumulated state from all previous assertions and file loads. Does not show loaded libraries (only user-defined predicates). Useful for inspecting current state or backing up workspace.",
     inputSchema: knowledgeBaseDumpSchema,
     handler: async (_args, _extra): Promise<CallToolResult> => {
       const startTime = Date.now();
@@ -1106,6 +1149,128 @@ export const tools: ToolDefinitions = {
           structuredContent: { error: error instanceof Error ? error.message : String(error), processing_time_ms: processingTimeMs },
           isError: true,
         };
+      }
+    },
+  },
+
+  explain_error: {
+    title: "Explain Prolog Error",
+    description: "Analyze and explain a Prolog error using domain expertise and MCP sampling. Provides detailed explanation, root cause analysis, and actionable suggestions. Returns structured guidance including tool usage patterns when applicable.",
+    inputSchema: explainErrorSchema,
+    outputSchema: explainErrorOutputSchema,
+    handler: async ({ error, query, include_kb }: { error: { kind: string; message: string; details?: any }; query?: string; include_kb?: boolean }, _extra): Promise<CallToolResult> => {
+      const startTime = Date.now();
+
+      // Check if server reference is available for sampling
+      if (!serverRef.current) {
+        return createErrorResponse(
+          "Server reference not available for sampling",
+          startTime,
+          { sampling_used: false }
+        );
+      }
+
+      // Check if sampling is supported
+      const samplingSupported = isSamplingSupported(serverRef.current);
+      if (!samplingSupported) {
+        return createErrorResponse(
+          "MCP sampling not supported by client. This tool requires sampling capability.",
+          startTime,
+          { sampling_used: false }
+        );
+      }
+
+      try {
+        // Build context from KB if requested (default true)
+        let kbContext = "";
+        if (include_kb !== false) {
+          try {
+            await prologInterface.start();
+
+            // Get predicates list
+            const predicatesResult = await prologInterface.query("list_predicates");
+            kbContext += `\nCurrent Predicates:\n${predicatesResult}\n`;
+
+            // Get KB dump (limit to 2000 chars to avoid overwhelming the prompt)
+            const dumpResult = await prologInterface.query("dump_knowledge_base");
+            const truncatedDump = dumpResult.length > 2000
+              ? dumpResult.substring(0, 2000) + "\n... (truncated)"
+              : dumpResult;
+            kbContext += `\nKnowledge Base:\n${truncatedDump}\n`;
+          } catch (kbError) {
+            // KB context is optional, continue without it
+            kbContext = "\n(Knowledge base context unavailable)\n";
+          }
+        }
+
+        // Build query context
+        const queryContext = query
+          ? `\nQuery that caused the error:\n${query}\n`
+          : "";
+
+        // Combine all context
+        const fullContext = queryContext + kbContext;
+
+        // Use the Prolog error explainer
+        const explanation = await prologErrorExplainer.explainError(
+          serverRef.current,
+          {
+            error,
+            context: fullContext || undefined,
+          }
+        );
+
+        const processingTimeMs = Date.now() - startTime;
+
+        if (!explanation) {
+          return createErrorResponse(
+            "Failed to generate error explanation via sampling",
+            startTime,
+            { sampling_used: true }
+          );
+        }
+
+        // Format response text
+        let responseText = `# Error Explanation\n\n`;
+        responseText += `## What Went Wrong\n${explanation.explanation}\n\n`;
+        responseText += `## Root Cause\n${explanation.cause}\n\n`;
+        responseText += `## Suggestions\n`;
+        explanation.suggestions.forEach((suggestion: string, index: number) => {
+          responseText += `${index + 1}. ${suggestion}\n`;
+        });
+
+        if (explanation.examples && explanation.examples.length > 0) {
+          responseText += `\n## Code Examples\n`;
+          explanation.examples.forEach((example: string, index: number) => {
+            responseText += `\n### Example ${index + 1}\n\`\`\`prolog\n${example}\n\`\`\`\n`;
+          });
+        }
+
+        if (explanation.toolGuidance) {
+          responseText += `\n## Tool Usage Guidance\n${explanation.toolGuidance}\n`;
+        }
+
+        responseText += `\n---\nProcessing time: ${processingTimeMs}ms`;
+
+        return {
+          content: [{ type: "text", text: responseText }],
+          structuredContent: {
+            explanation: explanation.explanation,
+            cause: explanation.cause,
+            suggestions: explanation.suggestions,
+            examples: explanation.examples,
+            tool_guidance: explanation.toolGuidance,
+            processing_time_ms: processingTimeMs,
+            sampling_used: true,
+          },
+        };
+      } catch (error) {
+        const processingTimeMs = Date.now() - startTime;
+        return createErrorResponse(
+          error instanceof Error ? error.message : String(error),
+          startTime,
+          { sampling_used: true }
+        );
       }
     },
   },

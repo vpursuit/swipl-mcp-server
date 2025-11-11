@@ -389,6 +389,8 @@ dispatch(next_engine, _) :- !,
                     reply(error(arithmetic_evaluation_failed(Kind, Culprit)))
                 ; EngineError = error(existence_error(procedure, Pred), _) ->
                     reply(error(undefined_predicate_during_execution(Pred)))
+                ; EngineError = error(instantiation_error, _) ->
+                    reply(error(instantiation_error('A variable is not sufficiently instantiated. This usually means a variable is being used before it has been bound to a value. Check that all variables in your predicate are properly instantiated before use.')))
                 ; reply(error(engine_execution_failed(EngineError)))
                 )
             )

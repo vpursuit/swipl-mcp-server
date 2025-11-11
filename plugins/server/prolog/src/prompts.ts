@@ -396,15 +396,31 @@ knowledge_base_assert_many({
 })
 \`\`\`
 
+IMPORTANT: If knowledge_base_assert_many fails with "Invalid Prolog syntax" for complex rules:
+- Use knowledge_base_assert instead (handles rules with :- better)
+- Compress the rule into a single line without newlines
+- Example: knowledge_base_assert({ fact: "solve(S):-S ins 1..9, all_distinct(S), labeling([ff],S)." })
+
 → Display the constraints defined
 
 STEP 4 - Query with query_startEngine
 \`\`\`
 query_startEngine({ query: "solve(Solution)" })
 \`\`\`
-CLP(FD) REQUIRES engine mode (not query_start). Use query_nextSolution for more solutions.
+CLP(FD) REQUIRES engine mode (not query_start).
 
 NOTE: Starting a new query automatically closes any previous query/engine session.
+
+STEP 5 - Extract ALL Solutions
+After starting the engine, you MUST call query_next repeatedly to extract solutions:
+\`\`\`
+query_next()  // First solution
+query_next()  // Second solution (if desired)
+... continue until status='done'
+\`\`\`
+
+CRITICAL: The engine only starts in Step 4. Solutions are retrieved in Step 5 by calling query_next.
+Do NOT stop after query_startEngine - always follow with query_next calls.
 
 PERFORMANCE NOTE:
 - Use labeling([ff], Vars) for first-fail heuristic (2,500x faster)
@@ -413,10 +429,10 @@ PERFORMANCE NOTE:
 
 → Show all solutions found
 
-STEP 5 - Present Solution
+STEP 6 - Present Solution
 Map variable assignments to puzzle entities and verify constraints are satisfied.
 
-→ Present complete solution
+→ Present complete solution with proper formatting (e.g., grids for magic squares, boards for N-Queens)
 
 CONCRETE EXAMPLE - 4-Queens Step-by-Step:
 
@@ -440,25 +456,39 @@ Tool: knowledge_base_assert_many({
 Result: "Successfully asserted 5 facts/rules"
 \`\`\`
 
-Step 3: Query for solution
+Step 3: Start engine
 \`\`\`
 Tool: query_startEngine({ query: "solve(Qs)" })
-Result: { Qs: [2,4,1,3] }
+Result: { status: "ready", engine_ready: true }
+\`\`\`
 
-Interpretation:
+Step 4: Extract solutions
+\`\`\`
+Tool: query_next()
+Result: { status: "success", solution: "Qs = [2,4,1,3]" }
+
+Tool: query_next()  // Get another solution (optional)
+Result: { status: "success", solution: "Qs = [3,1,4,2]" }
+
+Tool: query_next()  // Continue until done
+Result: { status: "done" }
+\`\`\`
+
+Interpretation of first solution:
 - Row 1: Queen at column 2
 - Row 2: Queen at column 4
 - Row 3: Queen at column 1
 - Row 4: Queen at column 3
-\`\`\`
 
-This shows the EXACT tool calls and expected results.
+This shows the EXACT tool calls and expected results. Note the complete workflow: startEngine → query_next (repeated) → done.
 
 KEY POINTS:
 - Load library(clpfd) first
-- Use query_startEngine (not query_start)
+- Use query_startEngine (not query_start) for CLP(FD) queries
 - Pattern: Vars ins 1..N, constraints, labeling([ff], Vars)
 - Use [ff] for first-fail heuristic (much faster)
+- ALWAYS call query_next after query_startEngine to extract solutions
+- If knowledge_base_assert_many fails on complex rules, use knowledge_base_assert instead
 
 Now solve the puzzle using these constraint programming patterns.
 

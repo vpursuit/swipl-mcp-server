@@ -87,6 +87,23 @@ export const capabilitiesSchema = {} as const;
 
 export const licenseSchema = {} as const;
 
+export const explainErrorSchema = {
+  error: z.object({
+    kind: z.string().describe("Error kind/type (e.g., 'instantiation_error', 'syntax_error')"),
+    message: z.string().describe("Error message"),
+    details: z.object({
+      predicate: z.string().optional(),
+      file: z.string().optional(),
+      operation: z.string().optional(),
+      goal: z.string().optional(),
+      raw: z.string().optional(),
+      timeoutMs: z.number().optional(),
+    }).optional().describe("Additional error details"),
+  }).describe("Structured error object from a Prolog tool"),
+  query: z.string().optional().describe("The query that caused the error"),
+  include_kb: z.boolean().optional().default(true).describe("Include current knowledge base state for context (default: true)"),
+} as const;
+
 // Output schemas for structured tool responses
 export const capabilitiesOutputSchema = {
   server: z.object({
@@ -139,6 +156,12 @@ export const capabilitiesOutputSchema = {
     safe_libraries: z.array(z.string()),
     description: z.string(),
   }),
+  state_model: z.object({
+    knowledge_base: z.string(),
+    libraries: z.string(),
+    queries: z.string(),
+    best_practices: z.array(z.string()),
+  }),
 } as const;
 
 export const symbolsListOutputSchema = {
@@ -153,6 +176,16 @@ export const queryNextOutputSchema = {
   status: z.enum(["success", "done"]).describe("Iterator status: 'success' for solution available, 'done' when exhausted"),
   processing_time_ms: z.number(),
   error: z.string().optional().describe("Error message if operation failed"),
+} as const;
+
+export const explainErrorOutputSchema = {
+  explanation: z.string().describe("What went wrong"),
+  cause: z.string().describe("Root cause of the error"),
+  suggestions: z.array(z.string()).describe("Concrete suggestions to fix the error"),
+  examples: z.array(z.string()).optional().describe("Code examples"),
+  tool_guidance: z.string().optional().describe("Guidance on correct tool usage"),
+  processing_time_ms: z.number(),
+  sampling_used: z.boolean().describe("Whether MCP sampling was used"),
 } as const;
 
 // Prompt schemas (raw shapes for direct use with MCP SDK)
@@ -193,6 +226,7 @@ export const zodSchemas = {
   knowledgeBaseLoadLibrary: knowledgeBaseLoadLibrarySchema,
   capabilities: capabilitiesSchema,
   license: licenseSchema,
+  explainError: explainErrorSchema,
   genealogy: genealogySchema,
   scheduling: schedulingSchema,
   puzzle: puzzleSchema,
@@ -221,6 +255,7 @@ export const jsonSchemas = {
   knowledgeBaseLoadLibrary: zodToJsonSchema(z.object(knowledgeBaseLoadLibrarySchema)),
   capabilities: zodToJsonSchema(z.object(capabilitiesSchema)),
   license: zodToJsonSchema(z.object(licenseSchema)),
+  explainError: zodToJsonSchema(z.object(explainErrorSchema)),
   genealogy: zodToJsonSchema(z.object(genealogySchema)),
   scheduling: zodToJsonSchema(z.object(schedulingSchema)),
   puzzle: zodToJsonSchema(z.object(puzzleSchema)),

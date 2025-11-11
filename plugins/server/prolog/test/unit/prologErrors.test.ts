@@ -187,7 +187,10 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: { goal: "system('rm -rf /')" }
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Security Error: Operation blocked - contains dangerous predicate 'system'");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Security Error: Operation blocked - contains dangerous predicate 'system'");
+        expect(parsed.kind).toBe("unsafe_goal");
+        expect(parsed.details).toEqual({ goal: "system('rm -rf /')" });
       });
 
       test("should handle module:predicate patterns", () => {
@@ -197,7 +200,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: { goal: "knowledge_base:dangerous_pred(X)" }
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Security Error: Operation blocked - contains dangerous predicate 'dangerous_pred'");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Security Error: Operation blocked - contains dangerous predicate 'dangerous_pred'");
       });
 
       test("should handle complex module patterns", () => {
@@ -207,7 +211,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: { goal: "user:system:file:dangerous(X)" }
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Security Error: Operation blocked - contains dangerous predicate 'dangerous'");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Security Error: Operation blocked - contains dangerous predicate 'dangerous'");
       });
 
       test("should handle goal without parentheses", () => {
@@ -217,7 +222,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: { goal: "dangerous_atom" }
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Security Error: Unsafe operation blocked");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Security Error: Unsafe operation blocked");
       });
 
       test("should handle missing goal details", () => {
@@ -227,7 +233,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: {}
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Security Error: Unsafe operation blocked");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Security Error: Unsafe operation blocked");
       });
     });
 
@@ -239,7 +246,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: { timeoutMs: 5000 }
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Query timed out after 5000ms. Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Query timed out after 5000ms. Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.");
       });
 
       test("should format timeout without duration", () => {
@@ -249,7 +257,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: {}
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Query timed out. Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Query timed out. Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.");
       });
 
       test("should handle non-finite timeout values", () => {
@@ -259,7 +268,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: { timeoutMs: Infinity }
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Query timed out. Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Query timed out. Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.");
       });
 
       test("should handle invalid timeout values", () => {
@@ -269,7 +279,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: { timeoutMs: "invalid" as any }
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Query timed out. Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Query timed out. Try increasing SWI_MCP_QUERY_TIMEOUT_MS environment variable.");
       });
     });
 
@@ -281,7 +292,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: { operation: "execute" }
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Security Error: Directives are not allowed in sandboxed consult");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Security Error: Directives are not allowed in sandboxed consult");
       });
 
       test("should format EXISTENCE_ERROR", () => {
@@ -291,7 +303,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: {}
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Undefined predicate: foo/2");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Undefined predicate: foo/2");
       });
 
       test("should format SYNTAX_ERROR", () => {
@@ -301,7 +314,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: {}
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Syntax Error: Invalid Prolog syntax");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Syntax Error: Invalid Prolog syntax. If using knowledge_base_assert_many with complex rules (containing :-), try knowledge_base_assert instead.");
       });
 
       test("should format SESSION_CONFLICT", () => {
@@ -311,7 +325,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: {}
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Session conflict detected");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Session conflict detected");
       });
 
       test("should format NO_ACTIVE_SESSION", () => {
@@ -321,7 +336,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: {}
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("No active session");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("No active session");
       });
 
       test("should format QUERY_TOO_LARGE", () => {
@@ -331,7 +347,8 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: {}
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Query too large");
+        const parsed = JSON.parse(result);
+        expect(parsed.message).toBe("Query too large");
       });
 
       test("should format UNKNOWN", () => {
@@ -341,7 +358,12 @@ describe("Prolog Error Parsing and Formatting", () => {
           details: {}
         };
         const result = PrologInterface.formatPrologError(error);
-        expect(result).toBe("Unknown error occurred");
+        const parsed = JSON.parse(result);
+        expect(parsed).toEqual({
+          kind: "unknown",
+          message: "Unknown error occurred",
+          details: {}
+        });
       });
     });
   });
