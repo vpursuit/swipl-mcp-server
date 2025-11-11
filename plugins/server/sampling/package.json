@@ -1,0 +1,49 @@
+{
+  "name": "@vpursuit/mcp-server-sampling",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Generic MCP sampling utilities for server plugins",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "sampling",
+    "plugin"
+  ],
+  "author": "Peter Trebing",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vpursuit/model-context-lab.git",
+    "directory": "plugins/server/sampling"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.2",
+    "@vpursuit/mcp-server-core": "^1.0.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.2",
+    "@vpursuit/mcp-server-core": "*"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
