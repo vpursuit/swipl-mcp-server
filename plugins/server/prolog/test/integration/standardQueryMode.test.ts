@@ -1,3 +1,8 @@
+/**
+ * Standard Query Mode Tools Tests
+ * Tests standard query workflow (non-engine mode) using the unified query API
+ */
+
 import { describe, beforeEach, afterEach, test, expect } from "vitest";
 import { toolHandlers, prologInterface } from "@vpursuit/mcp-server-prolog";
 
@@ -22,33 +27,33 @@ maybeDescribe("Standard Query Mode Tools", () => {
       await prologInterface.query("assert(parent(alice, bob))");
 
       // Start query
-      let result = await toolHandlers.queryStart({ query: "parent(X, Y)" });
+      let result = await toolHandlers.query({ operation: "start", query: "parent(X, Y)" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Query started");
 
       // Get first solution
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
       expect(result.content[0].text).toContain("Status:");
 
       // Get second solution
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
 
       // Get third solution
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
 
       // Try to get fourth solution (should be no more)
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("No more solutions");
 
       // Close query
-      result = await toolHandlers.queryClose();
+      result = await toolHandlers.query({ operation: "close" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toMatch(/Session closed|No active session/);
     });
@@ -59,10 +64,10 @@ maybeDescribe("Standard Query Mode Tools", () => {
       await prologInterface.query("assert(test_pred(john, mary))");
 
       // Start query
-      await toolHandlers.queryStart({ query: "test_pred(X, Y)" });
+      await toolHandlers.query({ operation: "start", query: "test_pred(X, Y)" });
 
       // Get solution and check parsing
-      const result = await toolHandlers.queryNext();
+      const result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
 
@@ -72,7 +77,7 @@ maybeDescribe("Standard Query Mode Tools", () => {
       expect(solutionText).toMatch(/Y\s*=\s*mary/);
 
       // Clean up
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should handle single solution correctly", async () => {
@@ -81,42 +86,42 @@ maybeDescribe("Standard Query Mode Tools", () => {
       await prologInterface.query("assert(unique_fact(singleton))");
 
       // Start query
-      await toolHandlers.queryStart({ query: "unique_fact(X)" });
+      await toolHandlers.query({ operation: "start", query: "unique_fact(X)" });
 
       // Get the single solution
-      let result = await toolHandlers.queryNext();
+      let result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
       expect(result.content[0].text).toContain("X=singleton");
 
       // Try to get second solution
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("No more solutions");
 
       // Clean up
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should handle queries with no solutions", async () => {
       // Start query with no solutions
       await prologInterface.start();
 
-      await toolHandlers.queryStart({ query: "nonexistent_predicate(X)" });
+      await toolHandlers.query({ operation: "start", query: "nonexistent_predicate(X)" });
 
       // Try to get solution
-      const result = await toolHandlers.queryNext();
+      const result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("No more solutions");
 
       // Clean up
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
   });
 
   describe("queryNext tool error handling", () => {
     test("should handle queryNext without active query", async () => {
-      const result = await toolHandlers.queryNext();
+      const result = await toolHandlers.query({ operation: "next" });
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("No active query");
@@ -127,11 +132,11 @@ maybeDescribe("Standard Query Mode Tools", () => {
       await prologInterface.query("assert(test_fact(value))");
 
       // Start and immediately close query
-      await toolHandlers.queryStart({ query: "test_fact(X)" });
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "start", query: "test_fact(X)" });
+      await toolHandlers.query({ operation: "close" });
 
       // Try queryNext after close
-      const result = await toolHandlers.queryNext();
+      const result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("No active query");
     });
@@ -141,13 +146,13 @@ maybeDescribe("Standard Query Mode Tools", () => {
       await prologInterface.query("assert(single_fact(value))");
 
       // Start query
-      await toolHandlers.queryStart({ query: "single_fact(X)" });
+      await toolHandlers.query({ operation: "start", query: "single_fact(X)" });
 
       // Get the solution
-      await toolHandlers.queryNext();
+      await toolHandlers.query({ operation: "next" });
 
       // Try queryNext again (should show no more solutions)
-      const result = await toolHandlers.queryNext();
+      const result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("No more solutions");
     });
@@ -158,9 +163,9 @@ maybeDescribe("Standard Query Mode Tools", () => {
       await prologInterface.start();
       await prologInterface.query("assert(complex_pred(atom_value, 42, [1,2,3]))");
 
-      await toolHandlers.queryStart({ query: "complex_pred(A, B, C)" });
+      await toolHandlers.query({ operation: "start", query: "complex_pred(A, B, C)" });
 
-      const result = await toolHandlers.queryNext();
+      const result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
 
       const solutionText = result.content[0].text;
@@ -168,22 +173,22 @@ maybeDescribe("Standard Query Mode Tools", () => {
       expect(solutionText).toContain("B=42");
       expect(solutionText).toContain("C=[1,2,3]");
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should handle queries without variables", async () => {
       await prologInterface.start();
       await prologInterface.query("assert(simple_fact)");
 
-      await toolHandlers.queryStart({ query: "simple_fact" });
+      await toolHandlers.query({ operation: "start", query: "simple_fact" });
 
-      const result = await toolHandlers.queryNext();
+      const result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
       // Should show "true" for queries without variables
       expect(result.content[0].text).toContain("true");
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should handle various solution formats gracefully", async () => {
@@ -196,30 +201,30 @@ maybeDescribe("Standard Query Mode Tools", () => {
       expect(result1).toBe("ok");
 
       // Test 2: Simple fact query returns through standard query mechanism
-      await toolHandlers.queryStart({ query: "edge_case_fact" });
-      const result2 = await toolHandlers.queryNext();
+      await toolHandlers.query({ operation: "start", query: "edge_case_fact" });
+      const result2 = await toolHandlers.query({ operation: "next" });
       expect(result2.isError).toBeFalsy();
       expect(result2.content[0].text).toContain("Solution:");
       expect(result2.content[0].text).toContain("true");
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
 
       // Test 3: Complex nested structure in solution
       await prologInterface.query("assert(complex_structure([a, [b, c], 42, atom]))");
-      await toolHandlers.queryStart({ query: "complex_structure(X)" });
-      const result3 = await toolHandlers.queryNext();
+      await toolHandlers.query({ operation: "start", query: "complex_structure(X)" });
+      const result3 = await toolHandlers.query({ operation: "next" });
       expect(result3.isError).toBeFalsy();
       expect(result3.content[0].text).toContain("X=");
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
 
       // Test 4: Multiple variables with different types
       await prologInterface.query("assert(multi_var(atom_value, 123, [1,2,3]))");
-      await toolHandlers.queryStart({ query: "multi_var(A, B, C)" });
-      const result4 = await toolHandlers.queryNext();
+      await toolHandlers.query({ operation: "start", query: "multi_var(A, B, C)" });
+      const result4 = await toolHandlers.query({ operation: "next" });
       expect(result4.isError).toBeFalsy();
       expect(result4.content[0].text).toContain("A=");
       expect(result4.content[0].text).toContain("B=");
       expect(result4.content[0].text).toContain("C=");
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
   });
 
@@ -232,13 +237,13 @@ maybeDescribe("Standard Query Mode Tools", () => {
         await prologInterface.query(`assert(number_fact(${i}))`);
       }
 
-      await toolHandlers.queryStart({ query: "number_fact(X)" });
+      await toolHandlers.query({ operation: "start", query: "number_fact(X)" });
 
       // Get all solutions one by one
       const solutions = [];
       let result;
       do {
-        result = await toolHandlers.queryNext();
+        result = await toolHandlers.query({ operation: "next" });
         if (result.isError) {
           // Break early on error to avoid infinite loop in test envs
           break;
@@ -250,7 +255,7 @@ maybeDescribe("Standard Query Mode Tools", () => {
 
       expect(solutions.length).toBe(10);
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should not leak memory on repeated query sessions", async () => {
@@ -259,16 +264,16 @@ maybeDescribe("Standard Query Mode Tools", () => {
 
       // Run multiple query sessions
       for (let i = 0; i < 5; i++) {
-        await toolHandlers.queryStart({ query: "repeated_fact(X)" });
-        await toolHandlers.queryNext();
-        await toolHandlers.queryClose();
+        await toolHandlers.query({ operation: "start", query: "repeated_fact(X)" });
+        await toolHandlers.query({ operation: "next" });
+        await toolHandlers.query({ operation: "close" });
       }
 
       // Should still be able to start new queries
-      const result = await toolHandlers.queryStart({ query: "repeated_fact(X)" });
+      const result = await toolHandlers.query({ operation: "start", query: "repeated_fact(X)" });
       expect(result.isError).toBeFalsy();
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
   });
 
@@ -278,15 +283,15 @@ maybeDescribe("Standard Query Mode Tools", () => {
       await prologInterface.query("assert(mode_test(standard))");
 
       // Use standard mode
-      await toolHandlers.queryStart({ query: "mode_test(X)" });
-      await toolHandlers.queryNext();
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "start", query: "mode_test(X)" });
+      await toolHandlers.query({ operation: "next" });
+      await toolHandlers.query({ operation: "close" });
 
       // Should be able to use engine mode after
-      const result = await toolHandlers.queryStartEngine({ query: "mode_test(Y)" });
+      const result = await toolHandlers.query({ operation: "start", use_engine: true, query: "mode_test(Y)" });
       expect(result.isError).toBeFalsy();
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should produce same results as engine mode", async () => {
@@ -295,16 +300,16 @@ maybeDescribe("Standard Query Mode Tools", () => {
       await prologInterface.query("assert(comparison_test(value2))");
 
       // Get solutions using standard mode
-      await toolHandlers.queryStart({ query: "comparison_test(X)" });
-      const standardSolution1 = await toolHandlers.queryNext();
-      const standardSolution2 = await toolHandlers.queryNext();
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "start", query: "comparison_test(X)" });
+      const standardSolution1 = await toolHandlers.query({ operation: "next" });
+      const standardSolution2 = await toolHandlers.query({ operation: "next" });
+      await toolHandlers.query({ operation: "close" });
 
       // Get solutions using engine mode
-      await toolHandlers.queryStartEngine({ query: "comparison_test(Y)" });
-      const engineSolution1 = await toolHandlers.queryNext();
-      const engineSolution2 = await toolHandlers.queryNext();
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "start", use_engine: true, query: "comparison_test(Y)" });
+      const engineSolution1 = await toolHandlers.query({ operation: "next" });
+      const engineSolution2 = await toolHandlers.query({ operation: "next" });
+      await toolHandlers.query({ operation: "close" });
 
       // Both modes should find the same number of solutions
       expect(standardSolution1.isError).toBeFalsy();

@@ -1,121 +1,216 @@
 /**
  * Unit tests for MCP Tools
  * Tests input validation schemas and tool registration
+ * Updated for refactored 7-tool API
  */
 
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import { inputSchemas } from "../../src/tools.js";
 
-describe("MCP Tools", () => {
+describe("MCP Tools - Refactored API", () => {
   describe("Input Validation Schemas", () => {
-    describe("DbLoadInputSchema", () => {
-      const DbLoadInputSchema = z.object({
-        filename: z.string().describe("Path to the Prolog file to load"),
-      });
+    describe("QueryInputSchema (Unified)", () => {
+      const QueryInputSchema = z.object(inputSchemas.query);
 
-      it("should validate correct filename input", () => {
-        const validInput = { filename: "test.pl" };
-        const result = DbLoadInputSchema.safeParse(validInput);
+      it("should validate start operation with standard mode", () => {
+        const validInput = { operation: "start", query: "test_fact(X)" };
+        const result = QueryInputSchema.safeParse(validInput);
 
         expect(result.success).toBe(true);
         if (result.success) {
+          expect(result.data.operation).toBe("start");
+          expect(result.data.query).toBe("test_fact(X)");
+          expect(result.data.use_engine).toBe(false); // default
+        }
+      });
+
+      it("should validate start operation with engine mode", () => {
+        const validInput = { operation: "start", query: "test_fact(X)", use_engine: true };
+        const result = QueryInputSchema.safeParse(validInput);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.operation).toBe("start");
+          expect(result.data.query).toBe("test_fact(X)");
+          expect(result.data.use_engine).toBe(true);
+        }
+      });
+
+      it("should validate next operation", () => {
+        const validInput = { operation: "next" };
+        const result = QueryInputSchema.safeParse(validInput);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.operation).toBe("next");
+        }
+      });
+
+      it("should validate close operation", () => {
+        const validInput = { operation: "close" };
+        const result = QueryInputSchema.safeParse(validInput);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.operation).toBe("close");
+        }
+      });
+
+      it("should reject empty query for start operation", () => {
+        const invalidInput = { operation: "start", query: "" };
+        const result = QueryInputSchema.safeParse(invalidInput);
+
+        expect(result.success).toBe(false);
+      });
+
+      it("should reject invalid operation", () => {
+        const invalidInput = { operation: "invalid" };
+        const result = QueryInputSchema.safeParse(invalidInput);
+
+        expect(result.success).toBe(false);
+      });
+    });
+
+    // Help tool removed - use capabilities instead
+
+    // Unified clauses tool (Step 3)
+    describe("ClausesInputSchema", () => {
+      const ClausesInputSchema = z.object(inputSchemas.clauses);
+
+      it("should validate assert operation with single clause", () => {
+        const validInput = { operation: "assert", clauses: "parent(john, mary)" };
+        const result = ClausesInputSchema.safeParse(validInput);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.operation).toBe("assert");
+          expect(result.data.clauses).toBe("parent(john, mary)");
+        }
+      });
+
+      it("should validate assert operation with array of clauses", () => {
+        const validInput = { operation: "assert", clauses: ["fact1", "fact2"] };
+        const result = ClausesInputSchema.safeParse(validInput);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.clauses).toEqual(["fact1", "fact2"]);
+        }
+      });
+
+      it("should validate clear operation without clauses", () => {
+        const validInput = { operation: "clear" };
+        const result = ClausesInputSchema.safeParse(validInput);
+
+        expect(result.success).toBe(true);
+      });
+
+      it("should reject missing operation", () => {
+        const invalidInput = { clauses: "test" };
+        const result = ClausesInputSchema.safeParse(invalidInput);
+
+        expect(result.success).toBe(false);
+      });
+    });
+
+    // Unified files tool (Step 4)
+    describe("FilesInputSchema", () => {
+      const FilesInputSchema = z.object(inputSchemas.files);
+
+      it("should validate import operation with filename", () => {
+        const validInput = { operation: "import", filename: "test.pl" };
+        const result = FilesInputSchema.safeParse(validInput);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.operation).toBe("import");
           expect(result.data.filename).toBe("test.pl");
         }
       });
 
-      it("should reject missing filename", () => {
-        const invalidInput = {};
-        const result = DbLoadInputSchema.safeParse(invalidInput);
-
-        expect(result.success).toBe(false);
-      });
-
-      it("should reject non-string filename", () => {
-        const invalidInput = { filename: 123 };
-        const result = DbLoadInputSchema.safeParse(invalidInput);
-
-        expect(result.success).toBe(false);
-      });
-    });
-
-    describe("QueryStartInputSchema", () => {
-      const QueryStartInputSchema = z.object(inputSchemas.queryStart);
-
-      it("should validate correct query input", () => {
-        const validInput = { query: "test_fact(X)" };
-        const result = QueryStartInputSchema.safeParse(validInput);
+      it("should validate unimport operation with filename", () => {
+        const validInput = { operation: "unimport", filename: "test.pl" };
+        const result = FilesInputSchema.safeParse(validInput);
 
         expect(result.success).toBe(true);
         if (result.success) {
-          expect(result.data.query).toBe("test_fact(X)");
+          expect(result.data.operation).toBe("unimport");
+          expect(result.data.filename).toBe("test.pl");
         }
       });
 
-      it("should reject empty query", () => {
-        const invalidInput = { query: "" };
-        const result = QueryStartInputSchema.safeParse(invalidInput);
+      it("should validate list operation without filename", () => {
+        const validInput = { operation: "list" };
+        const result = FilesInputSchema.safeParse(validInput);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.operation).toBe("list");
+        }
+      });
+
+      it("should reject missing operation", () => {
+        const invalidInput = { filename: "test.pl" };
+        const result = FilesInputSchema.safeParse(invalidInput);
+
+        expect(result.success).toBe(false);
+      });
+
+      it("should reject invalid operation", () => {
+        const invalidInput = { operation: "invalid", filename: "test.pl" };
+        const result = FilesInputSchema.safeParse(invalidInput);
 
         expect(result.success).toBe(false);
       });
     });
 
-    describe("QueryNextInputSchema", () => {
-      const QueryNextInputSchema = z.object(inputSchemas.queryNext);
+    // Unified workspace tool (Step 5)
+    describe("WorkspaceInputSchema", () => {
+      const WorkspaceInputSchema = z.object(inputSchemas.workspace);
 
-      it("should validate empty input for next", () => {
-        const validInput = {};
-        const result = QueryNextInputSchema.safeParse(validInput);
-
-        expect(result.success).toBe(true);
-      });
-    });
-
-    describe("QueryCloseInputSchema", () => {
-      const QueryCloseInputSchema = z.object(inputSchemas.queryClose);
-
-      it("should validate empty input for close", () => {
-        const validInput = {};
-        const result = QueryCloseInputSchema.safeParse(validInput);
-
-        expect(result.success).toBe(true);
-      });
-    });
-
-    describe("DbAssertInputSchema", () => {
-      const DbAssertInputSchema = z.object(inputSchemas.knowledgeBaseAssert);
-
-      it("should validate correct fact input", () => {
-        const validInput = { fact: "parent(john, mary)" };
-        const result = DbAssertInputSchema.safeParse(validInput);
+      it("should validate snapshot operation without filename", () => {
+        const validInput = { operation: "snapshot" };
+        const result = WorkspaceInputSchema.safeParse(validInput);
 
         expect(result.success).toBe(true);
         if (result.success) {
-          expect(result.data.fact).toBe("parent(john, mary)");
+          expect(result.data.operation).toBe("snapshot");
         }
       });
 
-      it("should reject missing fact", () => {
-        const invalidInput = {};
-        const result = DbAssertInputSchema.safeParse(invalidInput);
+      it("should validate reset operation", () => {
+        const validInput = { operation: "reset" };
+        const result = WorkspaceInputSchema.safeParse(validInput);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.operation).toBe("reset");
+        }
+      });
+
+      it("should validate list_symbols operation", () => {
+        const validInput = { operation: "list_symbols" };
+        const result = WorkspaceInputSchema.safeParse(validInput);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.operation).toBe("list_symbols");
+        }
+      });
+
+      it("should reject missing operation", () => {
+        const invalidInput = { filename: "test.pl" };
+        const result = WorkspaceInputSchema.safeParse(invalidInput);
 
         expect(result.success).toBe(false);
       });
-    });
 
-    describe("RetractFactInputSchema", () => {
-      const RetractFactInputSchema = z.object({
-        fact: z.string().describe("Prolog fact to retract (e.g., 'parent(john, mary)')"),
-      });
+      it("should reject invalid operation", () => {
+        const invalidInput = { operation: "invalid" };
+        const result = WorkspaceInputSchema.safeParse(invalidInput);
 
-      it("should validate correct retraction input", () => {
-        const validInput = { fact: "parent(john, mary)" };
-        const result = RetractFactInputSchema.safeParse(validInput);
-
-        expect(result.success).toBe(true);
-        if (result.success) {
-          expect(result.data.fact).toBe("parent(john, mary)");
-        }
+        expect(result.success).toBe(false);
       });
     });
   });
@@ -142,8 +237,7 @@ describe("MCP Tools", () => {
     });
   });
 
-
-  describe("start_query Tool Logic", () => {
+  describe("Query Tool Logic", () => {
     it("should format simple queries correctly", () => {
       const query = "test_fact(X)";
       const formattedQuery = query.endsWith(".") ? query : query + ".";
@@ -176,118 +270,19 @@ describe("MCP Tools", () => {
     });
   });
 
-  describe("list_predicates Tool Logic", () => {
-    it("should generate correct predicate listing query", () => {
-      const expectedQuery = "current_predicate(X/Y), format('~w/~w~n', [X,Y]), fail; true";
-
-      expect(expectedQuery).toContain("current_predicate");
-      expect(expectedQuery).toContain("format");
-      expect(expectedQuery).toContain("fail; true");
-    });
-
-    it("should format predicate list response", () => {
-      const mockPredicates = "test_fact/1\nparent/2\nmale/1";
-
-      const expectedResponse = {
-        content: [
-          {
-            type: "text",
-            text: `Available predicates:\n${mockPredicates}`,
-          },
-        ],
-      };
-
-      expect(expectedResponse.content[0].text).toContain("Available predicates:");
-      expect(expectedResponse.content[0].text).toContain("test_fact/1");
-    });
-  });
-
-  describe("assert Tool Logic", () => {
-    it("should generate correct assert query", () => {
-      const fact = "test_new_fact(value)";
-      const assertQuery = `assert(${fact})`;
-
-      expect(assertQuery).toBe("assert(test_new_fact(value))");
-    });
-
-    it("should format assert response correctly", () => {
-      const fact = "test_new_fact(value)";
-      const mockResult = "true";
-
-      const expectedResponse = {
-        content: [
-          {
-            type: "text",
-            text: `Asserted fact: ${fact}\nResult: ${mockResult}`,
-          },
-        ],
-      };
-
-      expect(expectedResponse.content[0].text).toContain(`Asserted fact: ${fact}`);
-    });
-  });
-
-  describe("retract Tool Logic", () => {
-    it("should generate correct retract query", () => {
-      const fact = "test_fact(value)";
-      const retractQuery = `retract(${fact})`;
-
-      expect(retractQuery).toBe("retract(test_fact(value))");
-    });
-
-    it("should format retract response correctly", () => {
-      const fact = "test_fact(value)";
-      const mockResult = "true";
-
-      const expectedResponse = {
-        content: [
-          {
-            type: "text",
-            text: `Retracted fact: ${fact}\nResult: ${mockResult}`,
-          },
-        ],
-      };
-
-      expect(expectedResponse.content[0].text).toContain(`Retracted fact: ${fact}`);
-    });
-  });
-
   describe("Tool Registration", () => {
-    it("should register all expected tools", () => {
-      const expectedTools = [
-        "consult_file",
-        "start_query",
-        "next_solution",
-        "close_query",
-        "list_predicates",
-        "assert_clause",
-        "retract_clause",
-      ];
+    it("should register expected number of tools", () => {
+      // Current state: Still has legacy tools
+      // After Step 8: Will have exactly 7 tools
+      const currentToolCount = Object.keys(inputSchemas).length;
 
-      expectedTools.forEach((toolName) => {
-        expect(typeof toolName).toBe("string");
-        expect(toolName.length).toBeGreaterThan(0);
-      });
-
-      expect(expectedTools).toHaveLength(7);
+      // Should have at least the core query tools
+      expect(currentToolCount).toBeGreaterThanOrEqual(3);
     });
 
-    it("should have proper tool descriptions", () => {
-      const toolDescriptions = {
-        consult_file: "Consult file to load a Prolog file into the knowledge base",
-        start_query: "Start query session for Prolog queries",
-        next_solution: "Get next solution from the current query",
-        close_query: "Close query session when finished",
-        list_predicates: "List predicates available in the knowledge base",
-        assert_clause: "Assert clause to add a new clause (fact or rule) to the knowledge base",
-        retract_clause: "Retract clause to remove a clause (fact or rule) from the knowledge base",
-      };
-
-      Object.entries(toolDescriptions).forEach(([tool, description]) => {
-        expect(description.toLowerCase()).toContain(tool.replace("_", " "));
-        expect(description.length).toBeGreaterThan(10);
-      });
+    // Unified query tool (Step 6)
+    it("should have unified query tool registered", () => {
+      expect(inputSchemas).toHaveProperty("query");
     });
   });
-
 });

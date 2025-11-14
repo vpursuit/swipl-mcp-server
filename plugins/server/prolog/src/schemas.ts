@@ -10,82 +10,65 @@ import { zodToJsonSchema } from "zod-to-json-schema";
  */
 
 // Tool schemas (raw shapes for direct use with MCP SDK)
-export const helpSchema = {
-  topic: z
-    .enum([
-      "overview",
-      "standard_mode",
-      "engine_mode",
-      "safety",
-      "security",
-      "examples",
-      "prompts",
-      "roots",
-      "troubleshooting",
-    ])
-    .optional()
-    .describe(
-      "Optional topic to focus help on (overview, standard_mode, engine_mode, safety, security, examples, prompts, roots, troubleshooting)",
-    ),
-} as const;
-
-export const knowledgeBaseLoadSchema = {
-  filename: z.string().describe("Path to the Prolog file to load"),
-} as const;
-
-export const queryStartSchema = {
-  query: z.string().min(1).describe("Prolog query to start"),
-} as const;
-
-export const queryNextSchema = {} as const;
-
-export const queryCloseSchema = {} as const;
-
-export const queryStartEngineSchema = {
-  query: z.string().min(1).describe("Prolog query to start with engine-based iteration"),
-} as const;
-
-export const knowledgeBaseDumpSchema = {} as const;
-
-export const symbolsListSchema = {} as const;
-
-export const knowledgeBaseAssertSchema = {
-  fact: z
-    .string()
-    .describe(
-      "Single Prolog clause to assert (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
-    ),
-} as const;
-
-export const knowledgeBaseRetractSchema = {
-  fact: z
-    .string()
-    .describe(
-      "Single Prolog clause to retract (e.g., 'parent(john, mary)' or 'grandparent(X,Z) :- parent(X,Y), parent(Y,Z)')",
-    ),
-} as const;
-
-export const knowledgeBaseAssertManySchema = {
-  facts: z.array(z.string()).describe("List of Prolog clauses to assert"),
-} as const;
-
-export const knowledgeBaseRetractManySchema = {
-  facts: z.array(z.string()).describe("List of Prolog clauses to retract"),
-} as const;
-
-export const knowledgeBaseClearSchema = {} as const;
-
-export const knowledgeBaseLoadLibrarySchema = {
-  library: z
-    .string()
-    .describe(
-      "Name of the safe library to load (e.g., 'clpfd', 'lists', 'apply'). Only sandbox-approved libraries are allowed.",
-    ),
-} as const;
-
 export const capabilitiesSchema = {} as const;
 
-export const licenseSchema = {} as const;
+export const querySchema = {
+  operation: z
+    .enum(["start", "next", "close"])
+    .describe(
+      "Query operation: 'start' begins new query, 'next' gets next solution, 'close' ends query",
+    ),
+  query: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "Prolog query string (required for 'start' operation)",
+    ),
+  use_engine: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(
+      "Use SWI-Prolog engine mode for true backtracking (default: false uses call_nth/2 pagination). Required for constraint solving with CLP(FD)",
+    ),
+} as const;
+
+export const clausesSchema = {
+  operation: z
+    .enum(["assert", "retract", "clear"])
+    .describe(
+      "Clause operation: 'assert' adds facts/rules to KB with source preservation, 'retract' removes matching facts/rules, 'clear' removes all facts/rules",
+    ),
+  clauses: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .describe(
+      "Single Prolog clause or array of clauses. Required for 'assert' and 'retract' operations (ignored for 'clear'). Accepts facts: 'parent(john, mary)' or rules: 'ancestor(X,Y) :- parent(X,Y)'. Periods optional. Source text preserved with original variable names.",
+    ),
+} as const;
+
+export const filesSchema = {
+  operation: z
+    .enum(["import", "unimport", "list"])
+    .describe(
+      "File operation: 'import' loads .pl file with provenance tracking, 'unimport' removes file's clauses, 'list' shows imported files",
+    ),
+  filename: z
+    .string()
+    .optional()
+    .describe(
+      "Path to Prolog file (required for 'import' and 'unimport' operations). Must be within configured roots.",
+    ),
+} as const;
+
+export const workspaceSchema = {
+  operation: z
+    .enum(["snapshot", "reset", "list_symbols"])
+    .describe(
+      "Workspace operation: 'snapshot' gets original source text of all asserted clauses, 'reset' removes all facts/rules, 'list_symbols' lists all user-defined predicates",
+    ),
+} as const;
 
 export const explainErrorSchema = {
   error: z.object({
@@ -127,7 +110,7 @@ export const capabilitiesOutputSchema = {
     core: z.array(z.string()),
     knowledge_base: z.array(z.string()),
     query: z.array(z.string()),
-    symbols: z.array(z.string()),
+    analysis: z.array(z.string()),
   }),
   prompts: z.object({
     domain_examples: z.array(z.string()),
@@ -210,22 +193,11 @@ export const grammarSchema = {
  * These are now the raw shapes themselves since that's what we export
  */
 export const zodSchemas = {
-  help: helpSchema,
-  knowledgeBaseLoad: knowledgeBaseLoadSchema,
-  queryStart: queryStartSchema,
-  queryNext: queryNextSchema,
-  queryClose: queryCloseSchema,
-  queryStartEngine: queryStartEngineSchema,
-  knowledgeBaseDump: knowledgeBaseDumpSchema,
-  symbolsList: symbolsListSchema,
-  knowledgeBaseAssert: knowledgeBaseAssertSchema,
-  knowledgeBaseRetract: knowledgeBaseRetractSchema,
-  knowledgeBaseAssertMany: knowledgeBaseAssertManySchema,
-  knowledgeBaseRetractMany: knowledgeBaseRetractManySchema,
-  knowledgeBaseClear: knowledgeBaseClearSchema,
-  knowledgeBaseLoadLibrary: knowledgeBaseLoadLibrarySchema,
   capabilities: capabilitiesSchema,
-  license: licenseSchema,
+  query: querySchema,
+  clauses: clausesSchema,
+  files: filesSchema,
+  workspace: workspaceSchema,
   explainError: explainErrorSchema,
   genealogy: genealogySchema,
   scheduling: schedulingSchema,
@@ -239,22 +211,11 @@ export const zodSchemas = {
  * We wrap raw shapes in z.object() for JSON schema conversion
  */
 export const jsonSchemas = {
-  help: zodToJsonSchema(z.object(helpSchema)),
-  knowledgeBaseLoad: zodToJsonSchema(z.object(knowledgeBaseLoadSchema)),
-  queryStart: zodToJsonSchema(z.object(queryStartSchema)),
-  queryNext: zodToJsonSchema(z.object(queryNextSchema)),
-  queryClose: zodToJsonSchema(z.object(queryCloseSchema)),
-  queryStartEngine: zodToJsonSchema(z.object(queryStartEngineSchema)),
-  knowledgeBaseDump: zodToJsonSchema(z.object(knowledgeBaseDumpSchema)),
-  symbolsList: zodToJsonSchema(z.object(symbolsListSchema)),
-  knowledgeBaseAssert: zodToJsonSchema(z.object(knowledgeBaseAssertSchema)),
-  knowledgeBaseRetract: zodToJsonSchema(z.object(knowledgeBaseRetractSchema)),
-  knowledgeBaseAssertMany: zodToJsonSchema(z.object(knowledgeBaseAssertManySchema)),
-  knowledgeBaseRetractMany: zodToJsonSchema(z.object(knowledgeBaseRetractManySchema)),
-  knowledgeBaseClear: zodToJsonSchema(z.object(knowledgeBaseClearSchema)),
-  knowledgeBaseLoadLibrary: zodToJsonSchema(z.object(knowledgeBaseLoadLibrarySchema)),
   capabilities: zodToJsonSchema(z.object(capabilitiesSchema)),
-  license: zodToJsonSchema(z.object(licenseSchema)),
+  query: zodToJsonSchema(z.object(querySchema)),
+  clauses: zodToJsonSchema(z.object(clausesSchema)),
+  files: zodToJsonSchema(z.object(filesSchema)),
+  workspace: zodToJsonSchema(z.object(workspaceSchema)),
   explainError: zodToJsonSchema(z.object(explainErrorSchema)),
   genealogy: zodToJsonSchema(z.object(genealogySchema)),
   scheduling: zodToJsonSchema(z.object(schedulingSchema)),

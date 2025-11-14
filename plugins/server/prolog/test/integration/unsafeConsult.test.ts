@@ -1,3 +1,9 @@
+/**
+ * Unsafe File Consultation Tests
+ * Tests security validation during file loading
+ * Updated for Step 4: Uses unified files tool
+ */
+
 import { describe, beforeEach, afterEach, test, expect } from "vitest";
 import { toolHandlers, prologInterface } from "@vpursuit/mcp-server-prolog";
 import { findNearestFile } from "@vpursuit/mcp-server-core";
@@ -23,7 +29,7 @@ maybeDescribe("Unsafe File Consultation", () => {
     }
 
     // Try to consult the unsafe file that contains directives - should be blocked by Prolog
-    const result = await toolHandlers.knowledgeBaseLoad({ filename: unsafeFixture });
+    const result = await toolHandlers.files({ operation: "import", filename: unsafeFixture });
 
     // The consult should be blocked by Prolog's security validation
     expect(result.isError).toBeTruthy();
@@ -43,17 +49,17 @@ maybeDescribe("Unsafe File Consultation", () => {
     // Use individual sessions to avoid process crashes affecting other tests
 
     // Test call/* (arbitrary code execution)
-    const callResult = await toolHandlers.queryStart({ query: "call(true)" });
+    const callResult = await toolHandlers.query({ operation: "start", query: "call(true)" });
     expect(callResult.isError).toBeTruthy();
     expect(callResult.content[0].text).toMatch(/unsafe_goal|Error:/i);
 
     // Test assert/* (database modification) 
-    const assertResult = await toolHandlers.queryStart({ query: "assert(test(fact))" });
+    const assertResult = await toolHandlers.query({ operation: "start", query: "assert(test(fact))" });
     expect(assertResult.isError).toBeTruthy();
     expect(assertResult.content[0].text).toMatch(/unsafe_goal|Error:/i);
 
     // Test system/* (system calls)
-    const systemResult = await toolHandlers.queryStart({ query: "system('echo test')" });
+    const systemResult = await toolHandlers.query({ operation: "start", query: "system('echo test')" });
     expect(systemResult.isError).toBeTruthy();
     expect(systemResult.content[0].text).toMatch(/unsafe_goal|Error:/i);
   });
@@ -63,17 +69,17 @@ maybeDescribe("Unsafe File Consultation", () => {
 
     // Create a temporary safe file content and verify manual assertion works
     // (This tests that our security model allows safe recursive rules)
-    await toolHandlers.knowledgeBaseAssert({ fact: "parent(alice, bob)" });
-    await toolHandlers.knowledgeBaseAssert({ fact: "ancestor(X, Y) :- parent(X, Y)" });
+    await toolHandlers.clauses({ operation: "assert", clauses: "parent(alice, bob)" });
+    await toolHandlers.clauses({ operation: "assert", clauses: "ancestor(X, Y) :- parent(X, Y)" });
 
     // Test that the safe recursive rule works
-    const result = await toolHandlers.queryStart({ query: "ancestor(alice, bob)" });
+    const result = await toolHandlers.query({ operation: "start", query: "ancestor(alice, bob)" });
     expect(result.isError).toBeFalsy();
 
-    const solution = await toolHandlers.queryNext();
+    const solution = await toolHandlers.query({ operation: "next" });
     expect(solution.isError).toBeFalsy();
     expect(solution.content[0].text).toMatch(/Solution:\s*true/);
 
-    await toolHandlers.queryClose();
+    await toolHandlers.query({ operation: "close" });
   });
 });

@@ -84,6 +84,55 @@ Configures allowed directories for file operations. Alternative to MCP client ro
 
 Override the Prolog server script location. Rarely needed except for development or custom deployments.
 
+#### `KB_LIBRARIES`
+**Type:** Comma-separated library names
+**Default:** (none, defaults pre-loaded: `lists`, `between`, `clpfd`, `apply`, `pairs`, `ordsets`)
+**Example:** `clpb,aggregate,random`
+
+Load additional safe Prolog libraries into the knowledge base at startup.
+
+**Default Libraries** (always loaded):
+- `lists` - List manipulation (member, append, length, etc.)
+- `between` - Integer range generation
+- `clpfd` - Constraint Logic Programming over Finite Domains
+- `apply` - Higher-order predicates (maplist, foldl, etc.)
+- `pairs` - Key-value pair operations
+- `ordsets` - Ordered set operations
+
+**Common Additional Libraries:**
+- `clpb` - Boolean constraint solving
+- `clpr` - Real number constraint solving
+- `aggregate` - Aggregate operations (sum, count, etc.)
+- `assoc` - Association lists (efficient dictionaries)
+- `random` - Random number generation
+- `solution_sequences` - Solution set operations
+- `ugraphs` - Unweighted graph algorithms
+- `rbtrees` - Red-black trees
+- `heaps` - Heap data structures
+
+**Configuration:**
+```json
+{
+  "env": {
+    "KB_LIBRARIES": "clpb,aggregate,random"
+  }
+}
+```
+
+**Safety:**
+- Only libraries in the safe whitelist can be loaded
+- Invalid libraries generate warnings but don't crash the server
+- Libraries are loaded at startup (before first query)
+
+**Example - Constraint solving with multiple domains:**
+```json
+{
+  "env": {
+    "KB_LIBRARIES": "clpb,clpr"
+  }
+}
+```
+
 ### Timeout Configuration
 
 #### `SWI_MCP_READY_TIMEOUT_MS`

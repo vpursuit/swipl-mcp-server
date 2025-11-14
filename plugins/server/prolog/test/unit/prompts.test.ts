@@ -78,7 +78,7 @@ describe("Prolog Prompts", () => {
       const text = message.content.text;
       expect(text).toContain("family tree");
       expect(text).toContain("John is Mary's father");
-      expect(text).toContain("knowledge_base_assert_many");
+      expect(text).toContain("clauses");
       expect(text).toContain("parent_of");
       expect(text).toContain("STEP");
     });
@@ -99,7 +99,7 @@ describe("Prolog Prompts", () => {
       const text = messages[0].content.text;
       expect(text).toContain("scheduling");
       expect(text).toContain("Task1 (5 days)");
-      expect(text).toContain("knowledge_base_load_library");
+      expect(text).toContain("files");
       expect(text).toContain("clpfd");
       expect(text).toContain("STEP");
       expect(text).toContain("constraint");
@@ -134,7 +134,7 @@ describe("Prolog Prompts", () => {
       const text = messages[0].content.text;
       expect(text).toContain(puzzle);
       expect(text).not.toContain("3 interesting logic puzzles");
-      expect(text).toContain("knowledge_base_load_library");
+      expect(text).toContain("files");
       expect(text).toContain("WORKFLOW");
     });
 
@@ -163,12 +163,12 @@ describe("Prolog Prompts", () => {
       const messagesWithPuzzle = prompt.messages({ puzzle: "Test puzzle" });
 
       const text = messagesWithPuzzle[0].content.text;
-      expect(text).toContain("knowledge_base_assert_many");
+      expect(text).toContain("clauses");
       expect(text).toContain("all_different");
       expect(text).toContain("ins");
       expect(text).toContain("label");
       expect(text).toContain("solve/1");
-      expect(text).toContain("query_startEngine");
+      expect(text).toContain("query");
     });
 
     test("grammar prompt should generate proper message structure", () => {
@@ -179,7 +179,7 @@ describe("Prolog Prompts", () => {
       expect(text).toContain("the cat sat on the mat");
       expect(text).toContain("DCG");
       expect(text).toContain("phrase/2");
-      expect(text).toContain("knowledge_base_assert_many");
+      expect(text).toContain("clauses");
       expect(text).toContain("STEP");
     });
 
@@ -208,8 +208,8 @@ describe("Prolog Prompts", () => {
         });
         const text = messages[0].content.text.toLowerCase();
 
-        // Each prompt should mention specific MCP tools
-        expect(text).toMatch(/knowledge_base_|query_|symbols_list/);
+        // Each prompt should mention specific MCP tools (unified API)
+        expect(text).toMatch(/clauses|files|query|workspace/);
       }
     });
 
@@ -260,8 +260,9 @@ describe("Prolog Prompts", () => {
         });
         const text = messages[0].content.text.toLowerCase();
 
-        expect(text).toContain("knowledge_base_");
-        expect(text).toContain("query_");
+        // Check for unified tool names
+        expect(text).toMatch(/clauses|files|workspace/);
+        expect(text).toContain("query");
       }
     });
 

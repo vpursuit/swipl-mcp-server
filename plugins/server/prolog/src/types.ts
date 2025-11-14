@@ -13,6 +13,24 @@ export type SessionState =
   | "engine_completed";
 
 /**
+ * Source entry for preserving original clause text
+ */
+export interface SourceEntry {
+  /** Unique identifier (session-scoped) */
+  id: string;
+  /** Original input text with variable names preserved */
+  sourceText: string;
+  /** Origin: direct assertion or file import */
+  type: 'inline' | 'file';
+  /** File path (if type='file') */
+  file?: string;
+  /** When added (Date.now()) */
+  timestamp: number;
+  /** Successfully asserted to Prolog? */
+  compiled: boolean;
+}
+
+/**
  * Server capabilities summary structure
  */
 export interface CapabilitiesSummary {
@@ -38,7 +56,6 @@ export interface CapabilitiesSummary {
     core: readonly string[];
     knowledge_base: readonly string[];
     query: readonly string[];
-    symbols: readonly string[];
     analysis: readonly string[];
   };
   prompts: {

@@ -52,22 +52,12 @@ function convertPromptsToDefinitions(): PromptDefinitions {
  * Provides comprehensive Prolog knowledge base management and query capabilities:
  *
  * TOOLS:
- * - knowledge_base_load: Load Prolog files from filesystem
- * - knowledge_base_load_library: Load safe Prolog library without file operations
- * - knowledge_base_assert: Add single fact/rule to knowledge base
- * - knowledge_base_assert_many: Batch add facts/rules
- * - knowledge_base_retract: Remove single fact/rule
- * - knowledge_base_retract_many: Batch remove facts/rules
- * - knowledge_base_clear: Clear all user-defined facts/rules
- * - knowledge_base_dump: Export knowledge base as Prolog clauses
- * - query_start: Start query session (call_nth/2 mode)
- * - query_startEngine: Start query session (engine mode with true backtracking)
- * - query_next: Get next solution from current query
- * - query_close: Close current query session
- * - symbols_list: List available predicates
+ * - query: Unified tool to start queries, get next solutions, and close query sessions
  * - capabilities: Get machine-readable capabilities summary
- * - help: Get usage guidelines
- * - license: Get license text
+ * - clauses: Unified tool to assert, retract, or clear facts/rules (with source preservation)
+ * - files: Import/unimport Prolog files with provenance tracking
+ * - workspace: Save, load, or list workspace snapshots
+ * - explain_error: Analyze and explain Prolog errors using domain expertise
  *
  * RESOURCES:
  * - prolog://knowledge_base/predicates: List predicates in knowledge_base module

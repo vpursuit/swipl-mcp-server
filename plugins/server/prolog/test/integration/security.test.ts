@@ -1,3 +1,9 @@
+/**
+ * Security Integration Tests
+ * Tests sandbox security restrictions and path validation
+ * Updated for Step 4: Uses unified files tool
+ */
+
 import { describe, beforeEach, afterEach, test, expect } from "vitest";
 import { toolHandlers, prologInterface } from "@vpursuit/mcp-server-prolog";
 import os from "os";
@@ -17,25 +23,25 @@ maybeDescribe("Security: block non-whitelisted system predicates", () => {
 
   test("directory_files/2 is rejected as unsafe", async () => {
     await prologInterface.start();
-    const started = await toolHandlers.queryStart({ query: "directory_files('.', L)" });
+    const started = await toolHandlers.query({ operation: "start", query: "directory_files('.', L)" });
     // Expect the start to fail or the next to report an unsafe goal
     if (started.isError) {
       expect(started.content[0].text).toMatch(/unsafe_goal|Error:/i);
       return;
     }
-    const res = await toolHandlers.queryNext();
+    const res = await toolHandlers.query({ operation: "next" });
     expect(res.isError).toBe(true);
     expect(res.content[0].text).toMatch(/unsafe_goal|permission_error|Error:/i);
   });
 
   test("member/2 remains allowed (whitelisted)", async () => {
     await prologInterface.start();
-    const started = await toolHandlers.queryStart({ query: "member(X, [a,b])" });
+    const started = await toolHandlers.query({ operation: "start", query: "member(X, [a,b])" });
     expect(started.isError).toBeFalsy();
-    const res = await toolHandlers.queryNext();
+    const res = await toolHandlers.query({ operation: "next" });
     expect(res.isError).toBeFalsy();
     expect(res.content[0].text).toMatch(/X\s*=\s*(a|b)/);
-    await toolHandlers.queryClose();
+    await toolHandlers.query({ operation: "close" });
   });
 });
 
@@ -49,7 +55,7 @@ maybeDescribe("Security: File Path Restrictions", () => {
   });
 
   test("should block loading /etc/passwd with clear security error", async () => {
-    const result = await toolHandlers.knowledgeBaseLoad({ filename: "/etc/passwd" });
+    const result = await toolHandlers.files({ operation: "import", filename: "/etc/passwd" });
 
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
@@ -59,7 +65,7 @@ maybeDescribe("Security: File Path Restrictions", () => {
   });
 
   test("should block loading /usr/bin/swipl with clear security error", async () => {
-    const result = await toolHandlers.knowledgeBaseLoad({ filename: "/usr/bin/swipl" });
+    const result = await toolHandlers.files({ operation: "import", filename: "/usr/bin/swipl" });
 
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
@@ -69,7 +75,7 @@ maybeDescribe("Security: File Path Restrictions", () => {
 
   test("should block loading files outside allowed directory", async () => {
     // Without configured roots, any file access should fail
-    const result = await toolHandlers.knowledgeBaseLoad({ filename: "/tmp/malicious.pl" });
+    const result = await toolHandlers.files({ operation: "import", filename: "/tmp/malicious.pl" });
 
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).toContain("Security Error");
@@ -124,13 +130,14 @@ maybeDescribe("Security: File Path Restrictions", () => {
 
     try {
       // This should pass security check and load successfully
-      const result = await toolHandlers.knowledgeBaseLoad({ filename: testFile });
+      const result = await toolHandlers.files({ operation: "import", filename: testFile });
 
       // Should succeed - no security error
       expect(result).toBeDefined();
       expect(result.isError).toBeFalsy();
-      expect(result.content[0].text).toContain("Successfully consulted file");
-      expect(result.structuredContent.result).toBe("ok");
+      expect(result.content[0].text).toContain("Successfully imported file");
+      expect(result.structuredContent.operation).toBe("import");
+      expect(result.structuredContent.clauses_added).toBeGreaterThan(0);
     } finally {
       // Restore original roots configuration
       if (originalRoots !== undefined) {
@@ -167,8 +174,9 @@ maybeDescribe("Security: Dangerous Operation Detection", () => {
   test("should return security error for dangerous shell operation", async () => {
     await prologInterface.start();
 
-    const result = await toolHandlers.knowledgeBaseAssert({
-      fact: "test_system :- shell('echo test')."
+    const result = await toolHandlers.clauses({
+      operation: "assert",
+      clauses: "test_system :- shell('echo test')."
     });
 
     expect(result.isError).toBeTruthy();
@@ -182,8 +190,9 @@ maybeDescribe("Security: Dangerous Operation Detection", () => {
   test("should return security error for dangerous call operation", async () => {
     await prologInterface.start();
 
-    const result = await toolHandlers.knowledgeBaseAssert({
-      fact: "test_call :- call(shell('echo test'))."
+    const result = await toolHandlers.clauses({
+      operation: "assert",
+      clauses: "test_call :- call(shell('echo test'))."
     });
 
     expect(result.isError).toBeTruthy();
@@ -192,11 +201,12 @@ maybeDescribe("Security: Dangerous Operation Detection", () => {
     expect(result.structuredContent.success).toBe(0);
   });
 
-  test("should return security error in knowledgeBaseAssertMany for dangerous operations", async () => {
+  test("should return security error in clauses for dangerous operations", async () => {
     await prologInterface.start();
 
-    const result = await toolHandlers.knowledgeBaseAssertMany({
-      facts: [
+    const result = await toolHandlers.clauses({
+      operation: "assert",
+      clauses: [
         "dangerous_fact1 :- system('rm -rf /').",
         "dangerous_fact2 :- shell('echo test')."
       ]
@@ -225,7 +235,7 @@ maybeDescribe("Security: Error Message Quality", () => {
   });
 
   test("security errors should be clear and actionable", async () => {
-    const result = await toolHandlers.knowledgeBaseLoad({ filename: "/etc/hosts" });
+    const result = await toolHandlers.files({ operation: "import", filename: "/etc/hosts" });
     
     expect(result.isError).toBeTruthy();
     expect(result.content[0].text).not.toContain("timeout");

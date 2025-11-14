@@ -1,3 +1,8 @@
+/**
+ * Engine Tool Handlers Tests
+ * Tests engine-based backtracking and query execution using the unified query API
+ */
+
 import { describe, beforeEach, afterEach, test, expect } from "vitest";
 import { toolHandlers, prologInterface } from "@vpursuit/mcp-server-prolog";
 
@@ -15,7 +20,7 @@ maybeDescribe("Engine Tool Handlers", () => {
 
   describe("queryStartEngine tool", () => {
     test("should start engine session successfully", async () => {
-      const result = await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
+      const result = await toolHandlers.query({ operation: "start", use_engine: true, query: "parent(X, Y)" });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Engine started: parent(X, Y)");
@@ -23,7 +28,7 @@ maybeDescribe("Engine Tool Handlers", () => {
     });
 
     test("should handle malformed queries", async () => {
-      const result = await toolHandlers.queryStartEngine({ query: "parent(X," });
+      const result = await toolHandlers.query({ operation: "start", use_engine: true, query: "parent(X," });
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("Error:");
@@ -31,10 +36,10 @@ maybeDescribe("Engine Tool Handlers", () => {
 
     test("should auto-close previous engine on double start", async () => {
       // Start first engine
-      await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
+      await toolHandlers.query({ operation: "start", use_engine: true, query: "parent(X, Y)" });
 
       // Start second engine (should auto-close first)
-      const result = await toolHandlers.queryStartEngine({ query: "sibling(X, Y)" });
+      const result = await toolHandlers.query({ operation: "start", use_engine: true, query: "sibling(X, Y)" });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Engine started");
@@ -48,10 +53,10 @@ maybeDescribe("Engine Tool Handlers", () => {
       await prologInterface.query("assert(parent(john, mary))");
       await prologInterface.query("assert(parent(mary, alice))");
 
-      await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
+      await toolHandlers.query({ operation: "start", use_engine: true, query: "parent(X, Y)" });
 
       // Get first solution
-      const result = await toolHandlers.queryNext();
+      const result = await toolHandlers.query({ operation: "next" });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
@@ -59,7 +64,7 @@ maybeDescribe("Engine Tool Handlers", () => {
     });
 
     test("should handle no active engine", async () => {
-      const result = await toolHandlers.queryNext();
+      const result = await toolHandlers.query({ operation: "next" });
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("No active query session");
@@ -70,14 +75,14 @@ maybeDescribe("Engine Tool Handlers", () => {
       await prologInterface.start();
       await prologInterface.query("assert(parent(john, mary))");
 
-      await toolHandlers.queryStartEngine({ query: "parent(john, mary)" });
+      await toolHandlers.query({ operation: "start", use_engine: true, query: "parent(john, mary)" });
 
       // Get first (and only) solution
-      const firstResult = await toolHandlers.queryNext();
+      const firstResult = await toolHandlers.query({ operation: "next" });
       expect(firstResult.isError).toBeFalsy();
 
       // Try to get next solution (should be none) 
-      const result = await toolHandlers.queryNext();
+      const result = await toolHandlers.query({ operation: "next" });
 
       // Engine is exhausted - either returns "No more solutions" or an error indicating exhaustion
       if (result.isError) {
@@ -93,17 +98,17 @@ maybeDescribe("Engine Tool Handlers", () => {
   describe("queryClose tool", () => {
     test("should close active engine session", async () => {
       // Start engine first
-      await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
+      await toolHandlers.query({ operation: "start", use_engine: true, query: "parent(X, Y)" });
 
       // Close it
-      const result = await toolHandlers.queryClose();
+      const result = await toolHandlers.query({ operation: "close" });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toMatch(/Session closed|No active session/);
     });
 
     test("should handle no active engine", async () => {
-      const result = await toolHandlers.queryClose();
+      const result = await toolHandlers.query({ operation: "close" });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toMatch(/No active session|Session closed/);
@@ -111,11 +116,11 @@ maybeDescribe("Engine Tool Handlers", () => {
 
     test("should allow starting new engine after close", async () => {
       // Start and close engine
-      await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "start", use_engine: true, query: "parent(X, Y)" });
+      await toolHandlers.query({ operation: "close" });
 
       // Start new engine
-      const result = await toolHandlers.queryStartEngine({ query: "sibling(X, Y)" });
+      const result = await toolHandlers.query({ operation: "start", use_engine: true, query: "sibling(X, Y)" });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Engine started");
@@ -129,10 +134,10 @@ maybeDescribe("Engine Tool Handlers", () => {
       await prologInterface.query("assert(parent(john, mary))");
 
       // Start query session
-      await toolHandlers.queryStart({ query: "parent(X, Y)" });
+      await toolHandlers.query({ operation: "start", query: "parent(X, Y)" });
 
       // Start engine (should auto-close query)
-      const result = await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
+      const result = await toolHandlers.query({ operation: "start", use_engine: true, query: "parent(X, Y)" });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Engine started");
@@ -144,10 +149,10 @@ maybeDescribe("Engine Tool Handlers", () => {
       await prologInterface.query("assert(parent(john, mary))");
 
       // Start engine session
-      await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
+      await toolHandlers.query({ operation: "start", use_engine: true, query: "parent(X, Y)" });
 
       // Start query (should auto-close engine)
-      const result = await toolHandlers.queryStart({ query: "parent(X, Y)" });
+      const result = await toolHandlers.query({ operation: "start", query: "parent(X, Y)" });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Query started");
@@ -159,10 +164,10 @@ maybeDescribe("Engine Tool Handlers", () => {
       await prologInterface.query("assert(parent(john, mary))");
 
       // Start engine session
-      await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
+      await toolHandlers.query({ operation: "start", use_engine: true, query: "parent(X, Y)" });
 
       // Try to get next solution (query mode) - this should work because unified interface
-      const result = await toolHandlers.queryNext();
+      const result = await toolHandlers.query({ operation: "next" });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toMatch(/X\s*=\s*john/);
@@ -173,10 +178,10 @@ maybeDescribe("Engine Tool Handlers", () => {
       await prologInterface.start();
       await prologInterface.query("assert(parent(john, mary))");
 
-      await toolHandlers.queryStart({ query: "parent(X, Y)" });
+      await toolHandlers.query({ operation: "start", query: "parent(X, Y)" });
 
       // Try to get next solution - this should work because unified interface
-      const result = await toolHandlers.queryNext();
+      const result = await toolHandlers.query({ operation: "next" });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toMatch(/X\s*=\s*john/);
@@ -190,11 +195,11 @@ maybeDescribe("Engine Tool Handlers", () => {
       await prologInterface.query("assert(parent(john, mary))");
 
       // Start and close query
-      await toolHandlers.queryStart({ query: "parent(X, Y)" });
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "start", query: "parent(X, Y)" });
+      await toolHandlers.query({ operation: "close" });
 
       // Start engine - should work
-      const result = await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
+      const result = await toolHandlers.query({ operation: "start", use_engine: true, query: "parent(X, Y)" });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Engine started");
@@ -206,11 +211,11 @@ maybeDescribe("Engine Tool Handlers", () => {
       await prologInterface.query("assert(parent(john, mary))");
 
       // Start and close engine
-      await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "start", use_engine: true, query: "parent(X, Y)" });
+      await toolHandlers.query({ operation: "close" });
 
       // Start query - should work
-      const result = await toolHandlers.queryStart({ query: "parent(X, Y)" });
+      const result = await toolHandlers.query({ operation: "start", query: "parent(X, Y)" });
 
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Query started");
@@ -226,13 +231,13 @@ maybeDescribe("Engine Tool Handlers", () => {
       await prologInterface.query("assert(parent(alice, bob))");
 
       // Start engine
-      let result = await toolHandlers.queryStartEngine({ query: "parent(X, Y)" });
+      let result = await toolHandlers.query({ operation: "start", use_engine: true, query: "parent(X, Y)" });
       expect(result.isError).toBeFalsy();
 
       // Get multiple solutions
       const solutions = [];
       for (let i = 0; i < 5; i++) {
-        result = await toolHandlers.queryNext();
+        result = await toolHandlers.query({ operation: "next" });
         if (result.content[0].text.includes("No more solutions")) {
           break;
         }
@@ -244,17 +249,17 @@ maybeDescribe("Engine Tool Handlers", () => {
       expect(solutions.length).toBeGreaterThan(0);
 
       // Close engine
-      result = await toolHandlers.queryClose();
+      result = await toolHandlers.query({ operation: "close" });
       expect(result.isError).toBeFalsy();
     });
 
     test("should handle empty result set gracefully", async () => {
       // Start engine with query that has no solutions
-      let result = await toolHandlers.queryStartEngine({ query: "nonexistent_predicate(X)" });
+      let result = await toolHandlers.query({ operation: "start", use_engine: true, query: "nonexistent_predicate(X)" });
       expect(result.isError).toBeFalsy();
 
       // Try to get solutions
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
 
       // Query with no solutions can either return an error or "No more solutions"
       // Both are acceptable ways to handle empty result sets

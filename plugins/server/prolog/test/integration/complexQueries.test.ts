@@ -1,3 +1,10 @@
+/**
+ * Complex Query Fixes Tests
+ * Tests complex query handling including arithmetic and findall
+ *
+ * This file tests valid functionality using the unified query API
+ */
+
 import { describe, beforeEach, afterEach, test, expect } from "vitest";
 import { toolHandlers, prologInterface } from "@vpursuit/mcp-server-prolog";
 
@@ -19,14 +26,14 @@ maybeDescribe("Complex Query Fixes", () => {
 
       // Test the specific pattern mentioned: queries with commas and arithmetic
       const query = "findall(X, (between(1,10,X), 0 is X mod 2), L)";
-      const startResult = await toolHandlers.queryStart({ query });
+      const startResult = await toolHandlers.query({ operation: "start", query });
       expect(startResult.isError).toBeFalsy();
 
-      const nextResult = await toolHandlers.queryNext();
+      const nextResult = await toolHandlers.query({ operation: "next" });
       expect(nextResult.isError).toBeFalsy();
       expect(nextResult.structuredContent?.solution).toContain("L=[2,4,6,8,10]");
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should handle complex arithmetic with commas in engine mode", async () => {
@@ -34,14 +41,14 @@ maybeDescribe("Complex Query Fixes", () => {
 
       // Test the specific pattern in engine mode
       const query = "(between(1,6,X), 0 is X mod 2)";
-      const startResult = await toolHandlers.queryStartEngine({ query });
+      const startResult = await toolHandlers.query({ operation: "start", use_engine: true, query });
       expect(startResult.isError).toBeFalsy();
 
       // Should get solutions: 2, 4, 6
       const solutions = [];
       let nextResult;
       do {
-        nextResult = await toolHandlers.queryNext();
+        nextResult = await toolHandlers.query({ operation: "next" });
         if (!nextResult.isError && nextResult.structuredContent?.solution) {
           solutions.push(nextResult.structuredContent.solution);
         }
@@ -56,7 +63,7 @@ maybeDescribe("Complex Query Fixes", () => {
         ])
       );
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should handle nested arithmetic expressions", async () => {
@@ -64,15 +71,15 @@ maybeDescribe("Complex Query Fixes", () => {
 
       // Complex nested arithmetic
       const query = "findall(X, (between(1,5,X), Y is X * 2, Z is Y + 1, Z > 5), L)";
-      const startResult = await toolHandlers.queryStart({ query });
+      const startResult = await toolHandlers.query({ operation: "start", query });
       expect(startResult.isError).toBeFalsy();
 
-      const nextResult = await toolHandlers.queryNext();
+      const nextResult = await toolHandlers.query({ operation: "next" });
       expect(nextResult.isError).toBeFalsy();
       // Should find X=3,4,5 where Z=(X*2+1) > 5
       expect(nextResult.structuredContent?.solution).toContain("L=[3,4,5]");
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should handle compound terms with multiple conjunctions", async () => {
@@ -80,14 +87,14 @@ maybeDescribe("Complex Query Fixes", () => {
 
       // Complex compound query
       const query = "(between(1,3,X), between(1,2,Y), Z is X + Y, Z =< 4)";
-      const startResult = await toolHandlers.queryStartEngine({ query });
+      const startResult = await toolHandlers.query({ operation: "start", use_engine: true, query });
       expect(startResult.isError).toBeFalsy();
 
       // Count solutions
       const solutions = [];
       let nextResult;
       do {
-        nextResult = await toolHandlers.queryNext();
+        nextResult = await toolHandlers.query({ operation: "next" });
         if (!nextResult.isError && nextResult.structuredContent?.solution) {
           solutions.push(nextResult.structuredContent.solution);
         }
@@ -99,7 +106,7 @@ maybeDescribe("Complex Query Fixes", () => {
         expect(sol).toMatch(/X=\d+.*Y=\d+.*Z=\d+/);
       });
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
   });
 
@@ -109,23 +116,23 @@ maybeDescribe("Complex Query Fixes", () => {
 
       // Start a query that will fail
       const badQuery = "(between(1,3,X), 0 is 1/0)"; // Division by zero
-      const startResult = await toolHandlers.queryStart({ query: badQuery });
+      const startResult = await toolHandlers.query({ operation: "start", query: badQuery });
       expect(startResult.isError).toBeFalsy();
 
       // Next should fail but cleanup properly
-      const nextResult = await toolHandlers.queryNext();
+      const nextResult = await toolHandlers.query({ operation: "next" });
       expect(nextResult.isError).toBeTruthy();
 
       // Should be able to start a new query after error
       const goodQuery = "between(1,2,X)";
-      const newStartResult = await toolHandlers.queryStart({ query: goodQuery });
+      const newStartResult = await toolHandlers.query({ operation: "start", query: goodQuery });
       expect(newStartResult.isError).toBeFalsy();
 
-      const newNextResult = await toolHandlers.queryNext();
+      const newNextResult = await toolHandlers.query({ operation: "next" });
       expect(newNextResult.isError).toBeFalsy();
       expect(newNextResult.structuredContent?.solution).toContain("X=1");
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     // Note: Engine error recovery is complex and depends on timing.
@@ -136,28 +143,28 @@ maybeDescribe("Complex Query Fixes", () => {
 
       for (let i = 0; i < 3; i++) {
         // Trigger an error in query mode
-        await toolHandlers.queryStart({ query: "(X = 1, 0 is 1/0)" });
+        await toolHandlers.query({ operation: "start", query: "(X = 1, 0 is 1/0)" });
         try {
-          const _errorResult = await toolHandlers.queryNext();
+          const _errorResult = await toolHandlers.query({ operation: "next" });
           // If we get here, ensure cleanup
-          try { await toolHandlers.queryClose(); } catch { }
+          try { await toolHandlers.query({ operation: "close" }); } catch { }
         } catch {
           // Query might fail immediately, that's fine
         }
 
         // Force cleanup to ensure clean state
-        try { await toolHandlers.queryClose(); } catch { }
+        try { await toolHandlers.query({ operation: "close" }); } catch { }
 
         // Should be able to switch to engine mode  
-        const startResult = await toolHandlers.queryStartEngine({ query: "X = success" });
+        const startResult = await toolHandlers.query({ operation: "start", use_engine: true, query: "X = success" });
         if (startResult.isError) {
           // If still conflicts, skip this iteration
           continue;
         }
 
-        const successResult = await toolHandlers.queryNext();
+        const successResult = await toolHandlers.query({ operation: "next" });
         expect(successResult.isError).toBeFalsy();
-        await toolHandlers.queryClose();
+        await toolHandlers.query({ operation: "close" });
       }
     });
   });
@@ -173,7 +180,7 @@ maybeDescribe("Complex Query Fixes", () => {
       ];
 
       for (const query of malformedQueries) {
-        const result = await toolHandlers.queryStart({ query });
+        const result = await toolHandlers.query({ operation: "start", query });
         expect(result.isError).toBeTruthy();
         // Accept any error message - syntax errors are valid malformed query detection
         expect(result.content?.[0]?.text || "").toBeTruthy();
@@ -190,7 +197,7 @@ maybeDescribe("Complex Query Fixes", () => {
       ];
 
       for (const query of unbalancedQueries) {
-        const result = await toolHandlers.queryStart({ query });
+        const result = await toolHandlers.query({ operation: "start", query });
         expect(result.isError).toBeTruthy();
       }
     });
@@ -200,14 +207,14 @@ maybeDescribe("Complex Query Fixes", () => {
 
       // Query with multiple conjuncts - should work when properly formed
       const query = "(between(1,3,X), X > 1)";
-      const startResult = await toolHandlers.queryStart({ query });
+      const startResult = await toolHandlers.query({ operation: "start", query });
       expect(startResult.isError).toBeFalsy();
 
-      const nextResult = await toolHandlers.queryNext();
+      const nextResult = await toolHandlers.query({ operation: "next" });
       expect(nextResult.isError).toBeFalsy();
       expect(nextResult.structuredContent?.solution).toContain("X=2");
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
   });
 
@@ -216,10 +223,10 @@ maybeDescribe("Complex Query Fixes", () => {
       await prologInterface.start();
 
       const query = "(X = 1, Y is 1/0)";
-      const startResult = await toolHandlers.queryStartEngine({ query });
+      const startResult = await toolHandlers.query({ operation: "start", use_engine: true, query });
       expect(startResult.isError).toBeFalsy();
 
-      const result = await toolHandlers.queryNext();
+      const result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeTruthy();
 
       // The error might be about arithmetic or it might be a general execution error
@@ -232,7 +239,7 @@ maybeDescribe("Complex Query Fixes", () => {
 
       const query = "undefined_predicate(X)";
       // Engine creation may succeed, but execution should just return no solutions
-      const startResult = await toolHandlers.queryStartEngine({ query });
+      const startResult = await toolHandlers.query({ operation: "start", use_engine: true, query });
 
       if (startResult.isError) {
         // If engine creation fails, that's fine too
@@ -240,10 +247,10 @@ maybeDescribe("Complex Query Fixes", () => {
         expect(errorText).toBeTruthy();
       } else {
         // If engine creation succeeds, execution should return no solutions (not an error)
-        const nextResult = await toolHandlers.queryNext();
+        const nextResult = await toolHandlers.query({ operation: "next" });
         expect(nextResult.isError).toBeFalsy(); // Should not be an error
         expect(nextResult.structuredContent?.status).toBe("done"); // Should have no more solutions
-        await toolHandlers.queryClose();
+        await toolHandlers.query({ operation: "close" });
       }
     });
 
@@ -251,7 +258,7 @@ maybeDescribe("Complex Query Fixes", () => {
       await prologInterface.start();
 
       const query = "X is [unclosed list";
-      const result = await toolHandlers.queryStart({ query });
+      const result = await toolHandlers.query({ operation: "start", query });
       expect(result.isError).toBeTruthy();
 
       const errorText = result.content?.[0]?.text || "";
@@ -267,10 +274,10 @@ maybeDescribe("Complex Query Fixes", () => {
       for (let i = 0; i < 10; i++) {
         const query = `findall(X, (between(1,${i + 5},X), 0 is X mod 2), L)`;
 
-        await toolHandlers.queryStart({ query });
-        const result = await toolHandlers.queryNext();
+        await toolHandlers.query({ operation: "start", query });
+        const result = await toolHandlers.query({ operation: "next" });
         expect(result.isError).toBeFalsy();
-        await toolHandlers.queryClose();
+        await toolHandlers.query({ operation: "close" });
       }
     });
 
@@ -281,12 +288,12 @@ maybeDescribe("Complex Query Fixes", () => {
 
       // Complex query that should execute efficiently
       const query = "(between(1,100,X), Y is X * X, Y < 50)";
-      await toolHandlers.queryStartEngine({ query });
+      await toolHandlers.query({ operation: "start", use_engine: true, query });
 
       const solutions = [];
       let nextResult;
       do {
-        nextResult = await toolHandlers.queryNext();
+        nextResult = await toolHandlers.query({ operation: "next" });
         if (!nextResult.isError && nextResult.structuredContent?.solution) {
           solutions.push(nextResult.structuredContent.solution);
         }
@@ -297,7 +304,7 @@ maybeDescribe("Complex Query Fixes", () => {
       expect(solutions.length).toBeGreaterThan(0);
       expect(endTime - startTime).toBeLessThan(5000); // Should complete within 5 seconds
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
   });
 });

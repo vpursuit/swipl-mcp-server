@@ -95,43 +95,43 @@ const result = await prologInterface.executeCommand('parent(X, mary)');
 
 ```typescript
 // Load a Prolog file
-await toolHandlers.knowledge_base_load({ filename: '~/.model-context-lab/family.pl' });
+await toolHandlers.files({ operation: 'load', filename: '~/.model-context-lab/family.pl' });
 
 // Add facts
-await toolHandlers.knowledge_base_assert({ fact: 'parent(john, mary)' });
+await toolHandlers.clauses({ operation: 'assert', clauses: 'parent(john, mary)' });
 
 // Start query
-await toolHandlers.query_start({ query: 'parent(X, mary)' });
+await toolHandlers.query({ operation: 'start', query: 'parent(X, mary)' });
 
 // Iterate through solutions using standard iterator pattern
 let result;
 do {
-  result = await toolHandlers.query_next();
+  result = await toolHandlers.query({ operation: 'next' });
   if (result.structuredContent?.status === 'success') {
     console.log(result.structuredContent.solution);
   }
 } while (result.structuredContent?.status !== 'done');
 
 // Close query
-await toolHandlers.query_close();
+await toolHandlers.query({ operation: 'close' });
 ```
 
 ### Engine Mode (True Backtracking)
 
 ```typescript
-// Start engine query
-await toolHandlers.query_startEngine({ query: 'member(X, [1,2,3])' });
+// Start engine query (use_engine: true for true backtracking)
+await toolHandlers.query({ operation: 'start', use_engine: true, query: 'member(X, [1,2,3])' });
 
 // Iterate using standard iterator pattern
 let result;
 do {
-  result = await toolHandlers.query_next();
+  result = await toolHandlers.query({ operation: 'next' });
   if (result.structuredContent?.status === 'success') {
     console.log(result.structuredContent.solution); // X=1, X=2, X=3
   }
 } while (result.structuredContent?.status !== 'done');
 
-await toolHandlers.query_close();
+await toolHandlers.query({ operation: 'close' });
 ```
 
 ## Documentation

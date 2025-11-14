@@ -19,7 +19,7 @@
     "plugins/client/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace=@vpursuit/mcp-host && npm run build --workspace=@vpursuit/swipl-mcp-server",
+    "build": "npm run build --workspace=@vpursuit/mcp-client-host && npm run build --workspace=@vpursuit/mcp-host && npm run build --workspace=@vpursuit/swipl-mcp-server",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

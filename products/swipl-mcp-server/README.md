@@ -196,6 +196,7 @@ Set `SWI_MCP_ALLOWED_ROOTS` with comma-separated absolute paths:
 Configure timeouts, logging, and behavior via environment variables:
 
 - `SWI_MCP_ALLOWED_ROOTS`: comma-separated absolute paths for file access (see above)
+- `KB_LIBRARIES`: comma-separated library names to load at startup (e.g., `clpb,aggregate,random`). Default libraries always loaded: `lists`, `between`, `clpfd`, `apply`, `pairs`, `ordsets`
 - `SWI_MCP_READY_TIMEOUT_MS`: server startup timeout (ms), default 5000
 - `SWI_MCP_QUERY_TIMEOUT_MS`: query execution timeout (ms), default 30000
 - `MCP_LOG_LEVEL`: `debug` | `info` | `warn` | `error` | `silent` (default `warn`)

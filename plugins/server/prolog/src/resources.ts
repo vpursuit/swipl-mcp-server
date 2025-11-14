@@ -80,6 +80,28 @@ export const resources: ResourceDefinitions = {
   },
 
   /**
+   * Get workspace snapshot with original source text
+   */
+  "workspace-snapshot": {
+    uri: "prolog://workspace/snapshot",
+    name: "Workspace Snapshot",
+    description: "Get workspace snapshot containing original source text with preserved formatting and variable names",
+    mimeType: "text/prolog",
+    handler: async (uri, _extra): Promise<ReadResourceResult> => {
+      await prologInterface.start();
+      const snapshot = await prologInterface.getSnapshot();
+
+      return {
+        contents: [{
+          uri: uri.toString(),
+          mimeType: "text/prolog",
+          text: snapshot || "(empty workspace)",
+        }]
+      };
+    },
+  },
+
+  /**
    * Usage guidelines and tips for this server
    */
   "help": {
@@ -89,8 +111,9 @@ export const resources: ResourceDefinitions = {
     mimeType: "text/plain",
     handler: async (uri, _extra): Promise<ReadResourceResult> => {
       const res = await tools.help.handler({}, _extra);
-      const text = (Array.isArray(res.content) && res.content[0]?.text
-        ? res.content[0].text
+      const firstContent = res.content[0];
+      const text = (firstContent && firstContent.type === "text"
+        ? firstContent.text
         : "Help unavailable") as string;
 
       return {
@@ -113,8 +136,9 @@ export const resources: ResourceDefinitions = {
     mimeType: "text/plain",
     handler: async (uri, _extra): Promise<ReadResourceResult> => {
       const res = await tools.license.handler({}, _extra);
-      const text = (Array.isArray(res.content) && res.content[0]?.text
-        ? res.content[0].text
+      const firstContent = res.content[0];
+      const text = (firstContent && firstContent.type === "text"
+        ? firstContent.text
         : "License unavailable") as string;
 
       return {

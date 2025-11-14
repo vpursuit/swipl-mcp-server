@@ -579,8 +579,36 @@ ensure_knowledge_base_module :-
         ord_subtract/3, ord_subset/2, ord_add_element/3, ord_del_element/3,
         ord_disjoint/2
     ]), _, true),
+    % Load library(clpfd) by default for constraint solving
+    % Available in both prolog_server (for parsing) and knowledge_base (for execution)
+    catch(use_module(library(clpfd)), _, true),
+    catch(knowledge_base:use_module(library(clpfd)), _, true),
+    % Load additional libraries from config (if specified)
+    load_configured_libraries,
     % Note: Extended safe set functionality removed - now handled by library(sandbox)
     true.
+
+% Load libraries specified via KB_LIBRARIES environment variable
+load_configured_libraries :-
+    % Check for KB_LIBRARIES environment variable
+    ( getenv('KB_LIBRARIES', LibsString) ->
+        split_string(LibsString, ",", " ", LibNames),
+        maplist(safe_load_configured_library, LibNames)
+    ; true
+    ).
+
+% Helper to safely load a library specified in configuration
+safe_load_configured_library(LibName) :-
+    atom_string(LibAtom, LibName),
+    ( library_safe_to_load(LibAtom) ->
+        catch(use_module(library(LibAtom)), E, (
+            format(user_error, 'Warning: Failed to load library ~w: ~w~n', [LibAtom, E])
+        )),
+        catch(knowledge_base:use_module(library(LibAtom)), E2, (
+            format(user_error, 'Warning: Failed to import library ~w into knowledge_base: ~w~n', [LibAtom, E2])
+        ))
+    ; format(user_error, 'Warning: Library ~w not in safe list, skipping~n', [LibAtom])
+    ).
 
 % To run: swipl -q -s prolog_server.pl -g server_loop
 
@@ -674,14 +702,18 @@ assert_knowledge_base_term_safe(Term) :-
 % Validate a clause/fact has a safe body
 clause_safe((Head :- Body)) :- !,
     callable(Head),
+    debug_trace(clause_safe_checking_body(Body)),
     ( body_safe(Body)
-    -> true
+    -> debug_trace(clause_safe_body_ok(Body)), true
     ; % Extract functor safely for error message
+      debug_trace(clause_safe_body_unsafe(Body)),
       ( catch(functor(Body, F, _), _, F = unknown),
+        debug_trace(clause_safe_throwing_unsafe_goal(F)),
         throw(unsafe_goal(F))
       )
     ).
 clause_safe(Fact) :-
+    debug_trace(clause_safe_fact_ok(Fact)),
     callable(Fact).
 
 % Allowed body forms (conservative):
@@ -692,17 +724,25 @@ body_safe((A->B)) :- !, body_safe(A), body_safe(B).
 body_safe(\+ A) :- !, body_safe(A).
 % Allow calls to user-defined predicates (treat as knowledge_base: predicates for safety)
 body_safe(Term) :-
+    debug_trace(body_safe_checking_term(Term)),
     strip_module(Term, M, Plain),
+    debug_trace(body_safe_stripped(M, Plain)),
     callable(Plain),
     % Either explicitly knowledge_base: module or user module (default for clauses)
     ( M == knowledge_base ; M == user ),
+    debug_trace(body_safe_module_ok(M)),
     % Reject explicitly dangerous operations even if sandbox allows them
-    \+ explicitly_dangerous(Plain),
+    ( explicitly_dangerous(Plain) ->
+        debug_trace(body_safe_explicitly_dangerous_detected(Plain)),
+        fail
+    ;   debug_trace(body_safe_not_explicitly_dangerous(Plain)),
+        true
+    ),
     % For user/knowledge_base predicates: allow if sandbox approves OR it's user-defined
-    ( catch(sandbox:safe_goal(Plain), 
-            error(existence_error(procedure,_), _), 
+    ( catch(sandbox:safe_goal(Plain),
+            error(existence_error(procedure,_), _),
             true  % Allow undefined user predicates (existence error = user-defined)
-      ) -> 
+      ) ->
         debug_trace(body_safe_user_predicate_sandbox_ok(Plain))
     ; % If sandbox rejects it, still allow if it's not a built-in
       \+ is_builtin_predicate(Plain),

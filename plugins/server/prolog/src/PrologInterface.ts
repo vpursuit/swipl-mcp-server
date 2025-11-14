@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from "child_process";
 import path from "path";
 import fs from "fs";
+import { promises as fsPromises } from "fs";
 import { logger } from "./logger.js";
 import { findExecutable, findFile, getFileCandidates } from "@vpursuit/mcp-server-core";
 import {
@@ -14,8 +15,10 @@ import {
   TERM_ERROR,
   NO_MORE_SOLUTIONS,
   MAX_BUFFER_SIZE,
-  MAX_QUERY_PROMISES
+  MAX_QUERY_PROMISES,
+  MAX_SOURCE_ENTRIES
 } from "./constants.js";
+import { SourceEntry } from "./types.js";
 
 // Error type system
 export enum PrologErrorKind {
@@ -210,6 +213,9 @@ export class PrologInterface {
   private circuitState: 'closed' | 'open' | 'half-open' = 'closed';
   private recoveryInProgress: Promise<void> | null = null;
   private intentionalStop: boolean = false;
+  // Source storage for preserving original clause text
+  private kbSourceStorage: Map<string, SourceEntry> = new Map();
+  private sourceIdCounter = 0;
 
   // Centralized state transition helper; logs invalid transitions for diagnostics
   private setSessionState(next: SessionState): void {
@@ -1265,6 +1271,9 @@ export class PrologInterface {
     this.readyResolver = null;
     this.readyRejecter = null;
     this.setSessionState("idle");
+    // Clear source storage
+    this.kbSourceStorage.clear();
+    this.sourceIdCounter = 0;
     // Don't reset circuit breaker state here - let attemptRecovery() manage it
     // This allows circuit to stay open if stop() is called manually vs recovery
   }
@@ -1492,7 +1501,7 @@ export class PrologInterface {
         break;
 
       case PrologErrorKind.SYNTAX_ERROR:
-        message = 'Syntax Error: Invalid Prolog syntax. If using knowledge_base_assert_many with complex rules (containing :-), try knowledge_base_assert instead.';
+        message = 'Syntax Error: Invalid Prolog syntax. When using the clauses tool, ensure proper formatting of facts and rules.';
         break;
 
       case PrologErrorKind.TIMEOUT: {
@@ -1516,5 +1525,335 @@ export class PrologInterface {
       message,
       details: error.details || {}
     });
+  }
+
+  // ========================================================================
+  // Source Storage Infrastructure (Step 1 of tools refactoring)
+  // ========================================================================
+
+  /**
+   * Generate a unique ID for source storage entries
+   * Session-scoped, simple counter-based approach (no external dependencies)
+   */
+  private generateSourceId(): string {
+    return `src_${++this.sourceIdCounter}`;
+  }
+
+  /**
+   * Pure helper: Normalize clause by ensuring it has a trailing period
+   * DRY principle - single source of truth for period normalization
+   */
+  private normalizeClause(clause: string): string {
+    const trimmed = clause.trim();
+    return trimmed.endsWith('.') ? trimmed : `${trimmed}.`;
+  }
+
+  /**
+   * Pure helper: Format clause for Prolog (remove trailing period, wrap rules)
+   * DRY principle - reused by assert/retract operations
+   *
+   * Rules (clauses with :-) must be wrapped in parentheses to prevent
+   * operator precedence issues when used as arguments to assertz/retract
+   */
+  private formatClauseForProlog(clause: string): string {
+    const normalized = this.normalizeClause(clause);
+    const withoutPeriod = normalized.slice(0, -1); // Remove trailing period
+
+    // Wrap rules in parentheses to avoid precedence issues
+    // e.g., assertz(foo(X) :- bar(X), baz(X)) would parse as two arguments
+    // but assertz((foo(X) :- bar(X), baz(X))) parses correctly
+    if (withoutPeriod.includes(':-')) {
+      return `(${withoutPeriod})`;
+    }
+
+    return withoutPeriod;
+  }
+
+  /**
+   * Pure helper: Generic filter for source entries
+   * Functional programming - composable predicate-based filtering
+   */
+  private findMatchingSourceEntries(predicate: (entry: SourceEntry) => boolean): SourceEntry[] {
+    return Array.from(this.kbSourceStorage.values()).filter(predicate);
+  }
+
+  /**
+   * Assert a clause to Prolog KB and store its original source text
+   * Ensures atomicity: clause is stored in Map only if Prolog assertion succeeds
+   *
+   * @param clause - Prolog clause (fact or rule)
+   * @param type - Origin: 'inline' for direct assertion, 'file' for file import
+   * @param file - File path (required if type='file')
+   * @returns Success status with ID or error message
+   */
+  async assertClauseWithSource(
+    clause: string,
+    type: 'inline' | 'file',
+    file?: string
+  ): Promise<{success: boolean; id?: string; error?: string}> {
+    const id = this.generateSourceId();
+
+    try {
+      // Normalize clause (ensure period)
+      const normalized = this.normalizeClause(clause);
+
+      // Format for Prolog (remove period)
+      const forProlog = this.formatClauseForProlog(clause);
+
+      // Assert to Prolog FIRST
+      // Use assertz(Fact) which goes through assert_knowledge_base_term_safe/1 validation
+      // The Prolog side will add knowledge_base: qualification internally
+      const result = await this.query(`assertz(${forProlog})`);
+
+      // Check if assertion succeeded (query returns empty string or success indicator)
+      // If no error was thrown, we consider it successful
+      // Store to Map ONLY on success
+      this.kbSourceStorage.set(id, {
+        id,
+        sourceText: normalized,
+        type,
+        file,
+        timestamp: Date.now(),
+        compiled: true
+      });
+
+      return {success: true, id};
+    } catch (error) {
+      // Prolog assertion failed - do NOT store in Map
+      return {success: false, error: String(error)};
+    }
+  }
+
+  /**
+   * Retract a clause from Prolog KB and remove from source storage
+   * Ensures atomicity: source removed from Map only if Prolog retraction succeeds
+   *
+   * @param clause - Prolog clause to retract
+   * @returns true if retracted, false if not found or failed
+   */
+  async retractClauseWithSource(clause: string): Promise<boolean> {
+    try {
+      // Normalize for comparison
+      const normalized = this.normalizeClause(clause);
+
+      // Find matching source entries (functional filter)
+      const matchingIds = this.findMatchingSourceEntries(
+        entry => entry.sourceText === normalized
+      ).map(entry => entry.id);
+
+      if (matchingIds.length === 0) {
+        return false; // No matching clause found
+      }
+
+      // Format for Prolog (remove period)
+      const forProlog = this.formatClauseForProlog(clause);
+
+      // Retract from Prolog FIRST
+      await this.query(`retract(knowledge_base:(${forProlog}))`);
+
+      // Remove first matching entry from source storage (ONLY after Prolog succeeds)
+      this.kbSourceStorage.delete(matchingIds[0]);
+
+      return true;
+    } catch (error) {
+      // Retraction failed - leave source storage unchanged
+      return false;
+    }
+  }
+
+  /**
+   * Get snapshot of knowledge base (original source text)
+   * Pure transformation - filters, sorts, and maps entries
+   * Synced with prolog://workspace/snapshot resource
+   *
+   * @returns Original source text with preserved variable names
+   */
+  async getSnapshot(): Promise<string> {
+    const sources = Array.from(this.kbSourceStorage.values())
+      .filter(entry => entry.compiled) // Only successfully compiled entries
+      .sort((a, b) => a.timestamp - b.timestamp) // Preserve insertion order
+      .map(entry => entry.sourceText); // Extract source text
+
+    return sources.join('\n');
+  }
+
+  /**
+   * Clear entire workspace (both Prolog KB and source storage)
+   * Ensures both are cleared atomically
+   */
+  async clearWorkspaceWithSource(): Promise<void> {
+    // Clear Prolog KB using existing predicate
+    await this.query('abolish_all_user_predicates');
+
+    // Clear source storage
+    this.kbSourceStorage.clear();
+  }
+
+  /**
+   * Parse .pl file into array of clause strings
+   * Simple text-based parser that preserves original formatting
+   *
+   * @param filename - Path to .pl file
+   * @returns Array of clause strings with original formatting
+   */
+  private async parseFileToStringArray(filename: string): Promise<string[]> {
+    const content = await fsPromises.readFile(filename, 'utf-8');
+    const clauses: string[] = [];
+    let current = '';
+
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+
+      // Skip comments and empty lines
+      if (!trimmed || trimmed.startsWith('%')) {
+        continue;
+      }
+
+      // Skip directives (for now - may need special handling)
+      if (trimmed.startsWith(':-')) {
+        continue;
+      }
+
+      current += (current ? ' ' : '') + trimmed;
+
+      // Check if clause ends
+      if (current.trim().endsWith('.')) {
+        clauses.push(current.trim());
+        current = '';
+      }
+    }
+
+    return clauses;
+  }
+
+  /**
+   * Import .pl file with provenance tracking
+   * Prevents duplicate imports and tracks which file added which clauses
+   *
+   * Note: Directives (lines starting with ':-') are skipped during parsing.
+   * Libraries like clpfd, lists, apply are pre-loaded by default.
+   * Additional libraries can be configured via KB_LIBRARIES environment variable.
+   *
+   * @param filename - Path to .pl file
+   * @returns Success status with clause count and errors
+   */
+  async importFileWithSource(filename: string): Promise<{
+    success: boolean;
+    clausesAdded: number;
+    errors: string[];
+  }> {
+    // Check if already imported
+    const alreadyImported = this.findMatchingSourceEntries(
+      entry => entry.type === 'file' && entry.file === filename
+    ).length > 0;
+
+    if (alreadyImported) {
+      return {
+        success: false,
+        clausesAdded: 0,
+        errors: [`File ${filename} already imported. Use unimport first to reload.`]
+      };
+    }
+
+    // Parse file to clause strings (preserving variable names)
+    // Directives are skipped - libraries should be pre-configured
+    const clauses = await this.parseFileToStringArray(filename);
+
+    let clausesAdded = 0;
+    const errors: string[] = [];
+
+    // Assert each clause with source tracking
+    for (const clause of clauses) {
+      const result = await this.assertClauseWithSource(clause, 'file', filename);
+      if (result.success) {
+        clausesAdded++;
+      } else {
+        errors.push(`Failed to assert: ${clause.substring(0, 50)}... - ${result.error}`);
+      }
+    }
+
+    return {
+      success: errors.length === 0,
+      clausesAdded,
+      errors
+    };
+  }
+
+  /**
+   * Unimport file (remove all clauses from specific file)
+   * Uses functional filtering to find file-specific entries
+   *
+   * @param filename - Path to file to unimport
+   * @returns Success status with count of clauses removed
+   */
+  async unimportFile(filename: string): Promise<{
+    success: boolean;
+    clausesRemoved: number;
+  }> {
+    // Find all entries from this file (functional filter)
+    const toRemove = this.findMatchingSourceEntries(
+      entry => entry.type === 'file' && entry.file === filename
+    );
+
+    if (toRemove.length === 0) {
+      return {success: false, clausesRemoved: 0};
+    }
+
+    let clausesRemoved = 0;
+
+    // Retract each clause
+    for (const entry of toRemove) {
+      const forProlog = this.formatClauseForProlog(entry.sourceText);
+
+      try {
+        await this.query(`retract(knowledge_base:(${forProlog}))`);
+
+        // Remove from source storage
+        this.kbSourceStorage.delete(entry.id);
+        clausesRemoved++;
+      } catch (error) {
+        // Ignore errors for individual retractions
+        // Some clauses may have already been retracted manually
+      }
+    }
+
+    return {success: true, clausesRemoved};
+  }
+
+  /**
+   * Get list of imported files with metadata
+   * Pure transformation using functional reduce/map/sort
+   *
+   * @returns Array of file metadata (path, clause count, timestamp)
+   */
+  getImportedFiles(): Array<{filename: string; clauseCount: number; timestamp: number}> {
+    // Functional reduce to group by filename
+    const fileMap = this.findMatchingSourceEntries(
+      entry => entry.type === 'file' && entry.file !== undefined
+    ).reduce((acc, entry) => {
+      const filename = entry.file!;
+      const existing = acc.get(filename);
+
+      if (existing) {
+        existing.count++;
+        // Keep earliest timestamp
+        if (entry.timestamp < existing.timestamp) {
+          existing.timestamp = entry.timestamp;
+        }
+      } else {
+        acc.set(filename, {count: 1, timestamp: entry.timestamp});
+      }
+
+      return acc;
+    }, new Map<string, {count: number; timestamp: number}>());
+
+    // Transform to array and sort (functional map/sort)
+    return Array.from(fileMap.entries())
+      .map(([filename, data]) => ({
+        filename,
+        clauseCount: data.count,
+        timestamp: data.timestamp
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp);
   }
 }

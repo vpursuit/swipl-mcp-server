@@ -1,3 +1,11 @@
+/**
+ * Prompts Integration Tests
+ * Tests MCP prompts registration and functionality
+ *
+ * TODO (Step 7): Update references to tool names in prompt content when old tools are removed
+ * This file tests valid functionality and should be kept
+ */
+
 import { describe, test, expect } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { toolHandlers, getCapabilitiesSummary, prologPrompts } from "@vpursuit/mcp-server-prolog";
@@ -161,26 +169,7 @@ describe("Prompts Integration", () => {
     });
   });
 
-  describe("Help Integration", () => {
-    test("help tool should include prompts section", async () => {
-      const helpResponse = await toolHandlers.help({});
-      const helpText = helpResponse.content[0].text;
-
-      expect(helpText).toContain("Prompts");
-      expect(helpText).toContain("Prompt Usage Pattern");
-    });
-
-    test("help tool should support prompts topic", async () => {
-      const helpResponse = await toolHandlers.help({ topic: "prompts" });
-      const helpText = helpResponse.content[0].text;
-
-      expect(helpText).toContain("Prompts");
-      expect(helpText).toContain("genealogy");
-      expect(helpText).toContain("scheduling");
-      expect(helpText).toContain("puzzle");
-      expect(helpText).toContain("grammar");
-    });
-  });
+  // Help tool removed - capabilities tool is now the metadata/introspection tool
 
   describe("Schema Validation", () => {
     test("all prompt schemas should be valid Zod schemas", () => {
@@ -250,7 +239,7 @@ describe("Prompts Integration", () => {
         const text = messages[0].content.text.toLowerCase();
 
         // Should mention MCP tools
-        expect(text).toMatch(/knowledge_base_|query_/);
+        expect(text).toMatch(/clauses|query_/);
       }
     });
 

@@ -315,7 +315,7 @@ describe("Prolog Error Parsing and Formatting", () => {
         };
         const result = PrologInterface.formatPrologError(error);
         const parsed = JSON.parse(result);
-        expect(parsed.message).toBe("Syntax Error: Invalid Prolog syntax. If using knowledge_base_assert_many with complex rules (containing :-), try knowledge_base_assert instead.");
+        expect(parsed.message).toBe("Syntax Error: Invalid Prolog syntax. When using the clauses tool, ensure proper formatting of facts and rules.");
       });
 
       test("should format SESSION_CONFLICT", () => {

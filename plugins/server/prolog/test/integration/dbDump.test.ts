@@ -1,6 +1,7 @@
 /**
- * Unit tests for knowledge_base_dump tool
- * Tests the database dump functionality with proper Prolog formatting
+ * Integration tests for workspace snapshot tool
+ * Tests the workspace snapshot functionality with source preservation
+ * Updated for Step 5: Now uses workspace({operation: 'snapshot'}) tool
  */
 
 import { describe, beforeEach, afterEach, test, expect } from "vitest";
@@ -8,7 +9,7 @@ import { toolHandlers, prologInterface } from "@vpursuit/mcp-server-prolog";
 
 const maybeDescribe = (globalThis as any).HAS_SWIPL ? describe : describe.skip;
 
-maybeDescribe("Database Dump Tool", () => {
+maybeDescribe("Workspace Snapshot Tool", () => {
   beforeEach(async () => {
     // Reset any existing state
     await prologInterface.stop();
@@ -18,54 +19,56 @@ maybeDescribe("Database Dump Tool", () => {
     await prologInterface.stop();
   });
 
-  describe("knowledge_base_dump tool", () => {
-    test("should return empty message when knowledge base is empty", async () => {
-      const result = await toolHandlers.knowledgeBaseDump();
+  describe("workspace snapshot operation", () => {
+    test("should return empty message when workspace is empty", async () => {
+      const result = await toolHandlers.workspace({ operation: "snapshot" });
 
       expect(result.isError).toBeFalsy();
-      expect(result.content[0].text).toContain("% No clauses in knowledge base");
-      expect(result.structuredContent.dump).toBe("'% No clauses in knowledge base'");
+      expect(result.content[0].text).toContain("(empty workspace)");
+      expect(result.structuredContent.has_content).toBe(false);
     });
 
-    test("should properly format facts using portray_clause", async () => {
-      // Add some facts to the knowledge base
-      await toolHandlers.knowledgeBaseAssert({ fact: "parent(john, mary)" });
-      await toolHandlers.knowledgeBaseAssert({ fact: "parent(mary, alice)" });
-      await toolHandlers.knowledgeBaseAssert({ fact: "age(john, 45)" });
+    test("should preserve original source text for facts", async () => {
+      // Add some facts to the knowledge base with original formatting
+      await toolHandlers.clauses({ operation: "assert", clauses: "parent(john, mary)" });
+      await toolHandlers.clauses({ operation: "assert", clauses: "parent(mary, alice)" });
+      await toolHandlers.clauses({ operation: "assert", clauses: "age(john, 45)" });
 
-      const result = await toolHandlers.knowledgeBaseDump();
+      const result = await toolHandlers.workspace({ operation: "snapshot" });
 
       expect(result.isError).toBeFalsy();
-      expect(result.content[0].text).toContain("Knowledge base dump:");
-      expect(result.content[0].text).toContain("parent(john,mary)");
-      expect(result.content[0].text).toContain("parent(mary,alice)");
-      expect(result.content[0].text).toContain("age(john,45)");
+      expect(result.structuredContent.has_content).toBe(true);
 
-      // Check that facts are properly formatted with periods
-      expect(result.structuredContent.dump).toMatch(/parent\(john,mary\)\./);
-      expect(result.structuredContent.dump).toMatch(/parent\(mary,alice\)\./);
-      expect(result.structuredContent.dump).toMatch(/age\(john,45\)\./);
+      // Snapshot preserves original source with spacing
+      const snapshot = result.content[0].text;
+      expect(snapshot).toContain("parent(john, mary)");
+      expect(snapshot).toContain("parent(mary, alice)");
+      expect(snapshot).toContain("age(john, 45)");
     });
 
-    test("should properly format rules using portray_clause", async () => {
-      // Add a rule to the knowledge base
-      await toolHandlers.knowledgeBaseAssert({ fact: "parent(tom, bob)" });
-      await toolHandlers.knowledgeBaseAssert({ fact: "parent(bob, charlie)" });
-      await toolHandlers.knowledgeBaseAssert({ fact: "grandparent(X, Z) :- parent(X, Y), parent(Y, Z)" });
+    test("should preserve original source text for rules", async () => {
+      // Add a rule to the knowledge base with original formatting
+      await toolHandlers.clauses({ operation: "assert", clauses: "parent(tom, bob)" });
+      await toolHandlers.clauses({ operation: "assert", clauses: "parent(bob, charlie)" });
+      await toolHandlers.clauses({ operation: "assert", clauses: "grandparent(X, Z) :- parent(X, Y), parent(Y, Z)" });
 
-      const result = await toolHandlers.knowledgeBaseDump();
+      const result = await toolHandlers.workspace({ operation: "snapshot" });
 
       expect(result.isError).toBeFalsy();
-      expect(result.content[0].text).toContain("Knowledge base dump:");
-      expect(result.structuredContent.dump).toContain("parent(tom,bob).");
-      expect(result.structuredContent.dump).toContain("parent(bob,charlie).");
-      expect(result.structuredContent.dump).toMatch(/grandparent\(.*:-.*parent\(.*parent\(/);
+      expect(result.structuredContent.has_content).toBe(true);
+
+      // Snapshot preserves original source with variable names and spacing
+      const snapshot = result.content[0].text;
+      expect(snapshot).toContain("parent(tom, bob)");
+      expect(snapshot).toContain("parent(bob, charlie)");
+      expect(snapshot).toContain("grandparent(X, Z) :- parent(X, Y), parent(Y, Z)");
     });
 
-    test("should handle mixed facts and rules", async () => {
-      // Add both facts and rules
-      await toolHandlers.knowledgeBaseAssertMany({
-        facts: [
+    test("should preserve source for mixed facts and rules", async () => {
+      // Add both facts and rules with original formatting
+      await toolHandlers.clauses({
+        operation: "assert",
+        clauses: [
           "likes(mary, food)",
           "likes(mary, wine)",
           "likes(john, wine)",
@@ -73,43 +76,43 @@ maybeDescribe("Database Dump Tool", () => {
         ]
       });
 
-      const result = await toolHandlers.knowledgeBaseDump();
+      const result = await toolHandlers.workspace({ operation: "snapshot" });
 
       expect(result.isError).toBeFalsy();
-      expect(result.content[0].text).toContain("Knowledge base dump:");
+      expect(result.structuredContent.has_content).toBe(true);
 
-      const dump = result.structuredContent.dump;
-      expect(dump).toContain("likes(mary,food).");
-      expect(dump).toContain("likes(mary,wine).");
-      expect(dump).toContain("likes(john,wine).");
-      expect(dump).toMatch(/happy\(.*:-.*likes\(/);
+      // Snapshot preserves original formatting
+      const snapshot = result.content[0].text;
+      expect(snapshot).toContain("likes(mary, food)");
+      expect(snapshot).toContain("likes(mary, wine)");
+      expect(snapshot).toContain("likes(john, wine)");
+      expect(snapshot).toContain("happy(X) :- likes(X, wine)");
     });
 
     test("should include processing time in response", async () => {
-      const result = await toolHandlers.knowledgeBaseDump();
+      const result = await toolHandlers.workspace({ operation: "snapshot" });
 
       expect(result.isError).toBeFalsy();
-      expect(result.content[0].text).toMatch(/Processing time: \d+ms/);
       expect(result.structuredContent.processing_time_ms).toBeGreaterThanOrEqual(0);
     });
 
-    test("should work after asserting and retracting facts", async () => {
+    test("should reflect changes after asserting and retracting facts", async () => {
       // Add some facts
-      await toolHandlers.knowledgeBaseAssert({ fact: "test_fact(a)" });
-      await toolHandlers.knowledgeBaseAssert({ fact: "test_fact(b)" });
+      await toolHandlers.clauses({ operation: "assert", clauses: "test_fact(a)" });
+      await toolHandlers.clauses({ operation: "assert", clauses: "test_fact(b)" });
 
-      // Check initial dump
-      let result = await toolHandlers.knowledgeBaseDump();
-      expect(result.structuredContent.dump).toContain("test_fact(a).");
-      expect(result.structuredContent.dump).toContain("test_fact(b).");
+      // Check initial snapshot
+      let result = await toolHandlers.workspace({ operation: "snapshot" });
+      expect(result.content[0].text).toContain("test_fact(a)");
+      expect(result.content[0].text).toContain("test_fact(b)");
 
       // Retract one fact
-      await toolHandlers.knowledgeBaseRetract({ fact: "test_fact(a)" });
+      await toolHandlers.clauses({ operation: "retract", clauses: "test_fact(a)" });
 
-      // Check updated dump
-      result = await toolHandlers.knowledgeBaseDump();
-      expect(result.structuredContent.dump).not.toContain("test_fact(a).");
-      expect(result.structuredContent.dump).toContain("test_fact(b).");
+      // Check updated snapshot
+      result = await toolHandlers.workspace({ operation: "snapshot" });
+      expect(result.content[0].text).not.toContain("test_fact(a)");
+      expect(result.content[0].text).toContain("test_fact(b)");
     });
   });
 });

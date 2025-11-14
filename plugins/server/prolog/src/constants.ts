@@ -18,6 +18,7 @@ export const CLEANUP_TIMEOUT_MS = 5000;        // 5 seconds for cleanup operatio
 // Buffer management
 export const MAX_BUFFER_SIZE = 1024 * 1024; // 1MB
 export const MAX_QUERY_PROMISES = 100;
+export const MAX_SOURCE_ENTRIES = 10000; // Maximum source storage entries
 
 // Security: Default allowed directory for file operations
 export const ALLOWED_DIR = path.join(os.homedir(), '.model-context-lab');

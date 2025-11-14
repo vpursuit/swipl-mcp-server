@@ -1,3 +1,11 @@
+/**
+ * Auto-Close Query Lifecycle Tests
+ * Tests automatic session cleanup and state transitions
+ *
+ * TODO (Step 6): Update to use unified query_start with use_engine parameter
+ * This file tests valid functionality and should be kept, but API will change
+ */
+
 import { describe, beforeEach, afterEach, test, expect } from "vitest";
 import { toolHandlers, prologInterface } from "@vpursuit/mcp-server-prolog";
 
@@ -21,43 +29,43 @@ maybeDescribe("Auto-Close Query Lifecycle", () => {
       await prologInterface.query("assert(test_fact(second))");
 
       // Start first query
-      let result = await toolHandlers.queryStart({ query: "test_fact(X)" });
+      let result = await toolHandlers.query({ operation: "start", query: "test_fact(X)" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Query started");
 
       // Get first solution from first query
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
 
       // Start second query WITHOUT closing first (should auto-close)
-      result = await toolHandlers.queryStart({ query: "test_fact(Y)" });
+      result = await toolHandlers.query({ operation: "start", query: "test_fact(Y)" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Query started");
 
       // Should be able to get solutions from second query
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should handle auto-close when query is completed but not closed", async () => {
       await prologInterface.query("assert(single_fact(value))");
 
       // Start query and exhaust all solutions
-      await toolHandlers.queryStart({ query: "single_fact(X)" });
-      await toolHandlers.queryNext(); // Get the solution
-      let result = await toolHandlers.queryNext(); // Exhaust (no more solutions)
+      await toolHandlers.query({ operation: "start", query: "single_fact(X)" });
+      await toolHandlers.query({ operation: "next" }); // Get the solution
+      let result = await toolHandlers.query({ operation: "next" }); // Exhaust (no more solutions)
       expect(result.content[0].text).toContain("No more solutions");
 
       // Start new query WITHOUT explicit close (should auto-close completed query)
-      result = await toolHandlers.queryStart({ query: "single_fact(Y)" });
+      result = await toolHandlers.query({ operation: "start", query: "single_fact(Y)" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Query started");
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
   });
 
@@ -67,40 +75,40 @@ maybeDescribe("Auto-Close Query Lifecycle", () => {
       await prologInterface.query("assert(engine_test(second))");
 
       // Start first engine
-      let result = await toolHandlers.queryStartEngine({ query: "engine_test(X)" });
+      let result = await toolHandlers.query({ operation: "start", use_engine: true, query: "engine_test(X)" });
       expect(result.isError).toBeFalsy();
 
       // Get first solution
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
 
       // Start second engine WITHOUT closing first (should auto-close)
-      result = await toolHandlers.queryStartEngine({ query: "engine_test(Y)" });
+      result = await toolHandlers.query({ operation: "start", use_engine: true, query: "engine_test(Y)" });
       expect(result.isError).toBeFalsy();
 
       // Should be able to get solutions from second engine
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should handle auto-close when engine is completed but not closed", async () => {
       await prologInterface.query("assert(engine_single(value))");
 
       // Start engine and exhaust all solutions
-      await toolHandlers.queryStartEngine({ query: "engine_single(X)" });
-      await toolHandlers.queryNext(); // Get the solution
-      let result = await toolHandlers.queryNext(); // Exhaust (no more solutions)
+      await toolHandlers.query({ operation: "start", use_engine: true, query: "engine_single(X)" });
+      await toolHandlers.query({ operation: "next" }); // Get the solution
+      let result = await toolHandlers.query({ operation: "next" }); // Exhaust (no more solutions)
       expect(result.content[0].text).toContain("No more solutions");
 
       // Start new engine WITHOUT explicit close (should auto-close completed engine)
-      result = await toolHandlers.queryStartEngine({ query: "engine_single(Y)" });
+      result = await toolHandlers.query({ operation: "start", use_engine: true, query: "engine_single(Y)" });
       expect(result.isError).toBeFalsy();
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
   });
 
@@ -109,50 +117,50 @@ maybeDescribe("Auto-Close Query Lifecycle", () => {
       await prologInterface.query("assert(transition_test(value))");
 
       // Start query
-      let result = await toolHandlers.queryStart({ query: "transition_test(X)" });
+      let result = await toolHandlers.query({ operation: "start", query: "transition_test(X)" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Query started");
 
       // Get first solution
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
 
       // Start engine WITHOUT closing query (should auto-close query)
-      result = await toolHandlers.queryStartEngine({ query: "transition_test(Y)" });
+      result = await toolHandlers.query({ operation: "start", use_engine: true, query: "transition_test(Y)" });
       expect(result.isError).toBeFalsy();
 
       // Should be able to get solutions from engine
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should automatically close active engine when starting query", async () => {
       await prologInterface.query("assert(reverse_transition(value))");
 
       // Start engine
-      let result = await toolHandlers.queryStartEngine({ query: "reverse_transition(X)" });
+      let result = await toolHandlers.query({ operation: "start", use_engine: true, query: "reverse_transition(X)" });
       expect(result.isError).toBeFalsy();
 
       // Get first solution
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
 
       // Start query WITHOUT closing engine (should auto-close engine)
-      result = await toolHandlers.queryStart({ query: "reverse_transition(Y)" });
+      result = await toolHandlers.query({ operation: "start", query: "reverse_transition(Y)" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Query started");
 
       // Should be able to get solutions from query
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should handle multiple rapid mode switches", async () => {
@@ -160,24 +168,24 @@ maybeDescribe("Auto-Close Query Lifecycle", () => {
       await prologInterface.query("assert(rapid_test(value2))");
 
       // Query → Engine → Query → Engine (without explicit closes)
-      let result = await toolHandlers.queryStart({ query: "rapid_test(A)" });
+      let result = await toolHandlers.query({ operation: "start", query: "rapid_test(A)" });
       expect(result.isError).toBeFalsy();
 
-      result = await toolHandlers.queryStartEngine({ query: "rapid_test(B)" });
+      result = await toolHandlers.query({ operation: "start", use_engine: true, query: "rapid_test(B)" });
       expect(result.isError).toBeFalsy();
 
-      result = await toolHandlers.queryStart({ query: "rapid_test(C)" });
+      result = await toolHandlers.query({ operation: "start", query: "rapid_test(C)" });
       expect(result.isError).toBeFalsy();
 
-      result = await toolHandlers.queryStartEngine({ query: "rapid_test(D)" });
+      result = await toolHandlers.query({ operation: "start", use_engine: true, query: "rapid_test(D)" });
       expect(result.isError).toBeFalsy();
 
       // Final query should work
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
   });
 
@@ -186,19 +194,19 @@ maybeDescribe("Auto-Close Query Lifecycle", () => {
       await prologInterface.query("assert(recovery_test(value))");
 
       // Start a query
-      let result = await toolHandlers.queryStart({ query: "recovery_test(X)" });
+      let result = await toolHandlers.query({ operation: "start", query: "recovery_test(X)" });
       expect(result.isError).toBeFalsy();
 
       // Even if there's an issue, starting new query should work
-      result = await toolHandlers.queryStart({ query: "recovery_test(Y)" });
+      result = await toolHandlers.query({ operation: "start", query: "recovery_test(Y)" });
       expect(result.isError).toBeFalsy();
 
       // New query should be functional
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("Solution:");
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should maintain state consistency after auto-close", async () => {
@@ -206,19 +214,19 @@ maybeDescribe("Auto-Close Query Lifecycle", () => {
       await prologInterface.query("assert(state_test(second))");
 
       // Start query, get partial results
-      await toolHandlers.queryStart({ query: "state_test(X)" });
-      let result = await toolHandlers.queryNext();
+      await toolHandlers.query({ operation: "start", query: "state_test(X)" });
+      let result = await toolHandlers.query({ operation: "next" });
       expect(result.content[0].text).toContain("first");
 
       // Auto-close by starting new query
-      await toolHandlers.queryStart({ query: "state_test(Y)" });
+      await toolHandlers.query({ operation: "start", query: "state_test(Y)" });
 
       // Should start fresh iteration
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
       expect(result.content[0].text).toContain("first"); // Fresh start
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
   });
 
@@ -227,20 +235,20 @@ maybeDescribe("Auto-Close Query Lifecycle", () => {
       await prologInterface.query("assert(explicit_test(value))");
 
       // Traditional explicit close workflow
-      let result = await toolHandlers.queryStart({ query: "explicit_test(X)" });
+      let result = await toolHandlers.query({ operation: "start", query: "explicit_test(X)" });
       expect(result.isError).toBeFalsy();
 
-      result = await toolHandlers.queryNext();
+      result = await toolHandlers.query({ operation: "next" });
       expect(result.isError).toBeFalsy();
 
-      result = await toolHandlers.queryClose();
+      result = await toolHandlers.query({ operation: "close" });
       expect(result.isError).toBeFalsy();
 
       // Start new query after explicit close
-      result = await toolHandlers.queryStart({ query: "explicit_test(Y)" });
+      result = await toolHandlers.query({ operation: "start", query: "explicit_test(Y)" });
       expect(result.isError).toBeFalsy();
 
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
 
     test("should not break existing test patterns", async () => {
@@ -249,13 +257,13 @@ maybeDescribe("Auto-Close Query Lifecycle", () => {
       await prologInterface.query("assert(compat_test(b))");
 
       // Start query
-      await toolHandlers.queryStart({ query: "compat_test(X)" });
+      await toolHandlers.query({ operation: "start", query: "compat_test(X)" });
 
       // Get all solutions
       const solutions = [];
       let result;
       do {
-        result = await toolHandlers.queryNext();
+        result = await toolHandlers.query({ operation: "next" });
         if (!result.isError && result.content[0].text.includes("Solution:")) {
           solutions.push(result.content[0].text);
         }
@@ -264,7 +272,7 @@ maybeDescribe("Auto-Close Query Lifecycle", () => {
       expect(solutions.length).toBe(2);
 
       // Close explicitly (still supported)
-      await toolHandlers.queryClose();
+      await toolHandlers.query({ operation: "close" });
     });
   });
 });

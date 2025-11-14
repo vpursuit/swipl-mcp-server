@@ -56,13 +56,13 @@ This shows available tools, security model, and server features.
 WORKFLOW - Demonstrate these MCP tool usage patterns:
 
 STEP 1 - Define Base Facts
-Use knowledge_base_assert_many to efficiently add facts for:
+Use clauses to efficiently add facts for:
 - parent_of(Parent, Child) - parent-child relationships
 - male(Person) / female(Person) - gender information
 - spouse_of(Person1, Person2) - marriage relationships (if provided)
 
 Example:
-knowledge_base_assert_many({
+clauses({
   facts: [
     "parent_of(john, mary)",
     "parent_of(john, alice)",
@@ -75,7 +75,7 @@ knowledge_base_assert_many({
 → Show the facts you added
 
 STEP 2 - Define Inference Rules
-Use knowledge_base_assert_many to add rules that derive relationships:
+Use clauses to add rules that derive relationships:
 
 Essential Rules:
 \`\`\`prolog
@@ -116,11 +116,11 @@ Check output for: parent_of/2, father_of/2, sibling_of/2, ancestor_of/2, etc.
 STEP 4 - Query Relationships
 Demonstrate both query modes:
 
-A. Simple queries with query_start:
+A. Simple queries with query:
    - Find specific relationships: "father_of(john, Who)"
    - Check relationships: "sibling_of(mary, alice)"
 
-B. Complex queries with query_startEngine:
+B. Complex queries with query:
    - Find all ancestors: "ancestor_of(Ancestor, alice)"
    - Find all cousins: "cousin_of(X, Y)"
    - Multi-hop relationships: "grandfather_of(GF, alice)"
@@ -146,9 +146,9 @@ Solutions:
 → Present the complete family tree analysis
 
 KEY LEARNING POINTS:
-- knowledge_base_assert_many: Batch loading facts and rules
+- clauses: Batch loading facts and rules
 - Recursive rules: ancestor_of demonstrates recursive descent
-- Query modes: query_start for simple, query_startEngine for backtracking
+- Query modes: query for simple, query for backtracking
 - symbols_list: Verify loaded predicates
 - Logical variables: Use capitalized vars (X, Y, Who) for unknowns
 
@@ -186,8 +186,8 @@ This shows available tools, security model, and server features.
 WORKFLOW - Demonstrate these MCP tool usage patterns:
 
 STEP 1 - Load CLP(FD) Library
-Use knowledge_base_load_library to load constraint programming:
-knowledge_base_load_library({ library: "clpfd" })
+Use files to load constraint programming:
+files({ library: "clpfd" })
 
 This provides:
 - Constraint operators: #=, #<, #>, #=<, #>=, #\\=
@@ -246,9 +246,9 @@ schedule(Tasks) :-
 \`\`\`
 
 STEP 3 - Add Scheduling Rules
-Use knowledge_base_assert_many to load all predicates at once:
+Use clauses to load all predicates at once:
 
-knowledge_base_assert_many({
+clauses({
   facts: [
     "task_duration(design, 5)",
     "task_duration(code, 10)",
@@ -262,9 +262,9 @@ knowledge_base_assert_many({
 → Display the rules and constraints added
 
 STEP 4 - Solve with Constraint Solving
-Use query_startEngine (not query_start) for constraint problems:
+Use query (not query) for constraint problems:
 
-query_startEngine({ query: "schedule(Tasks)" })
+query({ query: "schedule(Tasks)" })
 
 NOTE: Starting a new query automatically closes any previous query/engine session.
 
@@ -297,10 +297,10 @@ ADVANCED FEATURES (if applicable):
 - Parallel tasks: Tasks without dependencies can overlap
 
 KEY LEARNING POINTS:
-- knowledge_base_load_library: Load CLP(FD) for constraint solving
+- files: Load CLP(FD) for constraint solving
 - CLP(FD) operators: #=, #>=, ins for constraint specification
 - labeling/2: Trigger search with optimization (min/max)
-- query_startEngine: Required for constraint solving (not query_start)
+- query: Required for constraint solving (not query)
 - Constraint propagation: Prolog prunes impossible solutions automatically
 
 Now create the scheduling solution and demonstrate these constraint programming patterns.`
@@ -373,8 +373,8 @@ This shows available tools, security model, and server features.
 WORKFLOW - Demonstrate these MCP tool usage patterns:
 
 STEP 1 - Load CLP(FD)
-Use knowledge_base_load_library to enable constraint programming:
-knowledge_base_load_library({ library: "clpfd" })
+Use files to enable constraint programming:
+files({ library: "clpfd" })
 
 → Show library loaded successfully
 
@@ -389,25 +389,25 @@ solve(Vars) :-
 
 STEP 3 - Assert Rules
 \`\`\`
-knowledge_base_assert_many({
+clauses({
   facts: [
     "solve(...) :- ... ins 1..N, constraints..., labeling([ff], ...)"
   ]
 })
 \`\`\`
 
-IMPORTANT: If knowledge_base_assert_many fails with "Invalid Prolog syntax" for complex rules:
-- Use knowledge_base_assert instead (handles rules with :- better)
+IMPORTANT: If clauses fails with "Invalid Prolog syntax" for complex rules:
+- Use clauses instead (handles rules with :- better)
 - Compress the rule into a single line without newlines
-- Example: knowledge_base_assert({ fact: "solve(S):-S ins 1..9, all_distinct(S), labeling([ff],S)." })
+- Example: clauses({ fact: "solve(S):-S ins 1..9, all_distinct(S), labeling([ff],S)." })
 
 → Display the constraints defined
 
-STEP 4 - Query with query_startEngine
+STEP 4 - Query with query
 \`\`\`
-query_startEngine({ query: "solve(Solution)" })
+query({ query: "solve(Solution)" })
 \`\`\`
-CLP(FD) REQUIRES engine mode (not query_start).
+CLP(FD) REQUIRES engine mode (not query).
 
 NOTE: Starting a new query automatically closes any previous query/engine session.
 
@@ -420,7 +420,7 @@ query_next()  // Second solution (if desired)
 \`\`\`
 
 CRITICAL: The engine only starts in Step 4. Solutions are retrieved in Step 5 by calling query_next.
-Do NOT stop after query_startEngine - always follow with query_next calls.
+Do NOT stop after query - always follow with query_next calls.
 
 PERFORMANCE NOTE:
 - Use labeling([ff], Vars) for first-fail heuristic (2,500x faster)
@@ -438,13 +438,13 @@ CONCRETE EXAMPLE - 4-Queens Step-by-Step:
 
 Step 1: Load CLP(FD) library
 \`\`\`
-Tool: knowledge_base_load_library({ library: "clpfd" })
+Tool: files({ library: "clpfd" })
 Result: "Successfully loaded library(clpfd)"
 \`\`\`
 
 Step 2: Assert N-Queens predicates
 \`\`\`
-Tool: knowledge_base_assert_many({
+Tool: clauses({
   facts: [
     "solve(Qs) :- length(Qs, 4), Qs ins 1..4, all_different(Qs), safe(Qs), labeling([ff], Qs)",
     "safe([])",
@@ -458,7 +458,7 @@ Result: "Successfully asserted 5 facts/rules"
 
 Step 3: Start engine
 \`\`\`
-Tool: query_startEngine({ query: "solve(Qs)" })
+Tool: query({ query: "solve(Qs)" })
 Result: { status: "ready", engine_ready: true }
 \`\`\`
 
@@ -484,11 +484,11 @@ This shows the EXACT tool calls and expected results. Note the complete workflow
 
 KEY POINTS:
 - Load library(clpfd) first
-- Use query_startEngine (not query_start) for CLP(FD) queries
+- Use query (not query) for CLP(FD) queries
 - Pattern: Vars ins 1..N, constraints, labeling([ff], Vars)
 - Use [ff] for first-fail heuristic (much faster)
-- ALWAYS call query_next after query_startEngine to extract solutions
-- If knowledge_base_assert_many fails on complex rules, use knowledge_base_assert instead
+- ALWAYS call query_next after query to extract solutions
+- If clauses fails on complex rules, use clauses instead
 
 Now solve the puzzle using these constraint programming patterns.
 
@@ -599,10 +599,10 @@ verb(v(W)) --> [W], {member(W, [sat, ran])}.
 preposition(prep(W)) --> [W], {member(W, [on, in, under])}.
 \`\`\`
 
-STEP 3 - Load Grammar with knowledge_base_assert_many
-Use knowledge_base_assert_many to load all DCG rules:
+STEP 3 - Load Grammar with clauses
+Use clauses to load all DCG rules:
 
-knowledge_base_assert_many({
+clauses({
   facts: [
     "sentence --> noun_phrase, verb_phrase",
     "noun_phrase --> determiner, noun",
@@ -622,22 +622,22 @@ Note: Prolog automatically translates DCG notation into phrase/2 compatible pred
 → Show the DCG rules loaded
 
 STEP 4 - Parse with phrase/2
-Use query_start to parse sentences with phrase/2:
+Use query to parse sentences with phrase/2:
 
 The sentence as a word list:
 sentence = [the, cat, sat, on, the, mat]
 
 Query patterns:
 A. Validity check:
-   query_start({ query: "phrase(sentence, [the, cat, sat, on, the, mat])" })
+   query({ query: "phrase(sentence, [the, cat, sat, on, the, mat])" })
    Result: true/false (grammatically correct?)
 
 B. With parse tree:
-   query_start({ query: "phrase(sentence(Tree), [the, cat, sat, on, the, mat])" })
+   query({ query: "phrase(sentence(Tree), [the, cat, sat, on, the, mat])" })
    Result: Tree = s(np(det(the), n(cat)), vp(v(sat), pp(prep(on), np(det(the), n(mat)))))
 
 C. Generate sentences:
-   query_startEngine({ query: "phrase(sentence, Sentence)" })
+   query({ query: "phrase(sentence, Sentence)" })
    Result: All grammatically valid sentences from the grammar
 
 NOTE: Starting a new query automatically closes any previous query/engine session.
@@ -682,8 +682,8 @@ KEY LEARNING POINTS:
 - DCG notation: --> for grammar rules, [word] for terminals
 - phrase/2: Built-in predicate to invoke DCG parsers
 - Parse trees: Pass arguments to DCG rules to build structure
-- knowledge_base_assert_many: Batch-load grammar rules
-- query_start vs query_startEngine: Start for single parse, Engine for generation
+- clauses: Batch-load grammar rules
+- query vs query: Start for single parse, Engine for generation
 - Prolog's strength: Pattern matching + backtracking = natural parser
 
 Now parse the sentence and demonstrate these DCG patterns.`
