@@ -126,20 +126,8 @@ class NPXIntegrationTest {
     
     const tests = [
       {
-        name: 'license tool',
-        request: { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'license', arguments: {} } },
-        validate: (result) => {
-          if (!result.result?.content?.[0]?.text?.includes('BSD')) {
-            throw new Error('License tool did not return expected BSD license text');
-          }
-          if (result.result?.structuredContent?.error === 'license_file_not_found') {
-            throw new Error('LICENSE file not found - path resolution failed');
-          }
-        }
-      },
-      {
-        name: 'knowledge_base_assert test',
-        request: { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'knowledge_base_assert', arguments: { fact: 'test_fact(hello)' } } },
+        name: 'clauses assert test',
+        request: { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'clauses', arguments: { operation: 'assert', clauses: 'test_fact(hello)' } } },
         validate: (result) => {
           const responseText = result.result?.content?.[0]?.text || '';
           if (responseText.includes('Prolog server not started')) {
@@ -148,18 +136,20 @@ class NPXIntegrationTest {
           if (responseText.includes('Prolog server script not found')) {
             throw new Error('prolog_server.pl not found - path resolution failed');
           }
-          if (!responseText.includes('Result: ok') && !responseText.includes('Asserted 1/1 clauses successfully') && !responseText.includes('ASSERT RESULTS: 1/1 successful')) {
-            throw new Error(`knowledge_base_assert did not succeed. Response: ${responseText}`);
+          // Check for success in structuredContent
+          const success = result.result?.structuredContent?.success;
+          if (success !== 1) {
+            throw new Error(`clauses assert did not succeed. Response: ${responseText}`);
           }
         }
       },
       {
-        name: 'knowledge_base_load with non-existent file',
+        name: 'files import with non-existent file',
         request: {
           jsonrpc: '2.0',
           id: 4,
           method: 'tools/call',
-          params: { name: 'knowledge_base_load', arguments: { filename: '/non/existent/file.pl' } }
+          params: { name: 'files', arguments: { operation: 'import', filename: '/non/existent/file.pl' } }
         },
         validate: (result) => {
           const text = result.result?.content?.[0]?.text || '';
@@ -169,12 +159,12 @@ class NPXIntegrationTest {
         }
       },
       {
-        name: 'query_next without active query',
-        request: { 
-          jsonrpc: '2.0', 
-          id: 5, 
-          method: 'tools/call', 
-          params: { name: 'query_next', arguments: {} } 
+        name: 'query next without active query',
+        request: {
+          jsonrpc: '2.0',
+          id: 5,
+          method: 'tools/call',
+          params: { name: 'query', arguments: { operation: 'next' } }
         },
         validate: (result) => {
           const text = result.result?.content?.[0]?.text || '';
@@ -185,11 +175,11 @@ class NPXIntegrationTest {
       },
       {
         name: 'invalid query syntax',
-        request: { 
-          jsonrpc: '2.0', 
-          id: 6, 
-          method: 'tools/call', 
-          params: { name: 'query_start', arguments: { query: 'invalid_syntax(' } } 
+        request: {
+          jsonrpc: '2.0',
+          id: 6,
+          method: 'tools/call',
+          params: { name: 'query', arguments: { operation: 'start', query: 'invalid_syntax(' } }
         },
         validate: (result) => {
           const text = result.result?.content?.[0]?.text || '';
@@ -199,16 +189,18 @@ class NPXIntegrationTest {
         }
       },
       {
-        name: 'knowledge_base_retract non-existent fact',
-        request: { 
-          jsonrpc: '2.0', 
-          id: 7, 
-          method: 'tools/call', 
-          params: { name: 'knowledge_base_retract', arguments: { fact: 'non_existent_fact(x)' } } 
+        name: 'clauses retract non-existent fact',
+        request: {
+          jsonrpc: '2.0',
+          id: 7,
+          method: 'tools/call',
+          params: { name: 'clauses', arguments: { operation: 'retract', clauses: 'non_existent_fact(x)' } }
         },
         validate: (result) => {
           const text = result.result?.content?.[0]?.text || '';
-          if (!text.includes('Retracted') && !text.includes('RETRACT RESULTS')) {
+          // Retract should succeed even if fact doesn't exist (returns 0 retractions)
+          const success = result.result?.structuredContent?.success;
+          if (success === undefined) {
             throw new Error(`Expected retraction response, got: ${text}`);
           }
         }

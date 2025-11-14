@@ -49,29 +49,29 @@ maybeDescribe("NPX Integration Tests", () => {
     await npxTest.setup();
     await npxTest.installPackage();
 
-    // Test that key files are accessible in the installed package
-    const licenseTest = {
-      name: 'license tool path resolution',
-      request: { 
-        jsonrpc: '2.0', 
-        id: 1, 
-        method: 'tools/call', 
-        params: { name: 'license', arguments: {} } 
+    // Test that capabilities tool works (validates package is properly loaded)
+    const capabilitiesTest = {
+      name: 'capabilities tool validation',
+      request: {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'capabilities', arguments: {} }
       },
       validate: (result: any) => {
-        if (!result.result?.content?.[0]?.text?.includes('BSD')) {
-          throw new Error('License tool did not return expected BSD license text');
+        if (!result.result?.structuredContent?.server?.name) {
+          throw new Error('Capabilities tool did not return expected server info');
         }
-        if (result.result?.structuredContent?.error === 'license_file_not_found') {
-          throw new Error('LICENSE file not found - path resolution failed');
+        if (result.result?.structuredContent?.server?.name !== 'swipl-mcp-server') {
+          throw new Error('Server name mismatch - package.json path resolution may be incorrect');
         }
       }
     };
 
-    const response = await npxTest.runMCPCommand(licenseTest.request);
-    licenseTest.validate(response);
-    
-    expect(response.result?.content?.[0]?.text).toContain('BSD');
+    const response = await npxTest.runMCPCommand(capabilitiesTest.request);
+    capabilitiesTest.validate(response);
+
+    expect(response.result?.structuredContent?.server?.name).toBe('swipl-mcp-server');
   }, 90000); // 90 second timeout for setup and single test
 
   test("should start Prolog server correctly in installed environment", async () => {
@@ -81,11 +81,11 @@ maybeDescribe("NPX Integration Tests", () => {
     // Test that Prolog server can start and execute basic operations
     const prologTest = {
       name: 'prolog server startup validation',
-      request: { 
-        jsonrpc: '2.0', 
-        id: 2, 
-        method: 'tools/call', 
-        params: { name: 'knowledge_base_assert', arguments: { fact: 'test_npx_fact(success)' } } 
+      request: {
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'clauses', arguments: { operation: 'assert', clauses: 'test_npx_fact(success)' } }
       },
       validate: (result: any) => {
         const responseText = result.result?.content?.[0]?.text || '';
@@ -95,16 +95,18 @@ maybeDescribe("NPX Integration Tests", () => {
         if (responseText.includes('Prolog server script not found')) {
           throw new Error('prolog_server.pl not found - path resolution failed');
         }
-        if (!responseText.includes('Result: ok') && !responseText.includes('Asserted 1/1 clauses successfully') && !responseText.includes('ASSERT RESULTS: 1/1 successful')) {
-          throw new Error(`knowledge_base_assert did not succeed. Response: ${responseText}`);
+        // Check for success in structuredContent
+        const success = result.result?.structuredContent?.success;
+        if (success !== 1) {
+          throw new Error(`clauses tool did not succeed. Response: ${responseText}`);
         }
       }
     };
 
     const response = await npxTest.runMCPCommand(prologTest.request);
     prologTest.validate(response);
-    
-    expect(response.result?.structuredContent?.result).toBe('ok');
+
+    expect(response.result?.structuredContent?.success).toBe(1);
   }, 90000); // 90 second timeout
 
   test("should handle error cases gracefully in installed environment", async () => {
@@ -114,11 +116,11 @@ maybeDescribe("NPX Integration Tests", () => {
     // Test error handling for non-existent files
     const errorTest = {
       name: 'error handling validation',
-      request: { 
-        jsonrpc: '2.0', 
-        id: 3, 
-        method: 'tools/call', 
-        params: { name: 'knowledge_base_load', arguments: { filename: '/non/existent/file.pl' } } 
+      request: {
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: { name: 'files', arguments: { operation: 'import', filename: '/non/existent/file.pl' } }
       },
       validate: (result: any) => {
         const text = result.result?.content?.[0]?.text || '';
