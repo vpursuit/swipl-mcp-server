@@ -121,7 +121,7 @@ This traces:
 ### Problem: File Loading Fails
 
 **Symptoms:**
-- `knowledge_base_load` returns errors
+- `files` with operation "import" returns errors
 - "Access denied" or "File not found"
 
 **Debug Configuration:**
@@ -203,7 +203,7 @@ This traces:
 [swipl-mcp-server] Received: prolog_server ready
 [swipl-mcp-server] Server ready
 
-[swipl-mcp-server] Tool called: query_start
+[swipl-mcp-server] Tool called: query
 [swipl-mcp-server] Query: member(X, [1,2,3])
 [swipl-mcp-server] Sending: cmd(1, start_engine_string("member(X, [1,2,3])"))
 [swipl-mcp-server] Received: id(1, ok)

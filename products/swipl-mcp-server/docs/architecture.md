@@ -5,7 +5,7 @@ The SWI-Prolog MCP Server implements a secure, sandboxed Prolog execution enviro
 ## High-Level Components
 
 - **PrologInterface (Node.js)**: Manages the SWI-Prolog process, request/response correlation, and session state
-- **Tools (Node.js)**: MCP tool handlers (`knowledge_base_load`, `query_start`, etc.)
+- **Tools (Node.js)**: MCP tool handlers (`query`, `clauses`, `files`, `workspace`, `capabilities`, `explain_error`)
 - **prolog_server.pl (SWI-Prolog)**: Single server supporting standard and engine modes
 
 ## Two-Module Architecture

@@ -210,7 +210,7 @@ Configure timeouts, logging, and behavior via environment variables:
 - Shutdown: the server exits on `SIGINT`/`SIGTERM` or when the client closes stdio. On stdio close, a small grace (~25ms) allows final responses to flush before exit.
 - Stateful per connection: asserted facts/rules live in memory for the lifetime of the MCP connection (one Node process and one SWI‑Prolog child). When the client disconnects and the server exits, in‑memory state is reset on next start.
 - Client guidance: keep a single stdio connection open for workflows that depend on shared state across multiple tool calls; avoid closing stdin immediately after a request.
-- Durability (optional): if persistent Knowledge Base is desired across restarts, use `knowledge_base_dump` to save to a configured root directory and `knowledge_base_load` (or `knowledge_base_assert_many`) to restore on startup. See [docs/lifecycle.md](./docs/lifecycle.md) for patterns.
+- Durability (optional): if persistent Knowledge Base is desired across restarts, use the `workspace` tool with `operation: "snapshot"` to save to a configured root directory and the `files` tool with `operation: "import"` (or `clauses` with `operation: "assert"`) to restore on startup. See [docs/lifecycle.md](./docs/lifecycle.md) for patterns.
 
 ## Features
 
@@ -233,32 +233,31 @@ Prompts guide AI assistants to help you with Prolog programming, knowledge base 
 - ❌ **Codex CLI** - Does not currently support prompts
 
 Available prompts:
-- **`expert`** - Expert guidance with optional task focus
-  - `task` (optional): Specific task to focus expert setup
-  - `mode` (optional): 'expert' (default) for guidance, 'reference' for complete overview
-- **`knowledge`** - Build or analyze knowledge bases
-  - `domain` (optional): Domain to model (required when mode='build')
-  - `mode` (optional): 'build' (default) to create KB, 'analyze' to examine existing KB
-- **`optimize`** - Optimize Prolog queries for performance
-  - `query` (required): The Prolog query to analyze and optimize
+- **`genealogy`** - Build and query family trees using relational logic
+  - `family_info` (required): Family members and relationships to model
+- **`scheduling`** - Schedule tasks with dependencies using CLP(FD)
+  - `tasks` (required): Tasks to schedule with durations and dependencies
 - **`puzzle`** - Solve logic puzzles using constraint programming
-  - `puzzle` (optional): The logic puzzle to solve with numbered clues. If empty, agent chooses an interesting puzzle
+  - `puzzle` (optional): The logic puzzle to solve with numbered clues. If empty, suggests interesting puzzles
+- **`grammar`** - Parse natural language using Definite Clause Grammars (DCGs)
+  - `sentence` (optional): Sentence to parse. If empty, uses a default example
 
 ### MCP Resources
-Dynamic and static resources for knowledge base access:
+Dynamic and static resources for workspace access:
 
-- **`prolog://knowledge_base/predicates`** - List all predicates in the knowledge base
-- **`prolog://knowledge_base/dump`** - Export complete knowledge base as Prolog clauses
-- **`reference://help`** - Usage guidelines and server tips
-- **`reference://license`** - BSD-3-Clause license text
-- **`reference://capabilities`** - Machine-readable server capabilities (JSON)
+- **`mcp://workspace/symbols`** - List all user-defined predicates in the workspace
+- **`mcp://workspace/snapshot`** - Export workspace with original source text and preserved formatting
+- **`mcp://server/branding/logo`** - Server logo (SVG)
+- **`mcp://server/capabilities`** - Machine-readable server capabilities (JSON)
 
 ### Tools
 
-- **Core:** `help`, `license`, `capabilities`
-- **Knowledge base:** `knowledge_base_load`, `knowledge_base_assert`, `knowledge_base_assert_many`, `knowledge_base_retract`, `knowledge_base_retract_many`, `knowledge_base_clear`, `knowledge_base_dump`
-- **Query:** `query_start`, `query_startEngine`, `query_next`, `query_close`
-- **Symbols:** `symbols_list`
+- **`query`** - Unified tool to start queries, get next solutions, and close query sessions
+- **`capabilities`** - Get machine-readable capabilities summary
+- **`clauses`** - Assert or retract facts/rules (with source preservation)
+- **`files`** - Import/unimport Prolog files with provenance tracking
+- **`workspace`** - Manage workspace snapshots and list predicates
+- **`explain_error`** - Analyze and explain Prolog errors using domain expertise
 
 ## Available Predicates
 
@@ -272,30 +271,30 @@ All standard SWI-Prolog predicates are available (lists, arithmetic, meta-predic
 
 Load a Prolog file (must be in a configured root directory):
 ```json
-knowledge_base_load { "filename": "/Users/you/prolog/family.pl" }
+files { "operation": "import", "filename": "/Users/you/prolog/family.pl" }
 ```
 
 Start a query and iterate through solutions:
 ```json
-query_start { "query": "parent(X, mary)" }
-query_next()  // Returns {solution: "X=john", status: "success"}
-query_next()  // Returns {solution: "X=bob", status: "success"}
-query_next()  // Returns {solution: null, status: "done"}
-query_close() // Close when done
+query { "operation": "start", "query": "parent(X, mary)" }
+query { "operation": "next" }  // Returns {solution: "X=john", status: "success"}
+query { "operation": "next" }  // Returns {solution: "X=bob", status: "success"}
+query { "operation": "next" }  // Returns {solution: null, status: "done"}
+query { "operation": "close" } // Close when done
 ```
 
-Use the standard iterator pattern - call `query_next()` repeatedly until `status === "done"`.
+Use the standard iterator pattern - call `query` with `operation: "next"` repeatedly until `status === "done"`.
 
 ### Engine Mode (True Backtracking)
 
-For queries requiring all solutions or complex backtracking:
+For queries requiring all solutions or complex backtracking (required for CLP(FD)):
 ```json
-query_startEngine { "query": "member(X, [1,2,3])" }
-query_next()  // Returns {solution: "X=1", status: "success"}
-query_next()  // Returns {solution: "X=2", status: "success"}
-query_next()  // Returns {solution: "X=3", status: "success"}
-query_next()  // Returns {solution: null, status: "done"}
-query_close()
+query { "operation": "start", "query": "member(X, [1,2,3])", "use_engine": true }
+query { "operation": "next" }  // Returns {solution: "X=1", status: "success"}
+query { "operation": "next" }  // Returns {solution: "X=2", status: "success"}
+query { "operation": "next" }  // Returns {solution: "X=3", status: "success"}
+query { "operation": "next" }  // Returns {solution: null, status: "done"}
+query { "operation": "close" }
 ```
 
 ### Database Operations
@@ -303,26 +302,28 @@ query_close()
 **Add facts:**
 ```json
 // Single fact
-knowledge_base_assert { "fact": "parent(john, mary)" }
+clauses { "operation": "assert", "clauses": "parent(john, mary)" }
 
 // Multiple facts
-knowledge_base_assert_many {
-  "facts": ["parent(john, mary)", "parent(mary, alice)"]
+clauses {
+  "operation": "assert",
+  "clauses": ["parent(john, mary)", "parent(mary, alice)"]
 }
 ```
 
 **Remove facts:**
 ```json
 // Single fact
-knowledge_base_retract { "fact": "parent(john, mary)" }
+clauses { "operation": "retract", "clauses": "parent(john, mary)" }
 
 // Multiple facts
-knowledge_base_retract_many {
-  "facts": ["parent(john, mary)", "parent(mary, alice)"]
+clauses {
+  "operation": "retract",
+  "clauses": ["parent(john, mary)", "parent(mary, alice)"]
 }
 
-// Clear all user facts
-knowledge_base_clear {}
+// Clear entire workspace
+workspace { "operation": "reset" }
 ```
 
 ### More Examples
@@ -367,7 +368,7 @@ The server implements multiple security layers to protect your system:
 - **Blocked Directories**: System directories (`/etc`, `/usr`, `/bin`, `/var`, etc.) are automatically blocked
 - **Example**:
   ```json
-  knowledge_base_load { "filename": "/etc/passwd" }
+  files { "operation": "import", "filename": "/etc/passwd" }
   ```
   → `Security Error: Access to system directories is blocked`
 
@@ -376,7 +377,7 @@ The server implements multiple security layers to protect your system:
 - **Blocked Predicates**: `shell()`, `system()`, `call()`, `assert()`, `halt()`, etc.
 - **Example**:
   ```json
-  knowledge_base_assert { "fact": "malware :- shell('rm -rf /')" }
+  clauses { "operation": "assert", "clauses": "malware :- shell('rm -rf /')" }
   ```
   → `Security Error: Operation blocked - contains dangerous predicate 'shell'`
 

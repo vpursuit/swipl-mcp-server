@@ -209,15 +209,13 @@ Machine-readable summary of all server capabilities, tools, security constraints
     "clpfd_available": true
   },
   "tools": {
-    "core": ["help", "license", "capabilities"],
-    "knowledge_base": [...],
-    "query": [...],
-    "symbols": [...]
+    "core": ["capabilities"],
+    "knowledge_base": ["clauses", "files", "workspace"],
+    "query": ["query"],
+    "analysis": ["explain_error"]
   },
   "prompts": {
-    "expert_guidance": ["expert", "optimize"],
-    "knowledge_base": ["knowledge"],
-    "problem_solving": ["puzzle"]
+    "domain_examples": ["genealogy", "scheduling", "puzzle", "grammar"]
   },
   "security": {...}
 }
@@ -231,189 +229,210 @@ Complete reference of all available tools organized by category.
 
 ### Core Tools
 
-#### `help`
-
-Get comprehensive usage guidelines and best practices.
-
-**Arguments:**
-- `topic` (optional) - Specific help topic: "overview", "standard_mode", "engine_mode", "safety", "security", "examples", "prompts", "troubleshooting"
-
-**Returns:** Detailed help text for the requested topic or general overview.
-
-#### `license`
-
-Get the BSD-3-Clause license text.
-
-**Arguments:** None
-
-**Returns:** Full license text.
-
 #### `capabilities`
 
 Get machine-readable server capabilities summary.
 
 **Arguments:** None
 
-**Returns:** JSON object with complete capability information (see `reference://capabilities` above).
+**Returns:** JSON object with complete capability information including tools, query modes, security model, and available predicates.
 
-### Knowledge Base Management Tools
+### Query Tool
 
-#### `knowledge_base_load`
+#### `query`
 
-Load Prolog facts and rules from a file into the knowledge_base module.
-
-**Arguments:**
-- `filename` (required, string) - Path to Prolog file (must be within configured roots)
-
-**Security:** File must be in allowed directory (see Configuration section).
-
-**Behavior:**
-- Consults the file into the knowledge_base module
-- Only accepts facts and rules (directives are rejected for security)
-- Validates all predicates against security constraints
-- Fails if file contains dangerous predicates
-
-#### `knowledge_base_assert`
-
-Add a single Prolog fact or rule to the knowledge_base.
+Unified tool for managing query sessions with support for both standard pagination and engine-based backtracking.
 
 **Arguments:**
-- `fact` (required, string) - Prolog clause to assert (e.g., "parent(john, mary)" or "ancestor(X,Z) :- parent(X,Y), parent(Y,Z)")
+- `operation` (required) - Query operation: "start", "next", or "close"
+- `query` (required for "start") - Prolog query string
+- `use_engine` (optional, default: false) - Use SWI-Prolog engine mode for true backtracking. Required for CLP(FD) constraint solving.
 
-**Example:**
+**Operations:**
+
+**start** - Begin a new query session
 ```json
 {
-  "fact": "parent(john, mary)"
+  "operation": "start",
+  "query": "parent(X, mary)",
+  "use_engine": false
 }
 ```
 
-#### `knowledge_base_assert_many`
-
-Add multiple Prolog facts or rules in a single operation (more efficient than individual assertions).
-
-**Arguments:**
-- `facts` (required, array of strings) - List of Prolog clauses to assert
-
-**Example:**
+**next** - Get next solution from active query
 ```json
 {
-  "facts": [
+  "operation": "next"
+}
+```
+Returns: `{solution: "X=john", status: "success"}` or `{solution: null, status: "done"}`
+
+**close** - Close active query and free resources
+```json
+{
+  "operation": "close"
+}
+```
+
+**Query Modes:**
+- **Standard mode** (`use_engine: false`) - Pagination using call_nth/2, efficient for deterministic queries
+- **Engine mode** (`use_engine: true`) - True Prolog backtracking, required for CLP(FD) and complex constraint solving
+
+### Knowledge Base Management Tools
+
+#### `clauses`
+
+Unified tool for asserting and retracting facts/rules with source text preservation.
+
+**Arguments:**
+- `operation` (required) - "assert" or "retract"
+- `clauses` (required) - Single clause string or array of clauses
+
+**Operations:**
+
+**assert** - Add facts/rules to workspace
+```json
+{
+  "operation": "assert",
+  "clauses": "parent(john, mary)"
+}
+```
+
+Multi-clause assertion:
+```json
+{
+  "operation": "assert",
+  "clauses": [
     "parent(john, mary)",
     "parent(mary, susan)",
-    "ancestor(X,Y) :- parent(X,Y)",
-    "ancestor(X,Z) :- parent(X,Y), ancestor(Y,Z)"
+    "ancestor(X,Y) :- parent(X,Y)"
   ]
 }
 ```
 
-#### `knowledge_base_retract`
+**retract** - Remove matching facts/rules
+```json
+{
+  "operation": "retract",
+  "clauses": "parent(john, mary)"
+}
+```
 
-Remove a single fact or rule from the knowledge_base.
+**Source Preservation:** Original clause text, formatting, and variable names are preserved for snapshot export.
 
-**Arguments:**
-- `fact` (required, string) - Prolog clause to retract
+#### `files`
 
-#### `knowledge_base_retract_many`
-
-Remove multiple facts or rules in a single operation.
-
-**Arguments:**
-- `facts` (required, array of strings) - List of Prolog clauses to retract
-
-#### `knowledge_base_clear`
-
-Remove all facts and rules from the knowledge_base module.
-
-**Arguments:** None
-
-**Use Case:** Reset to clean state before loading new knowledge.
-
-#### `knowledge_base_dump`
-
-Export all current knowledge base content as Prolog source code.
-
-**Arguments:** None
-
-**Returns:** Complete Prolog module source with all facts and rules.
-
-#### `knowledge_base_load_library`
-
-Load a safe SWI-Prolog library into the knowledge_base module.
+Manage Prolog file imports with provenance tracking.
 
 **Arguments:**
-- `library` (required, string) - Library name (e.g., "clpfd", "lists", "apply")
+- `operation` (required) - "import", "unimport", or "list"
+- `filename` (required for import/unimport) - Path to .pl file (must be within configured roots)
 
-**Security:** Only sandbox-approved libraries are allowed. See [SECURITY.md](../../../SECURITY.md#swi-prolog-mcp-server-security) for complete security documentation.
+**Operations:**
 
-### Query Tools
+**import** - Load Prolog file into workspace
+```json
+{
+  "operation": "import",
+  "filename": "/Users/you/prolog/family.pl"
+}
+```
 
-#### `query_start`
+**unimport** - Remove all clauses from specific file
+```json
+{
+  "operation": "unimport",
+  "filename": "/Users/you/prolog/family.pl"
+}
+```
 
-Start a deterministic query with pagination support (Standard Mode).
+**list** - Show all imported files with clause counts
+```json
+{
+  "operation": "list"
+}
+```
 
-**Arguments:**
-- `query` (required, string) - Prolog query to execute
+**Security:** File must be in allowed directory. See Configuration section.
 
-**Behavior:**
-- Finds first solution
-- Use `query_next` to get subsequent solutions
-- Automatically limits solutions to prevent infinite loops
-- Must call `query_close` when done
+#### `workspace`
 
-#### `query_next`
-
-Get next solution from active query (Standard Mode).
-
-**Arguments:** None
-
-**Returns:** Next solution or indication that no more solutions exist.
-
-**Session State:** Query must be active from `query_start`.
-
-#### `query_close`
-
-Close active query and free resources (Standard Mode).
-
-**Arguments:** None
-
-#### `query_startEngine`
-
-Start a query using true Prolog backtracking engine (Engine Mode).
+Workspace introspection and management.
 
 **Arguments:**
-- `query` (required, string) - Prolog query to execute
+- `operation` (required) - "snapshot", "reset", or "list_symbols"
 
-**Behavior:**
-- Creates Prolog engine for true backtracking
-- Use `query_next` to iterate through solutions
-- More powerful than Standard Mode but requires careful resource management
-- Must call `query_close` when done
+**Operations:**
 
-**Use Case:** Complex queries requiring full backtracking semantics, multiple solution paths, or constraint solving.
+**snapshot** - Export workspace with original source text
+```json
+{
+  "operation": "snapshot"
+}
+```
+Returns: Complete workspace content with preserved formatting and variable names
 
-### Symbol Inspection Tools
+**reset** - FULL workspace reset
+```json
+{
+  "operation": "reset"
+}
+```
+Removes all facts/rules, clears source storage, and clears file import history
 
-#### `symbols_list`
+**list_symbols** - List all user-defined predicates
+```json
+{
+  "operation": "list_symbols"
+}
+```
+Returns: Array of predicate names (e.g., ["parent", "ancestor", "member"])
 
-List all predicates currently defined in the knowledge_base module.
+### Analysis Tools
 
-**Arguments:** None
+#### `explain_error`
 
-**Returns:** Array of predicate indicators (e.g., ["parent/2", "ancestor/2"]).
+Analyze and explain Prolog errors using domain expertise and MCP sampling.
 
-**Use Case:** Verify what predicates are available, check if predicate exists before defining, or explore knowledge base structure.
+**Arguments:**
+- `error` (required) - Structured error object with kind, message, and optional details
+- `query` (optional) - The query that caused the error
+- `include_kb` (optional, default: true) - Include current knowledge base state for context
+
+**Example:**
+```json
+{
+  "error": {
+    "kind": "instantiation_error",
+    "message": "Arguments are not sufficiently instantiated",
+    "details": {
+      "predicate": "member/2",
+      "goal": "member(X, Y)"
+    }
+  },
+  "query": "member(X, Y)",
+  "include_kb": true
+}
+```
+
+**Returns:** Structured explanation with:
+- `explanation` - What went wrong
+- `cause` - Root cause analysis
+- `suggestions` - Concrete fixes
+- `examples` - Code examples (optional)
+- `tool_guidance` - Correct tool usage (optional)
 
 ## Session State Management
 
 The server maintains session state to prevent conflicts between query modes:
 
 - **idle**: No active query
-- **query**: Standard mode query active (from `query_start`)
-- **engine**: Engine mode query active (from `query_startEngine`)
+- **query**: Standard mode query active (from `query` with `use_engine: false`)
+- **engine**: Engine mode query active (from `query` with `use_engine: true`)
 - **query_completed**: Query finished but not closed
 - **engine_completed**: Engine finished but not closed
 
-**Mutual Exclusion:** Cannot start Standard Mode query while Engine Mode is active and vice versa. Must call `query_close` to switch modes.
+**Mutual Exclusion:** Cannot start Standard Mode query while Engine Mode is active and vice versa. Must use `query` with `operation: "close"` to switch modes.
 
 ## Security Model
 

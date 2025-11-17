@@ -6,7 +6,7 @@ This server runs over the MCP `stdio` transport. The client owns the connection:
 
 - One Node.js process per MCP connection.
 - One SWI‑Prolog child process inside the Node process.
-- Tools (e.g., `knowledge_base_assert`, `query_start`) operate against the single in‑memory knowledge base.
+- Tools (e.g., `clauses`, `query`) operate against the single in‑memory workspace.
 
 ## Shutdown Behavior
 
@@ -36,10 +36,10 @@ If you want state to survive restarts, use an explicit dump/restore pattern unde
 
 1. **Configure roots first** (via MCP client or `SWI_MCP_ALLOWED_ROOTS`)
 2. Save snapshot:
-   - Call `knowledge_base_dump` and write the result into a file within your configured roots.
+   - Call `workspace` with operation "snapshot" and write the result into a file within your configured roots.
 3. Restore on startup:
-   - Either script your client to call `knowledge_base_load` for the snapshot file, or
-   - Replay facts via `knowledge_base_assert_many` after connection initialization.
+   - Either script your client to call `files` with operation "import" for the snapshot file, or
+   - Replay facts via `clauses` with operation "assert" after connection initialization.
 
 Notes:
 - The server enforces file path restrictions; only configured root directories are permitted for file operations.

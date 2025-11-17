@@ -11,7 +11,7 @@ This document demonstrates **inspector usage** where you manually call each tool
 
 In **production usage**, an AI agent automatically calls these tools based on natural language requests. For example:
 - You: "Find all parents of Mary in the family data"
-- AI agent: Automatically calls `query_start`, `query_next` (multiple times), then `query_close`
+- AI agent: Automatically calls `query` with `operation: "start"`, then `operation: "next"` (multiple times), then `operation: "close"`
 
 The JSON examples below show the exact tool calls that happen behind the scenes in both scenarios.
 
@@ -28,10 +28,10 @@ In production, AI agents can read these resources to understand server capabilit
 
 ### Expert Prompts
 Four specialized prompts for Prolog development assistance:
-- `expert` - Expert Prolog guidance or comprehensive server reference
-- `knowledge` - Build or analyze knowledge bases with expert guidance
-- `optimize` - Optimize query performance and suggest alternatives
+- `genealogy` - Build and query family trees using relational logic
+- `scheduling` - Schedule tasks with dependencies using CLP(FD)
 - `puzzle` - Solve logic puzzles using constraint programming
+- `grammar` - Parse natural language using Definite Clause Grammars (DCGs)
 
 These prompts help AI agents provide more specialized Prolog expertise when working with your knowledge bases.
 
@@ -49,9 +49,10 @@ npx @modelcontextprotocol/inspector --transport stdio node dist/index.js
 
 ### 1. Load Test File
 
-**Tool:** `knowledge_base_load`
+**Tool:** `files`
 ```json
 {
+  "operation": "import",
   "filename": "test.pl"
 }
 ```
@@ -60,99 +61,122 @@ npx @modelcontextprotocol/inspector --transport stdio node dist/index.js
 
 ### 2. List Available Predicates
 
-**Tool:** `symbols_list`
+**Tool:** `workspace`
 ```json
-{}
+{
+  "operation": "list_symbols"
+}
 ```
 
-**Expected Response:** List of all available predicates with arity (e.g. `parent/2`, `male/1`)
+**Expected Response:** List of all available predicates (e.g. `["parent", "male", "ancestor"]`)
 
 ## Family Data Examples
 
 ### 3. Find All Parents of Mary
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
+  "operation": "start",
   "query": "parent(X, mary)"
 }
 ```
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
-{}
+{
+  "operation": "next"
+}
 ```
 **Expected Response:** First parent (e.g., "X = john")
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
-{}
+{
+  "operation": "next"
+}
 ```
 **Expected Response:** Next parent or "no more solutions"
 
-**Tool:** `query_close`
+**Tool:** `query`
 ```json
-{}
+{
+  "operation": "close"
+}
 ```
 
 ### 4. Step-by-Step List Member Query
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
+  "operation": "start",
   "query": "member(X, [apple, banana, cherry])"
 }
 ```
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
-{}
+{
+  "operation": "next"
+}
 ```
 **Response:** "X = apple"
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
-{}
+{
+  "operation": "next"
+}
 ```
 **Response:** "X = banana"
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
-{}
+{
+  "operation": "next"
+}
 ```
 **Response:** "X = cherry"
 
-**Tool:** `query_close`
+**Tool:** `query`
 ```json
-{}
+{
+  "operation": "close"
+}
 ```
 
 ## Advanced Examples
 
 ### 5. Add New Family Relations (Single Facts)
 
-**Tool:** `knowledge_base_assert`
+**Tool:** `clauses`
 ```json
 {
-  "fact": "parent(alice, bob)"
+  "operation": "assert",
+  "clauses": "parent(alice, bob)"
 }
 ```
 
-**Tool:** `knowledge_base_assert`
+**Tool:** `clauses`
 ```json
 {
-  "fact": "parent(bob, charlie)"
+  "operation": "assert",
+  "clauses": "parent(bob, charlie)"
 }
 ```
 
 ### 5b. Add Multiple Family Relations at Once
 
-**Tool:** `knowledge_base_assert_many`
+**Tool:** `clauses`
 ```json
 {
-  "facts": [
+  "operation": "assert",
+  "clauses": [
     "parent(alice, bob)",
-    "parent(bob, charlie)", 
+    "parent(bob, charlie)",
     "parent(charlie, david)",
     "male(bob)",
     "male(charlie)",
@@ -164,21 +188,23 @@ npx @modelcontextprotocol/inspector --transport stdio node dist/index.js
 
 ### 6. Query with Rules
 
-**Tool:** `knowledge_base_assert`
+**Tool:** `clauses`
 ```json
 {
-  "fact": "grandparent(X, Z) :- parent(X, Y), parent(Y, Z)"
+  "operation": "assert",
+  "clauses": "grandparent(X, Z) :- parent(X, Y), parent(Y, Z)"
 }
 ```
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "grandparent(alice, charlie)"
 }
 ```
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
 {}
 ```
@@ -186,14 +212,15 @@ npx @modelcontextprotocol/inspector --transport stdio node dist/index.js
 
 ### 7. Number Range Queries
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "between(1, 5, X)"
 }
 ```
 
-**Tool:** `query_next` (repeat multiple times)
+**Tool:** `query` (repeat multiple times)
 ```json
 {}
 ```
@@ -201,14 +228,15 @@ npx @modelcontextprotocol/inspector --transport stdio node dist/index.js
 
 ### 8. Mathematical Calculations
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "X is 2 + 3 * 4"
 }
 ```
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
 {}
 ```
@@ -216,14 +244,15 @@ npx @modelcontextprotocol/inspector --transport stdio node dist/index.js
 
 ### 9. List Operations
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "append([1,2], [3,4], X)"
 }
 ```
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
 {}
 ```
@@ -231,16 +260,17 @@ npx @modelcontextprotocol/inspector --transport stdio node dist/index.js
 
 ### 10. Backtracking with Multiple Solutions
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "member(X, [red, green, blue]), member(Y, [car, bike])"
 }
 ```
 
 This finds all combinations of colors and vehicles:
 
-**Tool:** `query_next` (multiple times)
+**Tool:** `query` (multiple times)
 - "X = red, Y = car"
 - "X = red, Y = bike"  
 - "X = green, Y = car"
@@ -250,50 +280,55 @@ This finds all combinations of colors and vehicles:
 
 ### 11. Working with Strings
 
-**Tool:** `knowledge_base_assert`
+**Tool:** `clauses`
 ```json
 {
-  "fact": "likes(john, pizza)"
+  "operation": "assert",
+  "clauses": "likes(john, pizza)"
 }
 ```
 
-**Tool:** `knowledge_base_assert`
+**Tool:** `clauses`
 ```json
 {
-  "fact": "likes(mary, pasta)"
+  "operation": "assert",
+  "clauses": "likes(mary, pasta)"
 }
 ```
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "likes(Person, Food)"
 }
 ```
 
-**Tool:** `query_next` (repeat)
+**Tool:** `query` (repeat)
 - "Person = john, Food = pizza"
 - "Person = mary, Food = pasta"
 
 ### 12. Remove Facts
 
-**Tool:** `knowledge_base_retract`
+**Tool:** `clauses`
 ```json
 {
-  "fact": "likes(john, pizza)"
+  "operation": "assert",
+  "clauses": "likes(john, pizza)"
 }
 ```
 
 ### 13. Complex Arithmetic
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "X is sqrt(16), Y is X + 10"
 }
 ```
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
 {}
 ```
@@ -301,14 +336,15 @@ This finds all combinations of colors and vehicles:
 
 ### 14. Type Checking
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "number(42)"
 }
 ```
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
 {}
 ```
@@ -316,14 +352,15 @@ This finds all combinations of colors and vehicles:
 
 ### 15. Variable Instantiation Check
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "var(X)"
 }
 ```
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
 {}
 ```
@@ -331,15 +368,16 @@ This finds all combinations of colors and vehicles:
 
 ### 16. Remove Facts (Single and Multiple)
 
-**Tool:** `knowledge_base_retract`
+**Tool:** `clauses`
 ```json
 {
-  "fact": "parent(alice, bob)"
+  "operation": "assert",
+  "clauses": "parent(alice, bob)"
 }
 ```
 **Expected Response:** Confirmation that the fact was removed
 
-**Tool:** `knowledge_base_retract_many`
+**Tool:** `clauses`
 ```json
 {
   "facts": [
@@ -353,7 +391,7 @@ This finds all combinations of colors and vehicles:
 
 ### 17. Clear All User-Defined Facts and Rules
 
-**Tool:** `knowledge_base_clear`
+**Tool:** `workspace`
 ```json
 {}
 ```
@@ -363,9 +401,10 @@ This finds all combinations of colors and vehicles:
 
 ### 18. Invalid Syntax
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "this is not valid prolog"
 }
 ```
@@ -373,9 +412,10 @@ This finds all combinations of colors and vehicles:
 
 ### 17. Non-existent Predicate
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "nonexistent_predicate(X)"
 }
 ```
@@ -383,7 +423,7 @@ This finds all combinations of colors and vehicles:
 
 ### 18. File Not Found
 
-**Tool:** `knowledge_base_load`
+**Tool:** `files`
 ```json
 {
   "filename": "nonexistent_file.pl"
@@ -395,9 +435,10 @@ This finds all combinations of colors and vehicles:
 
 ### 19. Large List Operations
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "length(List, 1000), member(500, List)"
 }
 ```
@@ -406,52 +447,53 @@ This tests performance with large data structures.
 
 ### 20. Infinite Solutions (Controlled)
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "between(1, inf, X)"
 }
 ```
 
-**Tool:** `query_next` (a few times, then close)
-**Tool:** `query_close` (to prevent infinite computation)
+**Tool:** `query` (a few times, then close)
+**Tool:** `query` (to prevent infinite computation)
 
 ## Integration Workflow
 
 ### 21. Complete Knowledge Base Session
 
-1. Load data: `knowledge_base_load` → `{"filename": "family.pl"}`
-2. Explore structure: `symbols_list` → `{}`
-3. Query base facts: `query_start` → `{"query": "parent(X, Y)"}`
-4. Get solutions step by step with `query_next`
-5. Add new family: `knowledge_base_assert` → `{"fact": "parent(alice, bob)"}`
-6. Complex query: `query_start` → `{"query": "grandparent(X, Y)"}`
-7. Cleanup: `knowledge_base_retract` → `{"fact": "parent(alice, bob)"}`
+1. Load data: `files` → `{"operation": "import", "filename": "family.pl"}`
+2. Explore structure: `workspace` → `{"operation": "list_symbols"}`
+3. Query base facts: `query` → `{"operation": "start", "query": "parent(X, Y)"}`
+4. Get solutions step by step with `query` → `{"operation": "next"}`
+5. Add new family: `clauses` → `{"operation": "assert", "clauses": "parent(alice, bob)"}`
+6. Complex query: `query` → `{"operation": "start", "query": "grandparent(X, Y)"}`
+7. Cleanup: `clauses` → `{"operation": "retract", "clauses": "parent(alice, bob)"}`
 
 ## Best Practices
 
 ### Query Session Management
-- Always `query_close` queries when done to free resources
+- Always close queries with `query` operation "close" when done to free resources
 - Use step-by-step retrieval for potentially large result sets
-- Use standard iterator pattern: call `query_next()` until `status === "done"`
+- Use standard iterator pattern: call `query` with operation "next" until `status === "done"`
 
 ### Error Prevention
-- Validate file paths before `knowledge_base_load`
+- Validate file paths before using `files` with operation "import"
 - Test simple queries before complex ones
-- **Backup creation**: Use `query_start` to document facts before `knowledge_base_retract`
+- **Backup creation**: Use `query` with operation "start" to document facts before using `clauses` with operation "retract"
 
 ### Performance Tips
 - Close infinite or very large solution queries early
 - Use specific queries instead of overly general ones
-- Consider using `query_close` if you only need the first few solutions
+- Consider closing queries with `query` operation "close" if you only need the first few solutions
 
 ## Debugging Workflow
 
-1. List predicates: `symbols_list`
+1. List predicates: `workspace` with operation "list_symbols"
 2. Test basic facts: `query` → simple fact checking
 3. Build complexity gradually
-4. Use step-by-step `next` to understand solution flow
-5. Add debugging facts with `knowledge_base_assert` for tracing
+4. Use step-by-step `query` with operation "next" to understand solution flow
+5. Add debugging facts with `clauses` operation "assert" for tracing
 
 ## Known Variations
 
@@ -473,14 +515,15 @@ The server enables a safe subset of pure built-ins and list utilities in the `kn
 
 Find all even numbers between 1 and 10:
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "findall(X, (between(1,10,X), 0 is X mod 2), L)"
 }
 ```
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
 {}
 ```
@@ -490,14 +533,15 @@ Find all even numbers between 1 and 10:
 
 Collect elements from a list:
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "findall(X, member(X, [a,b,c]), L)"
 }
 ```
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
 {}
 ```
@@ -509,23 +553,25 @@ Define a pure helper, then map it over a list. The server exposes `knowledge_bas
 
 1) Define a helper in `knowledge_base`:
 
-**Tool:** `knowledge_base_assert`
+**Tool:** `clauses`
 ```json
 {
-  "fact": "double(X, Y) :- Y is X * 2"
+  "operation": "assert",
+  "clauses": "double(X, Y) :- Y is X * 2"
 }
 ```
 
 2) Map over a list:
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "knowledge_base:maplist(double, [1,2,3], L)"
 }
 ```
 
-**Tool:** `query_next`
+**Tool:** `query`
 ```json
 {}
 ```
@@ -539,33 +585,34 @@ Examples:
 
 - Extract a substring:
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
+  "operation": "start",
   "query": "sub_atom('hello_world', 6, 5, 0, S)"
 }
 ```
-**Tool:** `query_next` → "S = world"
+**Tool:** `query` → "S = world"
 
 - Convert between atom and string:
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
   "query": "atom_string(A, \"hello\")"
 }
 ```
-**Tool:** `query_next` → "A = hello"
+**Tool:** `query` → "A = hello"
 
 - Concatenate atoms (portable across SWI versions):
 
-**Tool:** `query_start`
+**Tool:** `query`
 ```json
 {
   "query": "atom_concat(\"hello\", \"_world\", S)"
 }
 ```
-**Tool:** `query_next` → "S = hello_world"
+**Tool:** `query` → "S = hello_world"
 
 ### Engine Mode Equivalents
 
@@ -576,6 +623,7 @@ Example: enumerate even numbers with an engine session.
 1) Start engine
 ```json
 {
+  "operation": "start",
   "query": "(between(1,10,X), 0 is X mod 2)"
 }
 ```

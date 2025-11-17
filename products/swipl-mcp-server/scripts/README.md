@@ -26,7 +26,7 @@ node scripts/mcp_quickcheck.mjs
 
 **Expected output:**
 ```
-TOOLS: knowledge_base_load, knowledge_base_assert, knowledge_base_assert_many, ...
+TOOLS: query, capabilities, clauses, files, workspace, explain_error
 ```
 
 ### mcp_prolog_demo.mjs
@@ -50,15 +50,15 @@ node scripts/mcp_prolog_demo.mjs
 ```
 === Connecting to MCP server ===
 === Listing tools ===
-knowledge_base_load, knowledge_base_assert, ...
+query, capabilities, clauses, files, workspace, explain_error
 
-=== tools/call: knowledge_base_assert_many ===
-✅ Successfully asserted 5 clauses
+=== tools/call: clauses ===
+✅ Successfully asserted 8 clauses
 
-=== tools/call: query_start ===
+=== tools/call: query ===
 Query started successfully (ID: 1)
 
-=== tools/call: query_next ===
+=== tools/call: query ===
 Solution 1: parent(john, mary)
 ...
 ```

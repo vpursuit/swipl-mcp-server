@@ -22,38 +22,29 @@ import { resolvePackageVersion } from "./meta.js";
  * - roots_list: List filesystem roots for path validation
  *
  * FROM @vpursuit/mcp-server-prolog:
- * - knowledge_base_load: Load Prolog files
- * - knowledge_base_load_library: Load safe Prolog library
- * - knowledge_base_assert: Add facts/rules
- * - knowledge_base_assert_many: Batch add facts/rules
- * - knowledge_base_retract: Remove facts/rules
- * - knowledge_base_retract_many: Batch remove facts/rules
- * - knowledge_base_clear: Clear knowledge base
- * - knowledge_base_dump: Export knowledge base
- * - query_start: Start query session (call_nth/2 mode)
- * - query_startEngine: Start query session (engine mode)
- * - query_next: Get next solution
- * - query_close: Close query session
- * - symbols_list: List predicates
- * - capabilities: Get capabilities summary
- * - help: Get usage guidelines
- * - license: Get license text
+ * - query: Unified tool to start queries, get next solutions, and close query sessions
+ * - capabilities: Get machine-readable capabilities summary
+ * - clauses: Unified tool to assert or retract facts/rules (with source preservation)
+ * - files: Import/unimport Prolog files with provenance tracking
+ * - workspace: Manage workspace snapshots and list predicates
+ * - explain_error: Analyze and explain Prolog errors using domain expertise
  *
  * RESOURCES:
- * - prolog://knowledge_base/predicates
- * - prolog://knowledge_base/dump
- * - reference://help
- * - reference://license
- * - reference://logo
- * - reference://capabilities
+ * - mcp://workspace/symbols: List all predicates in workspace
+ * - mcp://workspace/snapshot: Export workspace with original source text
+ * - mcp://server/branding/logo: Server logo (SVG)
+ * - mcp://server/capabilities: Capabilities summary (JSON)
+ *
+ * LICENSING:
+ * - MCP server wrapper: BSD-3-Clause (see LICENSE file in package)
+ * - SWI-Prolog: Separate license (see https://www.swi-prolog.org/license.html)
+ * - This wrapper does not license SWI-Prolog - users must install separately
  *
  * PROMPTS:
- * - prolog_init_expert: Initialize expert Prolog context
- * - prolog_quick_reference: Get quick reference
- * - prolog_analyze_knowledge_base: Analyze knowledge base
- * - prolog_knowledge_base_builder: Build knowledge base from requirements
- * - prolog_query_optimizer: Optimize query performance
- * - prolog_logic_puzzle_solver: Solve logic puzzles using CLP(FD)
+ * - genealogy: Build and query family trees using relational logic
+ * - scheduling: Schedule tasks with dependencies using CLP(FD)
+ * - puzzle: Solve logic puzzles using constraint programming
+ * - grammar: Parse natural language using Definite Clause Grammars (DCGs)
  */
 
 /**
