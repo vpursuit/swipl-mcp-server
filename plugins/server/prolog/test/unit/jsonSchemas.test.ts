@@ -59,8 +59,7 @@ describe("JSON Schemas (MCP registration)", () => {
       const clauses = jsonSchemas.clauses as any;
       expect(clauses.type).toBe("object");
       expect(clauses.required).toEqual(["operation"]);
-      expect(clauses.properties.operation.enum).toEqual(["assert", "retract", "clear"]);
-      // clauses parameter is optional (not required for 'clear' operation)
+      expect(clauses.properties.operation.enum).toEqual(["assert", "retract"]);
       expect(clauses.properties.clauses).toBeDefined();
     });
   });

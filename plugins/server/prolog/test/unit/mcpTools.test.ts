@@ -99,13 +99,6 @@ describe("MCP Tools - Refactored API", () => {
         }
       });
 
-      it("should validate clear operation without clauses", () => {
-        const validInput = { operation: "clear" };
-        const result = ClausesInputSchema.safeParse(validInput);
-
-        expect(result.success).toBe(true);
-      });
-
       it("should reject missing operation", () => {
         const invalidInput = { clauses: "test" };
         const result = ClausesInputSchema.safeParse(invalidInput);

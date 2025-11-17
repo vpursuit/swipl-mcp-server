@@ -423,39 +423,13 @@ export const tools: ToolDefinitions = {
 
   clauses: {
     title: "Manage Clauses",
-    description: "Unified tool to assert, retract, or clear facts/rules in knowledge base. Preserves source formatting and variable names. Use 'assert' to add facts/rules (single or batch), 'retract' to remove matching facts/rules, 'clear' to remove all facts/rules.",
+    description: "Assert or retract facts/rules in knowledge base. Preserves source formatting and variable names. Use 'assert' to add facts/rules (single or batch), 'retract' to remove matching facts/rules. To reset entire workspace, use workspace tool's 'reset' operation.",
     inputSchema: clausesSchema,
     handler: async (
-      { operation, clauses }: { operation: "assert" | "retract" | "clear"; clauses?: string | string[] },
+      { operation, clauses }: { operation: "assert" | "retract"; clauses?: string | string[] },
       _extra
     ): Promise<CallToolResult> => {
       const startTime = Date.now();
-
-      // Handle clear operation (no clauses needed)
-      if (operation === "clear") {
-        try {
-          await prologInterface.start();
-          await prologInterface.clearWorkspaceWithSource();
-          const processingTimeMs = Date.now() - startTime;
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Knowledge base cleared\nProcessing time: ${processingTimeMs}ms`,
-              },
-            ],
-            structuredContent: {
-              operation: "clear",
-              processing_time_ms: processingTimeMs,
-            },
-          };
-        } catch (error) {
-          return createErrorResponse(
-            error instanceof Error ? error.message : String(error),
-            startTime
-          );
-        }
-      }
 
       // For assert/retract, clauses parameter is required
       if (!clauses) {
@@ -644,18 +618,19 @@ export const tools: ToolDefinitions = {
             );
           }
 
-          const clausesRemoved = await prologInterface.unimportFile(filename);
+          const result = await prologInterface.unimportFile(filename);
           const processingTimeMs = Date.now() - startTime;
 
           return {
             content: [{
               type: "text",
-              text: `Successfully unimported file: ${filename}\nClauses removed: ${clausesRemoved}\nProcessing time: ${processingTimeMs}ms`
+              text: `Successfully unimported file: ${filename}\nClauses removed: ${result.clausesRemoved}\nProcessing time: ${processingTimeMs}ms`
             }],
             structuredContent: {
               operation: "unimport",
               file: filename,
-              clauses_removed: clausesRemoved,
+              success: result.success,
+              clauses_removed: result.clausesRemoved,
               processing_time_ms: processingTimeMs
             },
             isError: false
@@ -700,7 +675,7 @@ export const tools: ToolDefinitions = {
 
   workspace: {
     title: "Manage Workspace",
-    description: "Workspace introspection and management. 'snapshot' gets original source text of all asserted clauses, 'reset' removes all facts/rules from workspace, 'list_symbols' lists all user-defined predicates.",
+    description: "Workspace introspection and management. 'snapshot' gets original source text with preserved formatting and variable names, 'reset' performs FULL workspace reset (removes all Prolog facts/rules, clears all source storage, clears file import history and provenance tracking), 'list_symbols' lists all user-defined predicates.",
     inputSchema: workspaceSchema,
     handler: async (
       { operation }: {
@@ -940,3 +915,8 @@ export { prologInterface };
 
 // Re-export schemas for backward compatibility with tests
 export { zodSchemas as inputSchemas, jsonSchemas } from "./schemas.js";
+
+/**
+ * Array of available tool names for programmatic access
+ */
+export const toolNames = Object.keys(tools) as Array<keyof typeof tools>;

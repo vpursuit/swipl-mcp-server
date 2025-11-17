@@ -39,7 +39,7 @@ maybeDescribe("Module Predicates Resource", () => {
             pending.delete(msg.id);
             resolve(msg);
           }
-        } catch {}
+        } catch { }
       }
     });
 
@@ -67,15 +67,18 @@ maybeDescribe("Module Predicates Resource", () => {
   }, 60000);
 
   afterAll(async () => {
-    try { child?.kill("SIGTERM"); } catch {}
+    try { child?.kill("SIGTERM"); } catch { }
     child = null;
   });
 
   test("lists predicates for knowledge_base module", async () => {
     // Add a known predicate
     const assertResp = await send("tools/call", {
-      name: "knowledge_base_assert",
-      arguments: { fact: "parent(alice, bob)" }
+      name: "clauses",
+      arguments: {
+        operation: "assert",
+        clauses: "parent(alice, bob)"
+      }
     });
     console.log("Assert response:", JSON.stringify(assertResp, null, 2));
 
@@ -84,7 +87,7 @@ maybeDescribe("Module Predicates Resource", () => {
       console.warn("Assertion failed, but continuing test to check resource...");
     }
 
-    const readResp = await send("resources/read", { uri: "prolog://knowledge_base/predicates" });
+    const readResp = await send("resources/read", { uri: "mcp://workspace/symbols" });
     console.log("Read response:", JSON.stringify(readResp, null, 2));
 
     // Extract text from MCP SDK ReadResourceResult format (contents array)

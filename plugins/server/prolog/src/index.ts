@@ -13,7 +13,7 @@ import { serverRef, logger } from "./logger.js";
 
 // Re-export tools, resources, and prompts for direct access
 export { tools, resources, prologPrompts };
-export { prologInterface, toolHandlers, getCapabilitiesSummary } from "./tools.js";
+export { prologInterface, toolHandlers, toolNames, getCapabilitiesSummary } from "./tools.js";
 export { PrologInterface } from "./PrologInterface.js";
 export { zodSchemas, jsonSchemas } from "./schemas.js";
 export { serverRef, logger } from "./logger.js";
@@ -60,12 +60,12 @@ function convertPromptsToDefinitions(): PromptDefinitions {
  * - explain_error: Analyze and explain Prolog errors using domain expertise
  *
  * RESOURCES:
- * - prolog://knowledge_base/predicates: List predicates in knowledge_base module
- * - prolog://knowledge_base/dump: Export current knowledge base
- * - reference://help: Usage guidelines
- * - reference://license: License text
- * - reference://logo: Server logo (SVG)
- * - reference://capabilities: Capabilities summary (JSON)
+ * - mcp://workspace/symbols: List predicates in workspace
+ * - mcp://workspace/snapshot: Export workspace with original source text
+ * - mcp://server/branding/logo: Server logo (SVG)
+ * - mcp://server/capabilities: Capabilities summary (JSON)
+ *
+ * Note: LICENSE file included in npm package. See README for details.
  *
  * PROMPTS:
  * - genealogy: Build and query family trees using relational logic
