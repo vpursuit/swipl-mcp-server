@@ -36,15 +36,15 @@ export const querySchema = {
 
 export const clausesSchema = {
   operation: z
-    .enum(["assert", "retract", "clear"])
+    .enum(["assert", "retract"])
     .describe(
-      "Clause operation: 'assert' adds facts/rules to KB with source preservation, 'retract' removes matching facts/rules, 'clear' removes all facts/rules",
+      "Clause operation: 'assert' adds facts/rules to KB with source preservation, 'retract' removes matching facts/rules. Use workspace tool's 'reset' operation to clear entire workspace.",
     ),
   clauses: z
     .union([z.string(), z.array(z.string())])
     .optional()
     .describe(
-      "Single Prolog clause or array of clauses. Required for 'assert' and 'retract' operations (ignored for 'clear'). Accepts facts: 'parent(john, mary)' or rules: 'ancestor(X,Y) :- parent(X,Y)'. Periods optional. Source text preserved with original variable names.",
+      "Single Prolog clause or array of clauses. Required for 'assert' and 'retract' operations. Accepts facts: 'parent(john, mary)' or rules: 'ancestor(X,Y) :- parent(X,Y)'. Periods optional. Source text preserved with original variable names.",
     ),
 } as const;
 
@@ -66,7 +66,7 @@ export const workspaceSchema = {
   operation: z
     .enum(["snapshot", "reset", "list_symbols"])
     .describe(
-      "Workspace operation: 'snapshot' gets original source text of all asserted clauses, 'reset' removes all facts/rules, 'list_symbols' lists all user-defined predicates",
+      "Workspace operation: 'snapshot' gets original source text with preserved formatting, 'reset' performs FULL workspace reset (removes all facts/rules, clears source storage, clears file import history), 'list_symbols' lists all user-defined predicates",
     ),
 } as const;
 

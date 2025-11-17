@@ -26,25 +26,31 @@ function formatPrologList(s: string): string {
 }
 
 /**
- * Prolog MCP Resources
+ * MCP Resources
  *
- * These resources provide read-only access to:
- * 1. Knowledge base state (predicates, full dump)
- * 2. Server documentation (help, license)
- * 3. Server metadata (capabilities, logo)
+ * Unified mcp:// URI scheme with hierarchical structure:
+ * - mcp://workspace/* - Current workspace state (mutable)
+ * - mcp://server/* - Server metadata (mostly static)
+ *
+ * Provides read-only access to:
+ * 1. Workspace state (symbols, snapshot)
+ * 2. Server metadata (capabilities, branding)
+ *
+ * Note: Software license is in LICENSE file (included in npm package).
  */
 export const resources: ResourceDefinitions = {
   /**
-   * List all predicates defined in the knowledge_base module
+   * List all predicates defined in the workspace
    */
-  "knowledge-base-predicates": {
-    uri: "prolog://knowledge_base/predicates",
-    name: "Knowledge Base Predicates",
-    description: "List all user-defined predicates in knowledge_base module with arity",
+  "workspace-symbols": {
+    uri: "mcp://workspace/symbols",
+    name: "Workspace Symbols",
+    description: "List all user-defined predicates in the workspace",
     mimeType: "text/plain",
     handler: async (uri, _extra): Promise<ReadResourceResult> => {
       await prologInterface.start();
-      const preds = await prologInterface.query("list_module_predicates(knowledge_base)");
+      // Use same query as workspace tool's list_symbols operation
+      const preds = await prologInterface.query("list_predicates");
       const text = formatPrologList(preds);
 
       return {
@@ -58,32 +64,10 @@ export const resources: ResourceDefinitions = {
   },
 
   /**
-   * Export current knowledge base as Prolog clauses
-   */
-  "knowledge-base-dump": {
-    uri: "prolog://knowledge_base/dump",
-    name: "Knowledge Base Dump",
-    description: "Export all user-defined facts and rules as Prolog source text",
-    mimeType: "text/prolog",
-    handler: async (uri, _extra): Promise<ReadResourceResult> => {
-      await prologInterface.start();
-      const dump = await prologInterface.query("dump_knowledge_base");
-
-      return {
-        contents: [{
-          uri: uri.toString(),
-          mimeType: "text/prolog",
-          text: dump,
-        }]
-      };
-    },
-  },
-
-  /**
    * Get workspace snapshot with original source text
    */
   "workspace-snapshot": {
-    uri: "prolog://workspace/snapshot",
+    uri: "mcp://workspace/snapshot",
     name: "Workspace Snapshot",
     description: "Get workspace snapshot containing original source text with preserved formatting and variable names",
     mimeType: "text/prolog",
@@ -102,60 +86,10 @@ export const resources: ResourceDefinitions = {
   },
 
   /**
-   * Usage guidelines and tips for this server
-   */
-  "help": {
-    uri: "reference://help",
-    name: "Help",
-    description: "Usage guidelines and reference documentation",
-    mimeType: "text/plain",
-    handler: async (uri, _extra): Promise<ReadResourceResult> => {
-      const res = await tools.help.handler({}, _extra);
-      const firstContent = res.content[0];
-      const text = (firstContent && firstContent.type === "text"
-        ? firstContent.text
-        : "Help unavailable") as string;
-
-      return {
-        contents: [{
-          uri: uri.toString(),
-          mimeType: "text/plain",
-          text,
-        }]
-      };
-    },
-  },
-
-  /**
-   * License text for this software
-   */
-  "license": {
-    uri: "reference://license",
-    name: "License",
-    description: "Software license text (BSD 3-Clause)",
-    mimeType: "text/plain",
-    handler: async (uri, _extra): Promise<ReadResourceResult> => {
-      const res = await tools.license.handler({}, _extra);
-      const firstContent = res.content[0];
-      const text = (firstContent && firstContent.type === "text"
-        ? firstContent.text
-        : "License unavailable") as string;
-
-      return {
-        contents: [{
-          uri: uri.toString(),
-          mimeType: "text/plain",
-          text,
-        }]
-      };
-    },
-  },
-
-  /**
    * Official swipl-mcp-server logo (SVG)
    */
   "logo": {
-    uri: "reference://logo",
+    uri: "mcp://server/branding/logo",
     name: "Server Logo",
     description: "Server logo image in SVG format",
     mimeType: "image/svg+xml",
@@ -187,8 +121,8 @@ export const resources: ResourceDefinitions = {
    * Machine-readable summary of tools, modes, environment, and safety features
    */
   "capabilities": {
-    uri: "reference://capabilities",
-    name: "Capabilities",
+    uri: "mcp://server/capabilities",
+    name: "Server Capabilities",
     description: "Machine-readable summary of tools, query modes, environment, and security model",
     mimeType: "application/json",
     handler: async (uri, _extra): Promise<ReadResourceResult> => {
