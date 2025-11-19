@@ -1,100 +1,27 @@
 /**
  * Generic MCP sampling client utilities
+ *
+ * Refactored to use SamplingProvider abstraction instead of direct McpServer access.
+ * This follows proper MCP protocol where servers request sampling from clients via callbacks.
  */
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { SamplingProvider } from "./provider.js";
 import type { SamplingRequestOptions, SamplingResult } from "./types.js";
+import { samplingLogger } from "./logger.js";
 
 /**
- * Check if MCP server reference is available
- */
-export function isServerAvailable(serverRef: { current: McpServer | null }): boolean {
-  return serverRef.current !== null;
-}
-
-/**
- * Check if sampling capability is supported by the client
- */
-export function isSamplingSupported(server: McpServer): boolean {
-  try {
-    // Check if the server has the createMessage method
-    return typeof (server as any).createMessage === "function";
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Create a sampling request to the MCP client
- */
-export async function createSamplingRequest(
-  server: McpServer,
-  options: SamplingRequestOptions
-): Promise<SamplingResult> {
-  try {
-    // Build the request parameters
-    const requestParams: any = {
-      messages: options.messages,
-      maxTokens: options.maxTokens,
-    };
-
-    // Add optional parameters
-    if (options.systemPrompt) {
-      requestParams.systemPrompt = options.systemPrompt;
-    }
-
-    if (options.includeContext) {
-      requestParams.includeContext = options.includeContext;
-    }
-
-    if (options.modelPreferences) {
-      requestParams.modelPreferences = options.modelPreferences;
-    }
-
-    if (options.temperature !== undefined) {
-      requestParams.temperature = options.temperature;
-    }
-
-    if (options.metadata) {
-      requestParams.metadata = options.metadata;
-    }
-
-    // Make the sampling request
-    const response = await (server as any).createMessage(requestParams);
-
-    // Extract text from response
-    let text = "";
-    if (response.content) {
-      if (response.content.type === "text") {
-        text = response.content.text || "";
-      } else if (Array.isArray(response.content)) {
-        // Handle array of content blocks
-        text = response.content
-          .filter((block: any) => block.type === "text")
-          .map((block: any) => block.text || "")
-          .join("\n");
-      }
-    }
-
-    return {
-      success: true,
-      text,
-      model: response.model,
-      stopReason: response.stopReason,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
-
-/**
- * Create a simple text-based sampling request
+ * Create a simple text-based sampling request using a SamplingProvider
+ *
+ * This is a convenience function that wraps a text prompt into a proper
+ * sampling request format and delegates to the provider.
+ *
+ * @param provider - The sampling provider to use (callback-based or no-op)
+ * @param prompt - The text prompt to send to the LLM
+ * @param options - Additional sampling options
+ * @returns Promise resolving to sampling result
  */
 export async function requestTextCompletion(
-  server: McpServer,
+  provider: SamplingProvider,
   prompt: string,
   options: {
     systemPrompt?: string;
@@ -104,7 +31,17 @@ export async function requestTextCompletion(
     modelPreferences?: SamplingRequestOptions["modelPreferences"];
   } = {}
 ): Promise<SamplingResult> {
-  return createSamplingRequest(server, {
+  samplingLogger.debug("Creating text completion request");
+
+  if (!provider.isAvailable()) {
+    samplingLogger.warn("Sampling provider not available");
+    return {
+      success: false,
+      error: "Sampling provider is not available",
+    };
+  }
+
+  const samplingOptions: SamplingRequestOptions = {
     messages: [
       {
         role: "user",
@@ -117,11 +54,27 @@ export async function requestTextCompletion(
     systemPrompt: options.systemPrompt,
     maxTokens: options.maxTokens || 2000,
     temperature: options.temperature,
-    includeContext: options.includeContext || "thisServer",
+    // Use "none" for includeContext since domain-specific context (e.g., Prolog KB)
+    // is already included in the prompt text. The LLM doesn't need to see the list
+    // of MCP server tools/resources/prompts for error explanation tasks.
+    includeContext: options.includeContext || "none",
     modelPreferences: options.modelPreferences || {
       intelligencePriority: 0.8,
       speedPriority: 0.5,
       costPriority: 0.5,
     },
-  });
+  };
+
+  const result = await provider.requestSampling(samplingOptions);
+
+  if (result.success) {
+    samplingLogger.debug("Sampling succeeded", {
+      textLength: result.text?.length,
+      model: result.model,
+    });
+  } else {
+    samplingLogger.error("Sampling failed:", result.error);
+  }
+
+  return result;
 }

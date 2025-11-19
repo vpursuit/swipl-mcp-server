@@ -1,5 +1,5 @@
 {
-  "name": "@vpursuit/mcp-client-host",
+  "name": "@vpursuit/mcp-client-core",
   "version": "1.0.0",
   "description": "Generic MCP client library for connecting to Model Context Protocol servers",
   "type": "module",
@@ -17,7 +17,9 @@
   ],
   "scripts": {
     "build": "tsc --build",
-    "clean": "rm -rf dist *.tsbuildinfo"
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "mcp",
@@ -33,7 +35,8 @@
   },
   "devDependencies": {
     "@types/node": "^24.9.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.0.5"
   },
   "engines": {
     "node": ">=18.0.0"

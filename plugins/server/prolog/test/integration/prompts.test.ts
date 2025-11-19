@@ -28,9 +28,6 @@ function createTestServer() {
     }),
     puzzle: z.object({
       puzzle: z.string().optional()
-    }),
-    grammar: z.object({
-      sentence: z.string().optional()
     })
   };
 
@@ -38,8 +35,7 @@ function createTestServer() {
   const promptSchemaMap: Record<string, string> = {
     "genealogy": "genealogy",
     "scheduling": "scheduling",
-    "puzzle": "puzzle",
-    "grammar": "grammar"
+    "puzzle": "puzzle"
   };
 
   const registeredPrompts: string[] = [];
@@ -79,11 +75,10 @@ describe("Prompts Integration", () => {
     test("should register all prompts without errors", () => {
       expect(() => {
         const { server: _server, registeredPrompts } = createTestServer();
-        expect(registeredPrompts).toHaveLength(4);
+        expect(registeredPrompts).toHaveLength(3);
         expect(registeredPrompts).toContain("genealogy");
         expect(registeredPrompts).toContain("scheduling");
         expect(registeredPrompts).toContain("puzzle");
-        expect(registeredPrompts).toContain("grammar");
       }).not.toThrow();
     });
 
@@ -92,8 +87,7 @@ describe("Prompts Integration", () => {
       const expectedSchemas = [
         "genealogy",
         "scheduling",
-        "puzzle",
-        "grammar"
+        "puzzle"
       ];
 
       for (const schemaName of expectedSchemas) {
@@ -114,7 +108,6 @@ describe("Prompts Integration", () => {
       expect(prompts.domain_examples).toContain("genealogy");
       expect(prompts.domain_examples).toContain("scheduling");
       expect(prompts.domain_examples).toContain("puzzle");
-      expect(prompts.domain_examples).toContain("grammar");
     });
 
     test("capabilities should maintain other sections with prompts added", () => {
@@ -177,8 +170,7 @@ describe("Prompts Integration", () => {
       const schemaNames = [
         "genealogy",
         "scheduling",
-        "puzzle",
-        "grammar"
+        "puzzle"
       ];
 
       for (const schemaName of schemaNames) {
@@ -186,8 +178,8 @@ describe("Prompts Integration", () => {
         expect(schema).toBeDefined();
 
         // Genealogy and scheduling have required args
-        // Puzzle and grammar have optional args
-        if (schemaName === "puzzle" || schemaName === "grammar") {
+        // Puzzle has optional args
+        if (schemaName === "puzzle") {
           expect(() => schema.parse({})).not.toThrow();
         }
       }
@@ -198,8 +190,7 @@ describe("Prompts Integration", () => {
       const testCases = [
         { schema: "genealogy", validArgs: { family_info: "John is Mary's father" } },
         { schema: "scheduling", validArgs: { tasks: "Task1 (5 days), Task2 (3 days) depends on Task1" } },
-        { schema: "puzzle", validArgs: { puzzle: "test puzzle" } },
-        { schema: "grammar", validArgs: { sentence: "the cat sat on the mat" } }
+        { schema: "puzzle", validArgs: { puzzle: "test puzzle" } }
       ];
 
       for (const { schema, validArgs } of testCases) {
@@ -213,14 +204,10 @@ describe("Prompts Integration", () => {
     test("optional arguments should work correctly", () => {
       const { testSchemas } = createTestServer();
 
-      // Puzzle and grammar have optional args
+      // Puzzle has optional args
       const puzzleSchema = testSchemas.puzzle;
       expect(() => puzzleSchema.parse({})).not.toThrow();
       expect(() => puzzleSchema.parse({ puzzle: "test" })).not.toThrow();
-
-      const grammarSchema = testSchemas.grammar;
-      expect(() => grammarSchema.parse({})).not.toThrow();
-      expect(() => grammarSchema.parse({ sentence: "test sentence" })).not.toThrow();
     });
   });
 
@@ -292,23 +279,14 @@ describe("Prompts Integration", () => {
       expect(messagesWith[0].content.text).not.toContain("3 interesting");
     });
 
-    test("grammar prompt should focus on DCG parsing", () => {
-      const prompt = prologPrompts.grammar;
-      const messages = prompt.messages({ sentence: "test sentence" });
-
-      const text = messages[0].content.text.toLowerCase();
-      expect(text).toContain("dcg");
-      expect(text).toContain("phrase");
-      expect(text).toContain("parse");
-    });
   });
 
   describe("MCP Protocol Compliance", () => {
     test("schemas with optional fields should validate empty object", () => {
       const { testSchemas } = createTestServer();
 
-      // Puzzle and grammar have optional fields
-      for (const schemaName of ["puzzle", "grammar"]) {
+      // Puzzle has optional fields
+      for (const schemaName of ["puzzle"]) {
         const schema = (testSchemas as any)[schemaName];
 
         // Should accept empty object (all fields are optional)

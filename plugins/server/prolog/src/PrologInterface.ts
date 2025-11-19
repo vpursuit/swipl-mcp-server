@@ -877,7 +877,18 @@ export class PrologInterface {
   }
 
   /**
-   * Consult (load) a Prolog file
+   * Consult (load) a Prolog file - legacy implementation without source tracking
+   *
+   * @deprecated Use importFileWithSource() instead. This method will be removed in a future version.
+   *
+   * Limitations compared to importFileWithSource():
+   * - Does not preserve variable names or original source formatting
+   * - No provenance tracking (can't tell which file added which clauses)
+   * - Cannot selectively unimport files
+   * - No snapshot capability
+   * - Allows duplicate file loading
+   *
+   * This method is kept only for backward compatibility in stress/security tests.
    */
   async consultFile(filename: string): Promise<string> {
     const absolutePath = path.resolve(filename);
@@ -1727,6 +1738,183 @@ export class PrologInterface {
   }
 
   /**
+   * Parse a Prolog list string into individual terms
+   * Handles nested structures and quoted strings
+   */
+  private parseTermList(listStr: string): string[] {
+    const terms: string[] = [];
+    let current = '';
+    let depth = 0;
+    let inQuotes = false;
+    let escape = false;
+
+    for (let i = 0; i < listStr.length; i++) {
+      const char = listStr[i];
+
+      if (escape) {
+        current += char;
+        escape = false;
+        continue;
+      }
+
+      if (char === '\\' && inQuotes) {
+        current += char;
+        escape = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inQuotes = !inQuotes;
+        current += char;
+        continue;
+      }
+
+      if (!inQuotes) {
+        if (char === '(' || char === '[') {
+          depth++;
+        } else if (char === ')' || char === ']') {
+          depth--;
+        } else if (char === ',' && depth === 0) {
+          // End of term
+          if (current.trim()) {
+            terms.push(current.trim());
+          }
+          current = '';
+          continue;
+        }
+      }
+
+      current += char;
+    }
+
+    // Add last term
+    if (current.trim()) {
+      terms.push(current.trim());
+    }
+
+    return terms;
+  }
+
+  /**
+   * Parse Prolog file using Prolog's native parser
+   * Returns structured data with original variable names preserved
+   *
+   * @param filename - Absolute path to .pl file
+   * @returns Array of clause data or error
+   */
+  private async parseFileWithProlog(filename: string): Promise<{
+    success: boolean;
+    clauses?: Array<{
+      sourceText: string;
+      varNames: Array<[string, any]>;
+      singletons: string[];
+      lineNumber: number;
+    }>;
+    errors?: string[];
+  }> {
+    const absolutePath = path.resolve(filename);
+
+    try {
+      // Send parse command to Prolog
+      const result = await this.sendCommand(`parse_file("${absolutePath.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}")`);
+
+      // Check if it's an error response
+      if (result.startsWith('error(')) {
+        // Parse error message
+        const errorMatch = result.match(/error\(([^)]+)\)/);
+        const errorMsg = errorMatch ? errorMatch[1] : 'Unknown parsing error';
+        return {
+          success: false,
+          errors: [errorMsg]
+        };
+      }
+
+      // Parse success response - expecting success([...])
+      if (result.startsWith('success(')) {
+        const clauses: Array<{
+          sourceText: string;
+          varNames: Array<[string, any]>;
+          singletons: string[];
+          lineNumber: number;
+        }> = [];
+
+        const errors: string[] = [];
+
+        // Extract the list from success(List)
+        const listMatch = result.match(/success\(\[(.*)\]\)$/s);
+        if (!listMatch) {
+          return {
+            success: false,
+            errors: ['Invalid response format from Prolog parser']
+          };
+        }
+
+        // Parse the clause list - this is a simplified parser
+        // In production, we'd want a more robust Prolog term parser
+        const clauseListStr = listMatch[1];
+
+        // Parse the clause list more carefully
+        // Each clause is in format: clause(SourceText, VarNames, Singletons, LineNum)
+        // We need a more robust parser that handles escaped quotes and nested structures
+
+        const clauses_raw = this.parseTermList(clauseListStr);
+
+        for (const term of clauses_raw) {
+          // Simple parsing for clause terms
+          if (term.startsWith('clause(')) {
+            // Extract components manually - this is still simplified
+            const parts = term.substring(7, term.length - 1); // Remove 'clause(' and ')'
+
+            // Find the source text (first quoted string)
+            const sourceMatch = parts.match(/^"([^"\\]*(\\.[^"\\]*)*)"/);
+            if (!sourceMatch) continue;
+
+            const sourceText = sourceMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+
+            // For MVP, we'll just use empty arrays for varNames and singletons
+            // since the complex parsing is error-prone
+            clauses.push({
+              sourceText,
+              varNames: [],
+              singletons: [],
+              lineNumber: 0
+            });
+          } else if (term.startsWith('error(')) {
+            const errorMatch = term.match(/error\("([^"\\]*(\\.[^"\\]*)*)"\)/);
+            if (errorMatch) {
+              errors.push(errorMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\'));
+            }
+          }
+        }
+
+        // Check for error entries (using regex to catch any we might have missed)
+        const errorPattern = /error\("([^"\\]*(\\.[^"\\]*)*)"\)/g;
+        let errorRegexMatch;
+        while ((errorRegexMatch = errorPattern.exec(clauseListStr)) !== null) {
+          errors.push(errorRegexMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\'));
+        }
+
+        return {
+          success: errors.length === 0,
+          clauses,
+          errors: errors.length > 0 ? errors : undefined
+        };
+      }
+
+      return {
+        success: false,
+        errors: ['Unexpected response format from Prolog parser']
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        errors: [String(error)]
+      };
+    }
+  }
+
+  /**
    * Import .pl file with provenance tracking
    * Prevents duplicate imports and tracks which file added which clauses
    *
@@ -1755,20 +1943,40 @@ export class PrologInterface {
       };
     }
 
-    // Parse file to clause strings (preserving variable names)
-    // Directives are skipped - libraries should be pre-configured
-    const clauses = await this.parseFileToStringArray(filename);
+    // Parse file using Prolog parser
+    const parseResult = await this.parseFileWithProlog(filename);
+
+    // Return early only if there are NO clauses at all
+    if (!parseResult.clauses || parseResult.clauses.length === 0) {
+      return {
+        success: false,
+        clausesAdded: 0,
+        errors: parseResult.errors || ['Unknown parsing error']
+      };
+    }
 
     let clausesAdded = 0;
     const errors: string[] = [];
 
+    // Include parse errors from the parser
+    if (parseResult.errors && parseResult.errors.length > 0) {
+      errors.push(...parseResult.errors);
+    }
+
     // Assert each clause with source tracking
-    for (const clause of clauses) {
-      const result = await this.assertClauseWithSource(clause, 'file', filename);
+    for (const clauseData of parseResult.clauses) {
+      const result = await this.assertClauseWithSource(
+        clauseData.sourceText,
+        'file',
+        filename
+      );
+
       if (result.success) {
         clausesAdded++;
+        // Optional: Could store clauseData.varNames, singletons in future
+        // for enhanced error messages and debugging
       } else {
-        errors.push(`Failed to assert: ${clause.substring(0, 50)}... - ${result.error}`);
+        errors.push(`Failed to assert: ${clauseData.sourceText.substring(0, 50)}... - ${result.error}`);
       }
     }
 

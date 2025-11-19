@@ -1,10 +1,14 @@
 /**
  * Generic framework for error explanation using MCP sampling
+ *
+ * Refactored to use SamplingProvider abstraction for proper protocol compliance.
  */
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ErrorExplanation, ErrorExplanationRequest } from "./types.js";
-import { requestTextCompletion, isSamplingSupported } from "./samplingClient.js";
+import type { SamplingProvider } from "./provider.js";
+import type { ErrorExplanation, ErrorExplanationRequest, ErrorExplanationResult } from "./types.js";
+import { requestTextCompletion } from "./samplingClient.js";
+import { toSamplingError } from "./errors.js";
+import { samplingLogger } from "./logger.js";
 
 /**
  * Abstract base class for domain-specific error explainers
@@ -127,28 +131,46 @@ export abstract class ErrorExplainerBase {
   }
 
   /**
-   * Explain an error using MCP sampling
-   * Public method for calling from tool handlers
+   * Explain an error using MCP sampling via a SamplingProvider
+   *
+   * This method now returns a structured result with detailed error information
+   * instead of null, enabling better error handling and debugging.
+   *
+   * @param provider - The sampling provider (callback-based or no-op)
+   * @param request - Error explanation request with context
+   * @returns Promise resolving to structured result (success or error with details)
    */
   async explainError(
-    server: McpServer,
+    provider: SamplingProvider,
     request: ErrorExplanationRequest
-  ): Promise<ErrorExplanation | null> {
-    // Check if sampling is supported
-    if (!isSamplingSupported(server)) {
-      return null;
+  ): Promise<ErrorExplanationResult> {
+    samplingLogger.debug("Starting error explanation");
+
+    // Check if sampling is available
+    if (!provider.isAvailable()) {
+      samplingLogger.warn("Sampling provider not available for error explanation");
+      return {
+        success: false,
+        error: {
+          code: "SAMPLING_NOT_AVAILABLE",
+          message: "Sampling provider is not available - no client callback registered",
+        },
+        samplingUsed: false,
+      };
     }
 
     try {
       // Build the prompt
       const prompt = this.buildPrompt(request);
+      samplingLogger.debug("Built prompt, requesting LLM explanation");
 
       // Request explanation via sampling
-      const result = await requestTextCompletion(server, prompt, {
+      const result = await requestTextCompletion(provider, prompt, {
         systemPrompt: this.getSystemPrompt(),
         maxTokens: 2000,
         temperature: 0.2,  // Low temperature for accurate analysis
-        includeContext: "thisServer",
+        // Use "none" - domain context is in prompt, no need for MCP server capabilities
+        includeContext: "none",
         modelPreferences: {
           intelligencePriority: 0.9,  // High intelligence for domain expertise
           speedPriority: 0.5,
@@ -156,15 +178,51 @@ export abstract class ErrorExplainerBase {
         },
       });
 
-      if (!result.success || !result.text) {
-        return null;
+      if (!result.success) {
+        samplingLogger.error("LLM sampling failed:", result.error);
+        return {
+          success: false,
+          error: {
+            code: "SAMPLING_FAILED",
+            message: result.error || "Sampling request failed with unknown error",
+          },
+          samplingUsed: true,
+        };
+      }
+
+      if (!result.text) {
+        samplingLogger.warn("LLM returned empty response");
+        return {
+          success: false,
+          error: {
+            code: "EMPTY_RESPONSE",
+            message: "Sampling succeeded but returned empty response",
+          },
+          samplingUsed: true,
+        };
       }
 
       // Parse the response
-      return this.parseExplanation(result.text);
+      samplingLogger.debug("Parsing LLM explanation");
+      const explanation = this.parseExplanation(result.text);
+
+      return {
+        success: true,
+        explanation,
+        samplingUsed: true,
+      };
     } catch (error) {
-      console.error("Error explanation failed:", error);
-      return null;
+      samplingLogger.error("Error during explanation:", error);
+      const samplingError = toSamplingError(error);
+      return {
+        success: false,
+        error: {
+          code: samplingError.code,
+          message: samplingError.message,
+          details: samplingError.details,
+        },
+        samplingUsed: true,
+      };
     }
   }
 }

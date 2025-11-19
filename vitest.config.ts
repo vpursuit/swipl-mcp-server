@@ -72,6 +72,16 @@ export default defineConfig({
           setupFiles: ['./products/swipl-mcp-server/test/setup.js'],
         },
       },
+      // MCP Host Client
+      {
+        test: {
+          name: 'mcp-client-core',
+          include: ['plugins/client/mcp-host/test/**/*.test.ts'],
+          environment: 'node',
+          globals: true,
+          testTimeout: 10000,
+        },
+      },
     ]
   }
 });

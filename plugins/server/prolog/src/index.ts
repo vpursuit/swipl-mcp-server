@@ -10,6 +10,10 @@ import { resources } from "./resources.js";
 import { prologPrompts } from "./prompts.js";
 import { prologInterface } from "./tools.js";
 import { serverRef, logger } from "./logger.js";
+import { samplingProviderRef, initializeSamplingProvider } from "./samplingProvider.js";
+
+// Re-export sampling provider reference for testing
+export { samplingProviderRef };
 
 // Re-export tools, resources, and prompts for direct access
 export { tools, resources, prologPrompts };
@@ -71,7 +75,6 @@ function convertPromptsToDefinitions(): PromptDefinitions {
  * - genealogy: Build and query family trees using relational logic
  * - scheduling: Schedule tasks with dependencies using CLP(FD)
  * - puzzle: Solve logic puzzles using constraint programming
- * - grammar: Parse natural language using Definite Clause Grammars (DCGs)
  *
  * SECURITY:
  * - File operations restricted to allowed directories
@@ -91,6 +94,9 @@ export const plugin: Plugin = {
   async onInit(server) {
     // Set server reference for MCP-aware logging
     serverRef.current = server;
+
+    // Initialize sampling provider for MCP protocol-based sampling
+    initializeSamplingProvider(server);
 
     logger.info("Initializing Prolog interface...");
 

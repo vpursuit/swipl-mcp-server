@@ -21,6 +21,7 @@ import type {
   CreateMessageResult,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { mcpHostLogger } from "./logger.js";
 
 // ============================================================================
 // Constants
@@ -32,7 +33,7 @@ export const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
 export const DEFAULT_TOOL_TIMEOUT_MS = 60000;
 export const DEFAULT_RESOURCE_TIMEOUT_MS = 30000;
 export const DEFAULT_CONFIG_FILE = "mcp-config.json";
-export const NAMESPACE_SEPARATOR = "::";
+export const NAMESPACE_SEPARATOR = ":";
 
 export const ERROR_CODES = {
   CONNECTION_FAILED: "CONNECTION_FAILED",
@@ -126,6 +127,11 @@ export interface SamplingRequest {
 export interface SamplingApproval {
   approved: boolean;
   reason?: string;
+  /**
+   * Optional LLM client to use for the sampling request.
+   * Should have OpenAI-compatible chat.completions.create() interface.
+   */
+  llmClient?: any;
 }
 
 export type SamplingApprovalCallback = (request: SamplingRequest) => Promise<SamplingApproval>;
@@ -684,10 +690,56 @@ export class OpenAIAdapter {
 export class SamplingHandler {
   constructor(
     private connections: Map<string, ServerConnection>,
-    private approvalCallback?: SamplingApprovalCallback
+    private approvalCallback?: SamplingApprovalCallback,
+    private timeoutMs: number = 60000
   ) {}
 
+  /**
+   * Convert MCP SamplingMessages to OpenAI chat format
+   */
+  private convertMcpMessagesToOpenAI(messages: SamplingMessage[]): Array<{ role: string; content: string }> {
+    return messages.map(msg => {
+      let content = "";
+
+      if (msg.content.type === "text") {
+        content = msg.content.text || "";
+      } else if (msg.content.type === "image") {
+        // For images, include metadata in text format
+        content = `[Image: ${msg.content.mimeType || "unknown"}]`;
+      } else {
+        // For other content types (audio, resource, etc.), convert to text representation
+        content = `[${msg.content.type}: ${JSON.stringify(msg.content)}]`;
+      }
+
+      return {
+        role: msg.role,
+        content,
+      };
+    });
+  }
+
+  /**
+   * Convert OpenAI completion response to MCP CreateMessageResult format
+   */
+  private convertOpenAIResponseToMcp(response: any): CreateMessageResult {
+    const choice = response.choices?.[0];
+    const message = choice?.message;
+    const content = message?.content || "";
+
+    return {
+      role: "assistant",
+      content: {
+        type: "text",
+        text: content,
+      },
+      model: response.model || "unknown",
+      stopReason: choice?.finish_reason || "unknown",
+    };
+  }
+
   async handleSamplingRequest(request: SamplingRequest): Promise<SamplingResult> {
+    // Get approval and LLM client
+    let llmClient: any;
     if (this.approvalCallback) {
       const approval = await this.approvalCallback(request);
       if (!approval.approved) {
@@ -697,8 +749,10 @@ export class SamplingHandler {
           request.serverName
         );
       }
+      llmClient = approval.llmClient;
     }
 
+    // Verify connection
     const connection = this.connections.get(request.serverName);
     if (!connection || connection.state !== "connected") {
       throw new McpHostError(
@@ -708,10 +762,93 @@ export class SamplingHandler {
       );
     }
 
-    throw new McpHostError(
-      "Sampling is not yet implemented in this client",
-      ERROR_CODES.SAMPLING_FAILED,
-      request.serverName
-    );
+    // Verify LLM client was provided
+    if (!llmClient) {
+      throw new McpHostError(
+        "Sampling approved but no LLM client provided in approval",
+        ERROR_CODES.SAMPLING_FAILED,
+        request.serverName
+      );
+    }
+
+    try {
+      // Convert messages to OpenAI format
+      const messages = this.convertMcpMessagesToOpenAI(request.messages);
+
+      // Build LLM request parameters
+      const llmParams: any = {
+        messages,
+        max_tokens: request.maxTokens || 2000,
+      };
+
+      // Add optional parameters
+      if (request.systemPrompt) {
+        // OpenAI uses a system message instead of systemPrompt parameter
+        messages.unshift({
+          role: "system",
+          content: request.systemPrompt,
+        });
+      }
+
+      // Add model hints if provided
+      if (request.modelPreferences?.hints && request.modelPreferences.hints.length > 0) {
+        const firstHint = request.modelPreferences.hints[0];
+        const modelName = typeof firstHint === "string" ? firstHint : firstHint.name;
+        if (modelName) {
+          llmParams.model = modelName;
+        }
+      }
+
+      // Set default model if not specified
+      if (!llmParams.model) {
+        llmParams.model = "gpt-4";
+      }
+
+      // Create AbortController for proper cancellation
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        abortController.abort();
+      }, this.timeoutMs);
+
+      try {
+        // Make LLM call with abort signal
+        const response = await llmClient.chat.completions.create({
+          ...llmParams,
+          signal: abortController.signal,
+        });
+
+        clearTimeout(timeoutId);
+        return {
+          serverName: request.serverName,
+          result: this.convertOpenAIResponseToMcp(response),
+        };
+      } catch (error) {
+        clearTimeout(timeoutId);
+
+        // Check if it was aborted due to timeout
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new McpHostError(
+            `Sampling request timed out after ${this.timeoutMs}ms`,
+            ERROR_CODES.SAMPLING_FAILED,
+            request.serverName
+          );
+        }
+        throw error;
+      }
+    } catch (error) {
+      mcpHostLogger.error("Sampling request failed:", error);
+
+      // If it's already an McpHostError, rethrow it
+      if (error instanceof McpHostError) {
+        throw error;
+      }
+
+      // Otherwise wrap it
+      throw new McpHostError(
+        `Sampling request failed: ${error instanceof Error ? error.message : String(error)}`,
+        ERROR_CODES.SAMPLING_FAILED,
+        request.serverName
+      );
+    }
   }
 }

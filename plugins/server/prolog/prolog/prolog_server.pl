@@ -69,7 +69,7 @@ parse_term(Line, Term, VarNames) :-
         S = Line
     ; string_concat(Line, ".", S)
     ),
-    read_term_from_atom(S, Term, [variable_names(VarNames), syntax_errors(error)]).
+    read_term_from_atom(S, Term, [variable_names(VarNames), syntax_errors(error), module(knowledge_base)]).
 
 % Unified reply printer (wrap with id/2 when a request id is present)
 reply(Term) :-
@@ -130,6 +130,11 @@ dispatch(consult(File), _) :- !,
 
 dispatch(consult_file(File), VN) :- !,
     dispatch(consult(File), VN).
+
+% File parsing command - parse file with Prolog parser
+dispatch(parse_file(File), _) :- !,
+    parse_file_with_source(File, Result),
+    reply(Result).
 
 % Library loading command
 % Load library into both knowledge_base and prolog_server modules
@@ -579,9 +584,18 @@ ensure_knowledge_base_module :-
         ord_subtract/3, ord_subset/2, ord_add_element/3, ord_del_element/3,
         ord_disjoint/2
     ]), _, true),
+    % High-order predicates: safe meta-predicates for list processing
+    catch(knowledge_base:use_module(library(apply), [
+        maplist/2, maplist/3, maplist/4, maplist/5,
+        include/3, exclude/3,
+        partition/4, partition/5,
+        foldl/4, foldl/5,
+        convlist/3,
+        scanl/4, scanl/5
+    ]), _, true),
     % Load library(clpfd) by default for constraint solving
     % Available in both prolog_server (for parsing) and knowledge_base (for execution)
-    catch(use_module(library(clpfd)), _, true),
+    ( use_module(library(clpfd)) -> true ; format(user_error, 'Warning: Failed to load clpfd into prolog_server module~n', []) ),
     catch(knowledge_base:use_module(library(clpfd)), _, true),
     % Load additional libraries from config (if specified)
     load_configured_libraries,
@@ -611,6 +625,91 @@ safe_load_configured_library(LibName) :-
     ).
 
 % To run: swipl -q -s prolog_server.pl -g server_loop
+
+% ========== FILE PARSING WITH SOURCE PRESERVATION ==========
+
+% Parse file using Prolog's native parser with variable name preservation
+parse_file_with_source(Filename, Result) :-
+    absolute_file_name(Filename, AbsPath, [access(read)]),
+    exists_file(AbsPath),
+    !,
+    catch(
+        parse_file_to_clauses(AbsPath, Clauses),
+        Error,
+        Result = error(Error)
+    ),
+    (   var(Result)
+    ->  Result = success(Clauses)
+    ;   true
+    ).
+parse_file_with_source(Filename, error(file_not_found(Filename))).
+
+% Parse all clauses from a file
+parse_file_to_clauses(Filename, Clauses) :-
+    setup_call_cleanup(
+        open(Filename, read, Stream, [encoding(utf8)]),
+        read_all_clauses(Stream, Filename, Clauses),
+        close(Stream)
+    ).
+
+% Read all clauses from stream
+read_all_clauses(Stream, Filename, Clauses) :-
+    read_all_clauses(Stream, Filename, 1, [], ClausesRev),
+    reverse(ClausesRev, Clauses).
+
+read_all_clauses(Stream, Filename, LineNum, Acc, Result) :-
+    catch(
+        read_term(Stream, Term, [
+            variable_names(VarNames),
+            singletons(Singletons),
+            syntax_errors(error)
+        ]),
+        Error,
+        (   format(atom(ErrorMsg), 'Parse error at line ~w: ~w', [LineNum, Error]),
+            Result = [error(ErrorMsg)|Acc],
+            fail
+        )
+    ),
+    !,  % Cut to prevent backtracking
+    (   Term == end_of_file
+    ->  Result = Acc
+    ;   process_parsed_term(Term, VarNames, Singletons, LineNum, ClauseData),
+        NextLine is LineNum + 1,
+        read_all_clauses(Stream, Filename, NextLine, [ClauseData|Acc], Result)
+    ).
+% Handle parse errors and continue
+read_all_clauses(Stream, Filename, LineNum, Acc, Result) :-
+    NextLine is LineNum + 1,
+    read_all_clauses(Stream, Filename, NextLine, Acc, Result).
+
+% Process a single term from file
+process_parsed_term(Term, VarNames, Singletons, LineNum, ClauseData) :-
+    % Check for DCG rules (not supported)
+    (   Term = (_ --> _)
+    ->  ClauseData = error("DCG rules (-->) are not supported. Please use the expanded difference-list form instead. Example: sentence(S0,S) :- noun(S0,S1), verb(S1,S).")
+    % Skip directives (we don't store them, but could be configurable)
+    ;   Term = (:- _Directive)
+    ->  ClauseData = directive(skipped)
+    ;   % Regular clause - convert to source string
+        term_to_source_string(Term, VarNames, SourceText),
+        ClauseData = clause(SourceText, VarNames, Singletons, LineNum)
+    ).
+
+% Convert term back to source string with original variable names
+term_to_source_string(Term, VarNames, SourceText) :-
+    with_output_to(string(SourceText0),
+        write_term(Term, [
+            variable_names(VarNames),
+            quoted(true),
+            numbervars(false),
+            spacing(next_argument)  % Preserve spaces between arguments
+        ])
+    ),
+    % Add period if not present
+    (   sub_string(SourceText0, _, 1, 0, ".")
+    ->  SourceText = SourceText0
+    ;   string_concat(SourceText0, ".", SourceText)
+    ).
 
 % ========== SANDBOXED LOADING ==========
 
@@ -678,6 +777,9 @@ assert_knowledge_base_term_safe((:- use_module(library(LibName)))) :- !,
         throw(error(permission_error(load, library, LibName),
                    context(_, 'Library not approved by sandbox or is unsafe')))
     ).
+% Reject DCG rules early with clear error message
+assert_knowledge_base_term_safe((_ --> _)) :- !,
+    throw(error(permission_error(assert, dcg_rule, 'DCG rules (-->) are not supported. Please use the expanded difference-list form instead. Example: sentence(S0,S) :- noun(S0,S1), verb(S1,S).'), _)).
 assert_knowledge_base_term_safe((:- use_module(_OtherModule))) :- !,
     throw(error(permission_error(load, module, 'Only use_module(library(...)) directives are allowed'), _)).
 assert_knowledge_base_term_safe((:- _Directive)) :-

@@ -56,28 +56,43 @@ This shows available tools, security model, and server features.
 WORKFLOW - Demonstrate these MCP tool usage patterns:
 
 STEP 1 - Define Base Facts
-Use clauses to efficiently add facts for:
+Use clauses tool to efficiently add facts:
+
+IMPORTANT: Array elements are complete clauses, NOT lines of code!
+- Each array element must be a COMPLETE clause ending with a period
+- Do NOT split a single rule across multiple array elements
+- Example: clauses: ["fact1.", "fact2."] (correct)
+- Example: clauses: ["rule(X) :-", "  body(X)."] (WRONG - incomplete clauses!)
+
+Add facts for:
 - parent_of(Parent, Child) - parent-child relationships
 - male(Person) / female(Person) - gender information
 - spouse_of(Person1, Person2) - marriage relationships (if provided)
 
 Example:
 clauses({
-  facts: [
-    "parent_of(john, mary)",
-    "parent_of(john, alice)",
-    "male(john)",
-    "female(mary)",
-    "female(alice)"
+  operation: "assert",
+  clauses: [
+    "parent_of(john, mary).",
+    "parent_of(john, alice).",
+    "male(john).",
+    "female(mary).",
+    "female(alice)."
   ]
 })
 
 → Show the facts you added
 
 STEP 2 - Define Inference Rules
-Use clauses to add rules that derive relationships:
+Use clauses tool to add rules that derive relationships:
 
-Essential Rules:
+CRITICAL: For multi-line rules, use ONE string with comma-separated goals!
+- Do NOT use arrays for multi-line rules
+- Each rule should be a single string, even if it spans multiple goals
+- Example: clauses: "rule(X) :- goal1(X), goal2(X), goal3(X)." (correct)
+- Example: clauses: ["rule(X) :-", "  goal1(X),", "  goal2(X)."] (WRONG!)
+
+Essential Rules (add each as a single complete clause):
 \`\`\`prolog
 % Direct parent relationships
 father_of(F, C) :- male(F), parent_of(F, C).
@@ -104,6 +119,17 @@ cousin_of(X, Y) :- parent_of(PX, X), parent_of(PY, Y), sibling_of(PX, PY).
 uncle_of(U, N) :- male(U), sibling_of(U, P), parent_of(P, N).
 aunt_of(A, N) :- female(A), sibling_of(A, P), parent_of(P, N).
 \`\`\`
+
+Example correct usage:
+clauses({
+  operation: "assert",
+  clauses: [
+    "father_of(F, C) :- male(F), parent_of(F, C).",
+    "sibling_of(X, Y) :- parent_of(P, X), parent_of(P, Y), X \\= Y.",
+    "ancestor_of(A, D) :- parent_of(A, D).",
+    "ancestor_of(A, D) :- parent_of(A, X), ancestor_of(X, D)."
+  ]
+})
 
 → Display the rules you created
 
@@ -146,11 +172,18 @@ Solutions:
 → Present the complete family tree analysis
 
 KEY LEARNING POINTS:
-- clauses: Batch loading facts and rules
+- clauses tool: Batch loading facts and rules
+- Array elements = complete clauses (not lines of code!)
+- Multi-line rules = single string with comma-separated goals
 - Recursive rules: ancestor_of demonstrates recursive descent
 - Query modes: query for simple, query for backtracking
 - symbols_list: Verify loaded predicates
 - Logical variables: Use capitalized vars (X, Y, Who) for unknowns
+
+COMMON PITFALL TO AVOID:
+✗ clauses: ["rule(X) :-", "  body(X)."]  // Wrong: incomplete clauses
+✓ clauses: "rule(X) :- body(X)."  // Correct: complete rule as single string
+✓ clauses: ["fact1.", "fact2."]  // Correct: array of complete facts
 
 Now build the family tree knowledge base and demonstrate these patterns.`
         }
@@ -185,19 +218,9 @@ This shows available tools, security model, and server features.
 
 WORKFLOW - Demonstrate these MCP tool usage patterns:
 
-STEP 1 - Load CLP(FD) Library
-Use files to load constraint programming:
-files({ library: "clpfd" })
+NOTE: CLP(FD) is pre-loaded by default. You can immediately use constraint operators (#=, #<, #>, #=<, #>=, #\\=), domain specification (ins, in), constraint predicates (all_different/1, cumulative/2), and search (label/1, labeling/2).
 
-This provides:
-- Constraint operators: #=, #<, #>, #=<, #>=, #\\=
-- Domain specification: ins, in
-- Constraint predicates: all_different/1, cumulative/2
-- Search: label/1, labeling/2
-
-→ Show library loaded and constraints available
-
-STEP 2 - Model the Scheduling Problem
+STEP 1 - Model the Scheduling Problem
 Define a schedule/1 predicate that models tasks as constraint variables.
 
 Task representation:
@@ -245,23 +268,29 @@ schedule(Tasks) :-
     labeling([min(ProjectEnd)], Tasks).
 \`\`\`
 
-STEP 3 - Add Scheduling Rules
-Use clauses to load all predicates at once:
+STEP 2 - Add Scheduling Rules
+Use clauses tool to load all predicates:
+
+IMPORTANT: Multi-line rules must be single strings!
+- Each rule with :- must be one complete string
+- Compress into one line with comma-separated goals
+- Do NOT split across array elements
 
 clauses({
-  facts: [
-    "task_duration(design, 5)",
-    "task_duration(code, 10)",
-    "task_duration(test, 3)",
-    "depends_on(code, design)",
-    "depends_on(test, code)",
-    "schedule(Tasks) :- Tasks = [DS, CS, TS], Tasks ins 0..100, task_duration(design, DD), task_duration(code, CD), task_duration(test, TD), DE #= DS + DD, CE #= CS + CD, TE #= TS + TD, CS #>= DE, TS #>= CE, PE #= TE, labeling([min(PE)], Tasks)"
+  operation: "assert",
+  clauses: [
+    "task_duration(design, 5).",
+    "task_duration(code, 10).",
+    "task_duration(test, 3).",
+    "depends_on(code, design).",
+    "depends_on(test, code).",
+    "schedule(Tasks) :- Tasks = [DS, CS, TS], Tasks ins 0..100, task_duration(design, DD), task_duration(code, CD), task_duration(test, TD), DE #= DS + DD, CE #= CS + CD, TE #= TS + TD, CS #>= DE, TS #>= CE, PE #= TE, labeling([min(PE)], Tasks)."
   ]
 })
 
 → Display the rules and constraints added
 
-STEP 4 - Solve with Constraint Solving
+STEP 3 - Solve with Constraint Solving
 Use query (not query) for constraint problems:
 
 query({ query: "schedule(Tasks)" })
@@ -276,7 +305,7 @@ CLP(FD) will:
 
 → Show the solution returned by the constraint solver
 
-STEP 5 - Display Schedule
+STEP 4 - Display Schedule
 Format the solution as a Gantt chart or timeline:
 
 Example output:
@@ -297,7 +326,7 @@ ADVANCED FEATURES (if applicable):
 - Parallel tasks: Tasks without dependencies can overlap
 
 KEY LEARNING POINTS:
-- files: Load CLP(FD) for constraint solving
+- CLP(FD) is pre-loaded: No need to load library(clpfd) - use constraints immediately
 - CLP(FD) operators: #=, #>=, ins for constraint specification
 - labeling/2: Trigger search with optimization (min/max)
 - query: Required for constraint solving (not query)
@@ -372,13 +401,9 @@ This shows available tools, security model, and server features.
 
 WORKFLOW - Demonstrate these MCP tool usage patterns:
 
-STEP 1 - Load CLP(FD)
-Use files to enable constraint programming:
-files({ library: "clpfd" })
+NOTE: CLP(FD) is pre-loaded by default. You can immediately use constraint operators, all_different/1, and labeling strategies.
 
-→ Show library loaded successfully
-
-STEP 2 - Design solve/1 Predicate Pattern
+STEP 1 - Design solve/1 Predicate Pattern
 \`\`\`prolog
 solve(Vars) :-
     Vars ins 1..N,              % Set domains
@@ -387,23 +412,27 @@ solve(Vars) :-
     labeling([ff], Vars).        % Search (use [ff] for performance)
 \`\`\`
 
-STEP 3 - Assert Rules
+STEP 2 - Assert Rules
+Use clauses tool with complete clauses as strings:
+
 \`\`\`
 clauses({
-  facts: [
-    "solve(...) :- ... ins 1..N, constraints..., labeling([ff], ...)"
+  operation: "assert",
+  clauses: [
+    "solve(Vars) :- Vars ins 1..N, all_different(Vars), labeling([ff], Vars)."
   ]
 })
 \`\`\`
 
-IMPORTANT: If clauses fails with "Invalid Prolog syntax" for complex rules:
-- Use clauses instead (handles rules with :- better)
-- Compress the rule into a single line without newlines
-- Example: clauses({ fact: "solve(S):-S ins 1..9, all_distinct(S), labeling([ff],S)." })
+CRITICAL: Rules with :- must be single complete strings!
+- Do NOT split rule across array elements
+- Compress goals onto one line with comma separation
+- Example CORRECT: "solve(S) :- S ins 1..9, all_distinct(S), labeling([ff], S)."
+- Example WRONG: ["solve(S) :-", "  S ins 1..9,", "  labeling([ff], S)."]
 
 → Display the constraints defined
 
-STEP 4 - Query with query
+STEP 3 - Query with query
 \`\`\`
 query({ query: "solve(Solution)" })
 \`\`\`
@@ -411,7 +440,7 @@ CLP(FD) REQUIRES engine mode (not query).
 
 NOTE: Starting a new query automatically closes any previous query/engine session.
 
-STEP 5 - Extract ALL Solutions
+STEP 4 - Extract ALL Solutions
 After starting the engine, you MUST call query_next repeatedly to extract solutions:
 \`\`\`
 query_next()  // First solution
@@ -429,40 +458,37 @@ PERFORMANCE NOTE:
 
 → Show all solutions found
 
-STEP 6 - Present Solution
+STEP 5 - Present Solution
 Map variable assignments to puzzle entities and verify constraints are satisfied.
 
 → Present complete solution with proper formatting (e.g., grids for magic squares, boards for N-Queens)
 
 CONCRETE EXAMPLE - 4-Queens Step-by-Step:
 
-Step 1: Load CLP(FD) library
-\`\`\`
-Tool: files({ library: "clpfd" })
-Result: "Successfully loaded library(clpfd)"
-\`\`\`
-
-Step 2: Assert N-Queens predicates
+Step 1: Assert N-Queens predicates
 \`\`\`
 Tool: clauses({
-  facts: [
-    "solve(Qs) :- length(Qs, 4), Qs ins 1..4, all_different(Qs), safe(Qs), labeling([ff], Qs)",
-    "safe([])",
-    "safe([Q|Qs]) :- safe(Qs, Q, 1), safe(Qs)",
-    "safe([], _, _)",
-    "safe([Q|Qs], Q0, D) :- Q0 #\\\\= Q, abs(Q0-Q) #\\\\= D, D1 #= D+1, safe(Qs, Q0, D1)"
+  operation: "assert",
+  clauses: [
+    "solve(Qs) :- length(Qs, 4), Qs ins 1..4, all_different(Qs), safe(Qs), labeling([ff], Qs).",
+    "safe([]).",
+    "safe([Q|Qs]) :- safe(Qs, Q, 1), safe(Qs).",
+    "safe([], _, _).",
+    "safe([Q|Qs], Q0, D) :- Q0 #\\\\= Q, abs(Q0-Q) #\\\\= D, D1 #= D+1, safe(Qs, Q0, D1)."
   ]
 })
 Result: "Successfully asserted 5 facts/rules"
 \`\`\`
 
-Step 3: Start engine
+Note: Each clause is a complete string. Rules with :- are single strings with comma-separated goals.
+
+Step 2: Start engine
 \`\`\`
 Tool: query({ query: "solve(Qs)" })
 Result: { status: "ready", engine_ready: true }
 \`\`\`
 
-Step 4: Extract solutions
+Step 3: Extract solutions
 \`\`\`
 Tool: query_next()
 Result: { status: "success", solution: "Qs = [2,4,1,3]" }
@@ -483,12 +509,17 @@ Interpretation of first solution:
 This shows the EXACT tool calls and expected results. Note the complete workflow: startEngine → query_next (repeated) → done.
 
 KEY POINTS:
-- Load library(clpfd) first
+- CLP(FD) is pre-loaded: Use constraint operators immediately
 - Use query (not query) for CLP(FD) queries
 - Pattern: Vars ins 1..N, constraints, labeling([ff], Vars)
 - Use [ff] for first-fail heuristic (much faster)
 - ALWAYS call query_next after query to extract solutions
-- If clauses fails on complex rules, use clauses instead
+- clauses tool: Array elements are complete clauses, NOT lines of code
+- Multi-line rules: Single string with comma-separated goals
+
+COMMON PITFALL TO AVOID:
+✗ clauses: ["solve(X) :-", "  X ins 1..9,", "  label(X)."]  // Wrong: incomplete clauses
+✓ clauses: ["solve(X) :- X ins 1..9, label(X)."]  // Correct: complete rule
 
 Now solve the puzzle using these constraint programming patterns.
 
@@ -503,192 +534,5 @@ Choose puzzles that build on similar constraint types or increase complexity.`
         }
       ];
     }
-  },
-
-  // Natural language parsing with DCGs
-  grammar: {
-    name: "grammar",
-    title: "Grammar Parser",
-    description: "Parse natural language with Definite Clause Grammars (DCGs). Demonstrates DCG syntax, phrase/2, parse tree generation.",
-    arguments: [
-      { name: "sentence", description: "Sentence to parse (e.g., 'the cat sat on the mat'). If not provided, use a default example.", required: false },
-    ],
-    messages: (args = {}) => [
-      {
-        role: "user",
-        content: {
-          type: "text",
-          text: `Parse a sentence using Prolog's Definite Clause Grammars (DCGs):
-
-SENTENCE TO PARSE:
-${args.sentence || 'the cat sat on the mat'}
-
-EXECUTION PATTERN: For each step: announce action, show tool calls/results, explain insights.
-
-PREREQUISITE: If you haven't already, first read the capabilities:
-- Use the help tool, OR
-- Read reference://capabilities resource
-This shows available tools, security model, and server features.
-
-WORKFLOW - Demonstrate these MCP tool usage patterns:
-
-STEP 1 - Define DCG Grammar Rules
-DCG notation: rule_name --> components.
-
-Basic English grammar structure:
-\`\`\`prolog
-% Sentence structure
-sentence --> noun_phrase, verb_phrase.
-
-% Noun phrase: (Determiner) + (Adjective) + Noun
-noun_phrase --> determiner, noun.
-noun_phrase --> determiner, adjective, noun.
-noun_phrase --> noun.  % For proper nouns
-
-% Verb phrase: Verb + (Prepositional Phrase)
-verb_phrase --> verb.
-verb_phrase --> verb, noun_phrase.
-verb_phrase --> verb, prepositional_phrase.
-verb_phrase --> verb, prepositional_phrase, prepositional_phrase.
-
-% Prepositional phrase
-prepositional_phrase --> preposition, noun_phrase.
-
-% Lexicon (vocabulary)
-determiner --> [the].
-determiner --> [a].
-
-adjective --> [big].
-adjective --> [small].
-adjective --> [happy].
-
-noun --> [cat].
-noun --> [dog].
-noun --> [mat].
-noun --> [house].
-
-verb --> [sat].
-verb --> [ran].
-verb --> [slept].
-
-preposition --> [on].
-preposition --> [in].
-preposition --> [under].
-\`\`\`
-
-STEP 2 - Add Parse Tree Generation
-Enhance DCG to build parse trees:
-
-\`\`\`prolog
-% Parse tree version
-sentence(s(NP, VP)) --> noun_phrase(NP), verb_phrase(VP).
-
-noun_phrase(np(Det, N)) --> determiner(Det), noun(N).
-noun_phrase(np(Det, Adj, N)) --> determiner(Det), adjective(Adj), noun(N).
-
-verb_phrase(vp(V)) --> verb(V).
-verb_phrase(vp(V, NP)) --> verb(V), noun_phrase(NP).
-verb_phrase(vp(V, PP)) --> verb(V), prepositional_phrase(PP).
-
-prepositional_phrase(pp(Prep, NP)) --> preposition(Prep), noun_phrase(NP).
-
-% Lexicon with parse tree nodes
-determiner(det(W)) --> [W], {member(W, [the, a])}.
-noun(n(W)) --> [W], {member(W, [cat, dog, mat])}.
-verb(v(W)) --> [W], {member(W, [sat, ran])}.
-preposition(prep(W)) --> [W], {member(W, [on, in, under])}.
-\`\`\`
-
-STEP 3 - Load Grammar with clauses
-Use clauses to load all DCG rules:
-
-clauses({
-  facts: [
-    "sentence --> noun_phrase, verb_phrase",
-    "noun_phrase --> determiner, noun",
-    "verb_phrase --> verb, prepositional_phrase",
-    "prepositional_phrase --> preposition, noun_phrase",
-    "determiner --> [the]",
-    "determiner --> [a]",
-    "noun --> [cat]",
-    "noun --> [mat]",
-    "verb --> [sat]",
-    "preposition --> [on]"
-  ]
-})
-
-Note: Prolog automatically translates DCG notation into phrase/2 compatible predicates.
-
-→ Show the DCG rules loaded
-
-STEP 4 - Parse with phrase/2
-Use query to parse sentences with phrase/2:
-
-The sentence as a word list:
-sentence = [the, cat, sat, on, the, mat]
-
-Query patterns:
-A. Validity check:
-   query({ query: "phrase(sentence, [the, cat, sat, on, the, mat])" })
-   Result: true/false (grammatically correct?)
-
-B. With parse tree:
-   query({ query: "phrase(sentence(Tree), [the, cat, sat, on, the, mat])" })
-   Result: Tree = s(np(det(the), n(cat)), vp(v(sat), pp(prep(on), np(det(the), n(mat)))))
-
-C. Generate sentences:
-   query({ query: "phrase(sentence, Sentence)" })
-   Result: All grammatically valid sentences from the grammar
-
-NOTE: Starting a new query automatically closes any previous query/engine session.
-
-→ Display parse results for each query pattern
-
-STEP 5 - Display Parse Tree
-Format the parse tree hierarchically:
-
-\`\`\`
-Parse Tree for "the cat sat on the mat":
-
-s (sentence)
-├─ np (noun phrase)
-│  ├─ det: "the"
-│  └─ n: "cat"
-└─ vp (verb phrase)
-   ├─ v: "sat"
-   └─ pp (prepositional phrase)
-      ├─ prep: "on"
-      └─ np (noun phrase)
-         ├─ det: "the"
-         └─ n: "mat"
-\`\`\`
-
-Structure:
-- Subject: "the cat" (noun phrase)
-- Action: "sat on the mat" (verb phrase with prepositional phrase)
-
-→ Present the complete parse tree visualization
-
-STEP 6 - Verify with symbols_list
-Use symbols_list to confirm DCG predicates were created:
-- Should see: sentence/2, noun_phrase/2, verb_phrase/2, phrase/2 (built-in)
-
-ADVANCED FEATURES:
-- Semantic actions: Add {Prolog goals} within DCG rules for constraints
-- Ambiguity handling: Use query_nextSolution for multiple parse trees
-- Context-free languages: DCGs can parse any context-free grammar
-
-KEY LEARNING POINTS:
-- DCG notation: --> for grammar rules, [word] for terminals
-- phrase/2: Built-in predicate to invoke DCG parsers
-- Parse trees: Pass arguments to DCG rules to build structure
-- clauses: Batch-load grammar rules
-- query vs query: Start for single parse, Engine for generation
-- Prolog's strength: Pattern matching + backtracking = natural parser
-
-Now parse the sentence and demonstrate these DCG patterns.`
-        }
-      }
-    ]
   }
 };

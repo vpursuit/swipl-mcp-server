@@ -106,3 +106,25 @@ export interface ErrorExplanation {
   /** Tool usage guidance */
   toolGuidance?: string;
 }
+
+/**
+ * Result of an error explanation request
+ *
+ * Discriminated union to distinguish between success and failure cases,
+ * preserving error context instead of returning null.
+ */
+export type ErrorExplanationResult =
+  | {
+      success: true;
+      explanation: ErrorExplanation;
+      samplingUsed: boolean;
+    }
+  | {
+      success: false;
+      error: {
+        code: string;
+        message: string;
+        details?: unknown;
+      };
+      samplingUsed: boolean;
+    };

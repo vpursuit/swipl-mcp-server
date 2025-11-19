@@ -44,7 +44,7 @@ describe("Security Validation Under Load", () => {
     // Try to load malicious paths concurrently
     for (let i = 0; i < 50; i++) {
       const path = maliciousPaths[i % maliciousPaths.length];
-      const promise = prologInterface.consultFile(path)
+      const promise = prologInterface.importFileWithSource(path)
         .then(result => ({ success: true, result }))
         .catch(error => ({ failed: true, error: error.message }));
 
@@ -185,7 +185,7 @@ describe("Security Validation Under Load", () => {
 
     for (let i = 0; i < 30; i++) {
       const path = systemPaths[i % systemPaths.length];
-      const promise = prologInterface.consultFile(path)
+      const promise = prologInterface.importFileWithSource(path)
         .then(result => ({ success: true, result }))
         .catch(error => ({ failed: true, error: error.message }));
 

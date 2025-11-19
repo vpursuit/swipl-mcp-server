@@ -208,7 +208,7 @@ describe("Command Queue Testing", () => {
     // Load the same file multiple times concurrently
     for (let i = 0; i < 10; i++) {
       promises.push(
-        prologInterface.consultFile(testFixture)
+        prologInterface.importFileWithSource(testFixture)
           .catch(() => null) // Ignore errors if file doesn't exist
       );
     }

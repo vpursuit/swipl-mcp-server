@@ -6,6 +6,21 @@
 
 The `mcp-prolog` package implements a secure, sandboxed SWI-Prolog execution environment for MCP servers. The architecture uses a **two-module design** to enforce security boundaries while enabling dynamic library loading for advanced features like CLP(FD).
 
+## Pre-Loaded Libraries
+
+The following libraries are **automatically loaded at server startup** into both `prolog_server` and `knowledge_base` modules:
+
+- **`library(lists)`** - List manipulation predicates (append, member, reverse, etc.)
+- **`library(between)`** - Integer range generation (between/3)
+- **`library(clpfd)`** - Constraint Logic Programming over Finite Domains (CLP(FD))
+- **`library(apply)`** - Higher-order predicates (maplist, foldl, etc.)
+- **`library(pairs)`** - Key-value pair manipulation
+- **`library(ordsets)`** - Ordered set operations
+
+Users can immediately use predicates and operators from these libraries without manual loading. For example, CLP(FD) constraint operators (`#=`, `#>`, `ins`, `all_different/1`, etc.) are available by default.
+
+**Note:** Additional libraries can be loaded dynamically using the `files` tool or via `:- use_module` directives in loaded .pl files, subject to the safe library whitelist.
+
 ## Two-Module Architecture
 
 ### Core Modules

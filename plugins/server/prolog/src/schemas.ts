@@ -184,10 +184,6 @@ export const puzzleSchema = {
   puzzle: z.string().optional().describe("The logic puzzle to solve with numbered clues. If not provided, suggest 3 interesting puzzles."),
 } as const;
 
-export const grammarSchema = {
-  sentence: z.string().optional().describe("Sentence to parse (e.g., 'the cat sat on the mat'). If not provided, use a default example."),
-} as const;
-
 /**
  * Aggregate Zod schemas object (for backward compatibility with tests)
  * These are now the raw shapes themselves since that's what we export
@@ -202,7 +198,6 @@ export const zodSchemas = {
   genealogy: genealogySchema,
   scheduling: schedulingSchema,
   puzzle: puzzleSchema,
-  grammar: grammarSchema,
 } as const;
 
 /**
@@ -220,5 +215,4 @@ export const jsonSchemas = {
   genealogy: zodToJsonSchema(z.object(genealogySchema)),
   scheduling: zodToJsonSchema(z.object(schedulingSchema)),
   puzzle: zodToJsonSchema(z.object(puzzleSchema)),
-  grammar: zodToJsonSchema(z.object(grammarSchema)),
 } as const;

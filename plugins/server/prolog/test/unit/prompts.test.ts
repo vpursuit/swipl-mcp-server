@@ -7,15 +7,13 @@ describe("Prolog Prompts", () => {
       const expectedPrompts = [
         "genealogy",
         "scheduling",
-        "puzzle",
-        "grammar"
+        "puzzle"
       ];
 
       const expectedNames = [
         "genealogy",
         "scheduling",
-        "puzzle",
-        "grammar"
+        "puzzle"
       ];
 
       expect(Object.keys(prologPrompts)).toHaveLength(expectedPrompts.length);
@@ -41,8 +39,7 @@ describe("Prolog Prompts", () => {
       const argPrompts = [
         { name: "genealogy", args: ["family_info"], required: [true] },
         { name: "scheduling", args: ["tasks"], required: [true] },
-        { name: "puzzle", args: ["puzzle"], required: [true] },
-        { name: "grammar", args: ["sentence"], required: [false] }
+        { name: "puzzle", args: ["puzzle"], required: [true] }
       ] as const;
 
       for (const { name, args, required } of argPrompts) {
@@ -170,28 +167,6 @@ describe("Prolog Prompts", () => {
       expect(text).toContain("solve/1");
       expect(text).toContain("query");
     });
-
-    test("grammar prompt should generate proper message structure", () => {
-      const prompt = prologPrompts.grammar;
-      const messages = prompt.messages({ sentence: "the cat sat on the mat" });
-
-      const text = messages[0].content.text;
-      expect(text).toContain("the cat sat on the mat");
-      expect(text).toContain("DCG");
-      expect(text).toContain("phrase/2");
-      expect(text).toContain("clauses");
-      expect(text).toContain("STEP");
-    });
-
-    test("grammar prompt should handle missing sentence argument", () => {
-      const prompt = prologPrompts.grammar;
-      const messages = prompt.messages();
-
-      const text = messages[0].content.text;
-      // Should use default sentence
-      expect(text).toContain("the cat sat on the mat");
-      expect(text).toContain("DCG");
-    });
   });
 
   describe("Content Validation", () => {
@@ -248,7 +223,7 @@ describe("Prolog Prompts", () => {
 
     test("domain prompts should emphasize tool usage through examples", () => {
       // All new prompts should demonstrate MCP tools
-      const prompts = ["genealogy", "scheduling", "puzzle", "grammar"];
+      const prompts = ["genealogy", "scheduling", "puzzle"];
 
       for (const promptName of prompts) {
         const prompt = prologPrompts[promptName];
@@ -268,7 +243,7 @@ describe("Prolog Prompts", () => {
 
     test("all prompts should include communication directives", () => {
       // All prompts with workflows should have execution pattern and result markers
-      const prompts = ["genealogy", "scheduling", "puzzle", "grammar"];
+      const prompts = ["genealogy", "scheduling", "puzzle"];
 
       for (const promptName of prompts) {
         const prompt = prologPrompts[promptName];
@@ -330,13 +305,6 @@ describe("Prolog Prompts", () => {
       expect(withPuzzle[0].content.text).toContain("Test puzzle");
       expect(withPuzzle[0].content.text).toContain("WORKFLOW");
     });
-
-    test("grammar prompt should use default sentence when not provided", () => {
-      const prompt = prologPrompts.grammar;
-
-      const messages = prompt.messages();
-      expect(messages[0].content.text).toContain("the cat sat on the mat");
-    });
   });
 
   describe("Message Role Validation", () => {
@@ -373,7 +341,7 @@ describe("Prolog Prompts", () => {
 
   describe("Prompt Categories", () => {
     test("should have proper categorization of prompts", () => {
-      const domainExamples = ["genealogy", "scheduling", "puzzle", "grammar"];
+      const domainExamples = ["genealogy", "scheduling", "puzzle"];
 
       // Verify all prompts are in domain_examples category
       const allPromptNames = Object.keys(prologPrompts);

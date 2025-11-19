@@ -6,7 +6,13 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createMcpLogger, type McpLogger } from "@vpursuit/mcp-server-core";
 import path from "path";
 
-// Shared server reference for MCP logging
+/**
+ * Shared server reference for MCP logging
+ *
+ * IMPORTANT: This reference is used ONLY for MCP-aware logging functionality.
+ * It is NOT used for sampling operations. For sampling, use samplingProviderRef
+ * from samplingProvider.ts instead.
+ */
 export const serverRef: { current: McpServer | null } = { current: null };
 
 // Create MCP-aware logger

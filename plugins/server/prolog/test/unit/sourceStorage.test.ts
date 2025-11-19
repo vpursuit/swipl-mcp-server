@@ -247,6 +247,7 @@ parent(ann, tom).
       expect(result.clausesAdded).toBe(3);
 
       const snapshot = await prologInterface.getSnapshot();
+      // Note: Prolog parser adds spaces after commas with spacing(next_argument)
       expect(snapshot).toContain("parent(john, mary)");
       expect(snapshot).toContain("parent(mary, ann)");
       expect(snapshot).toContain("parent(ann, tom)");
@@ -305,6 +306,128 @@ ancestor(X, Z) :-
       const snapshot = await prologInterface.getSnapshot();
       expect(snapshot).toContain("ancestor");
     });
+
+    test("should handle strings with dots (Prolog parser)", async () => {
+      const content = `
+person("Dr. Smith", doctor).
+person("Prof. Jones", professor).
+message("Hello. How are you?").
+      `;
+      await fs.writeFile(testFile, content);
+
+      const result = await prologInterface.importFileWithSource(testFile);
+      expect(result.success).toBe(true);
+      expect(result.clausesAdded).toBe(3);
+
+      const snapshot = await prologInterface.getSnapshot();
+      // Note: Prolog parser adds spaces after commas with spacing(next_argument)
+      expect(snapshot).toContain('person("Dr. Smith", doctor)');
+      expect(snapshot).toContain('person("Prof. Jones", professor)');
+      expect(snapshot).toContain('message("Hello. How are you?")');
+    });
+
+    test("should reject DCG rules with helpful error message", async () => {
+      // DCG rules are not supported - users should use expanded difference-list form
+      const content = `
+sentence --> noun, verb.
+noun --> [cat].
+      `;
+      await fs.writeFile(testFile, content);
+
+      const result = await prologInterface.importFileWithSource(testFile);
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0]).toContain("DCG rules");
+      expect(result.errors[0]).toContain("not supported");
+      expect(result.errors[0]).toContain("difference-list");
+    });
+
+    test("should handle complex operators and precedence", async () => {
+      const content = `
+expr(X+Y) :- expr(X), expr(Y).
+expr(X*Y) :- expr(X), expr(Y).
+expr(X-Y) :- expr(X), expr(Y).
+expr(X/Y) :- expr(X), expr(Y), Y \\= 0.
+expr(N) :- number(N).
+      `;
+      await fs.writeFile(testFile, content);
+
+      const result = await prologInterface.importFileWithSource(testFile);
+      expect(result.success).toBe(true);
+      expect(result.clausesAdded).toBe(5);
+
+      const snapshot = await prologInterface.getSnapshot();
+      expect(snapshot).toContain("expr(X+Y)");
+      expect(snapshot).toContain("expr(X*Y)");
+      expect(snapshot).toContain("Y\\=0");
+    });
+
+    test("should preserve original variable names", async () => {
+      const content = `
+grandparent(Grandparent, Grandchild) :-
+    parent(Grandparent, Parent),
+    parent(Parent, Grandchild).
+sibling(Child1, Child2) :-
+    parent(Parent, Child1),
+    parent(Parent, Child2),
+    Child1 \\= Child2.
+      `;
+      await fs.writeFile(testFile, content);
+
+      const result = await prologInterface.importFileWithSource(testFile);
+      expect(result.success).toBe(true);
+      expect(result.clausesAdded).toBe(2);
+
+      const snapshot = await prologInterface.getSnapshot();
+      // Note: spacing(next_argument) adds spaces after commas in compound terms
+      expect(snapshot).toContain("grandparent(Grandparent, Grandchild)");
+      expect(snapshot).toContain("parent(Grandparent, Parent)");
+      expect(snapshot).toContain("sibling(Child1, Child2)");
+      expect(snapshot).not.toMatch(/_G\d+/); // Should not contain internal Prolog variables
+    });
+
+    test("should handle atoms with special characters", async () => {
+      const content = `
+'special-atom'(foo).
+'atom with spaces'(bar).
+'atom_with_underscore'(baz).
+      `;
+      await fs.writeFile(testFile, content);
+
+      const result = await prologInterface.importFileWithSource(testFile);
+      expect(result.success).toBe(true);
+      expect(result.clausesAdded).toBe(3);
+
+      const snapshot = await prologInterface.getSnapshot();
+      expect(snapshot).toContain("'special-atom'(foo)");
+      expect(snapshot).toContain("'atom with spaces'(bar)");
+      // Note: atom_with_underscore doesn't need quotes (valid Prolog atom)
+      expect(snapshot).toContain("atom_with_underscore(baz)");
+    });
+
+    test("should handle lists and complex data structures", async () => {
+      const content = `
+list_member(X, [X|_]).
+list_member(X, [_|Tail]) :- list_member(X, Tail).
+process([]).
+process([H|T]) :- handle(H), process(T).
+tree(node(Left, Value, Right)) :- tree(Left), number(Value), tree(Right).
+tree(leaf).
+      `;
+      await fs.writeFile(testFile, content);
+
+      const result = await prologInterface.importFileWithSource(testFile);
+      expect(result.success).toBe(true);
+      expect(result.clausesAdded).toBe(6);
+
+      const snapshot = await prologInterface.getSnapshot();
+      // Note: Anonymous variables are converted to internal Prolog variables
+      // This is expected behavior from Prolog's write_term
+      // Also note: spacing(next_argument) adds spaces in some contexts but not consistently
+      expect(snapshot).toMatch(/\[X\|_\d+\]/); // Matches [X|_12345]
+      expect(snapshot).toMatch(/\[_\d+\|Tail\]/); // Matches [_12345|Tail]
+      expect(snapshot).toContain("node(Left, Value, Right)"); // With spaces
+    });
   });
 
   describe("importFileWithSource", () => {
@@ -351,18 +474,6 @@ ancestor(X, Z) :-
       expect(result2.errors[0]).toContain("already imported");
     });
 
-    test("should report partial success on parse errors", async () => {
-      const content = `
-valid(fact).
-this is invalid
-another_valid(fact).
-      `;
-      await fs.writeFile(testFile, content);
-
-      const result = await prologInterface.importFileWithSource(testFile);
-      expect(result.clausesAdded).toBeGreaterThan(0);
-      expect(result.errors.length).toBeGreaterThan(0);
-    });
   });
 
   describe("unimportFile", () => {

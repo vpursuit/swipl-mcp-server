@@ -104,33 +104,56 @@ and provide concrete examples when possible.`;
   protected buildPrompt(request: { error: unknown; context?: string; domainKnowledge?: string }): string {
     const basePrompt = super.buildPrompt(request);
 
-    // Add tool usage guidance
+    // Add tool usage guidance (updated for current unified tool architecture)
     const toolGuidance = `
 ## Tool Usage Context
 
-The swipl-mcp-server provides these tools:
-- knowledge_base_assert / knowledge_base_assert_many: Add facts/rules
-- knowledge_base_load: Load Prolog files
-- knowledge_base_load_library: Load safe libraries (clpfd, lists, etc.)
-- knowledge_base_clear: Clear all facts/rules
-- knowledge_base_dump: View current KB state
-- symbols_list: List defined predicates
-- query_start: Start query (standard mode with call_nth/2)
-- query_startEngine: Start query (engine mode)
-- query_next: Get next solution
-- query_close: Close active query/engine
+The swipl-mcp-server provides these unified tools:
 
-Common tool usage patterns:
-1. Load library → assert facts → query
-2. Clear KB → reload facts → retry query
-3. Use symbols_list to verify predicates exist
-4. Use knowledge_base_dump to see current state
+### Core Tools
+- **clauses**: Manage facts/rules
+  - operation="assert": Add facts/rules to KB
+  - operation="retract": Remove clauses from KB
 
+- **files**: Import Prolog files and libraries
+  - operation="import": Load a library (e.g., filename="clpfd" for library(clpfd))
+  - operation="unimport": Unload a library
+  - operation="list": Show loaded files
+
+- **query**: Execute Prolog queries
+  - operation="start": Begin a query (use use_engine=true for CLP(FD), false for standard)
+  - operation="next": Get next solution from active query
+  - operation="close": Close active query/engine
+
+- **workspace**: Manage knowledge base state
+  - operation="snapshot": View current KB dump
+  - operation="reset": Clear all facts/rules
+  - operation="list_symbols": List all defined predicates
+
+- **capabilities**: View server capabilities and metadata
+
+- **explain_error**: Get detailed error explanations (this tool)
+
+### Common Tool Usage Patterns
+1. **Load library → assert facts → query**:
+   - files (import "clpfd") → clauses (assert rules) → query (start with use_engine=true)
+
+2. **Clear KB → reload facts → retry query**:
+   - workspace (reset) → clauses (assert) → query (start)
+
+3. **Verify predicates exist**:
+   - workspace (list_symbols) to see all defined predicates
+
+4. **Inspect KB state**:
+   - workspace (snapshot) to see current facts/rules
+
+### Tool-Specific Guidance
 Include tool usage guidance in your response if the error relates to:
-- Missing predicates (suggest checking with symbols_list)
-- Library issues (suggest knowledge_base_load_library)
-- Query state issues (explain query lifecycle)
-- KB state issues (suggest knowledge_base_dump or clear)
+- **Missing predicates**: Suggest workspace tool with operation="list_symbols"
+- **Library issues**: Suggest files tool with operation="import" (filename should be just library name, no 'library()' wrapper)
+- **Syntax errors in clauses**: Explain correct format for clauses tool (plain strings, not arrays)
+- **Query state issues**: Explain query lifecycle (start → next → close) and use_engine parameter
+- **KB state issues**: Suggest workspace tool with operation="snapshot" or operation="reset"
 `;
 
     return basePrompt + toolGuidance;

@@ -61,26 +61,25 @@ const result = await prologInterface.executeCommand('parent(X, mary)');
 
 ### Tools
 
-- **Knowledge Base Management**: load, assert, retract, clear, dump
-- **Query Execution**: Two modes - standard (`call_nth/2`) and engine (true backtracking)
-- **Symbol Listing**: Enumerate available predicates
-- **Metadata**: capabilities, help, license information
+- **query**: Unified tool for query operations - start queries (standard or engine mode), iterate solutions, close sessions
+- **capabilities**: Get machine-readable summary of available tools, query modes, environment config, and security model
+- **clauses**: Assert or retract facts/rules in knowledge base with source preservation
+- **files**: Import/unimport Prolog files with provenance tracking (tracks which clauses came from which files)
+- **workspace**: Introspection and management - get snapshots with preserved formatting, reset workspace, list symbols
+- **explain_error**: Analyze and explain Prolog errors with 15+ fast-path heuristics (instant), AI-powered explanations (via sampling), and rule-based fallbacks. Prioritizes `clauses` tool over `files` tool (no file access needed)
 
 ### Resources
 
-- `prolog://knowledge_base/predicates` - List all predicates
-- `prolog://knowledge_base/dump` - Export knowledge base
-- `reference://help` - Usage guidelines
-- `reference://license` - License text
-- `reference://capabilities` - Machine-readable capabilities
+- `mcp://workspace/symbols` - List all user-defined predicates in the workspace
+- `mcp://workspace/snapshot` - Export workspace with original source text (preserved formatting)
+- `mcp://server/branding/logo` - Server logo in SVG format
+- `mcp://server/capabilities` - Machine-readable capabilities summary (JSON)
 
 ### Prompts
 
-- `prolog_init_expert` - Initialize expert Prolog assistance
-- `prolog_quick_reference` - Server overview and capabilities
-- `prolog_analyze_knowledge_base` - Analyze KB structure
-- `prolog_knowledge_base_builder` - Build domain-specific KBs
-- `prolog_query_optimizer` - Optimize query performance
+- `genealogy` - Build and query family trees using relational logic. Demonstrates assert operations, recursive rules, query modes, and relationship inference.
+- `scheduling` - Schedule tasks with dependencies using CLP(FD) constraints. Demonstrates library loading, constraint solving, and labeling optimization.
+- `puzzle` - Solve logic puzzles using constraint programming. Demonstrates constraint encoding, all_different, and labeling strategies.
 
 ### Security
 
@@ -88,6 +87,195 @@ const result = await prologInterface.executeCommand('parent(X, mary)');
 - Dangerous predicates blocked (shell, system, call, halt)
 - Pre-execution validation via `library(sandbox)`
 - Timeout protection against infinite loops
+
+### Library Loading
+
+Prolog libraries provide additional predicates for specialized tasks. This server pre-loads several safe libraries and allows configuration of additional ones.
+
+#### Pre-loaded Libraries
+
+The following libraries are automatically available:
+- `lists` - List manipulation (member, append, length, etc.)
+- `apply` - Higher-order predicates (maplist, include, etc.)
+- `between` - Range generation
+- `pairs` - Key-value pair operations
+- `ordsets` - Ordered set operations
+- `clpfd` - Constraint Logic Programming over Finite Domains
+
+#### Configuring Additional Libraries
+
+Use the `KB_LIBRARIES` environment variable to load additional safe libraries at server startup:
+
+```bash
+# Load multiple libraries (comma-separated)
+KB_LIBRARIES="aggregate,assoc,rbtrees" npm start
+
+# Or with npx
+KB_LIBRARIES="aggregate,assoc" npx @vpursuit/swipl-mcp-server
+```
+
+#### Safe Libraries List
+
+Only libraries approved by SWI-Prolog's sandbox system can be loaded:
+- `aggregate` - Aggregation predicates
+- `assoc` - Association lists (balanced trees)
+- `clpb` - Boolean constraint solving
+- `clpfd` - Finite domain constraints
+- `heaps` - Heap operations
+- `lists` - List manipulation
+- `nb_set` - Non-backtrackable sets
+- `occurs` - Occurs check utilities
+- `option` - Option list processing
+- `ordsets` - Ordered sets
+- `pairs` - Key-value pairs
+- `random` - Random number generation
+- `rbtrees` - Red-black trees
+- `solution_sequences` - findall/bagof/setof alternatives
+- `terms` - Term manipulation
+- `ugraphs` - Graph operations
+
+**Note**: Libraries are loaded server-wide and apply to all AI agent sessions. Library loading via MCP tools is not currently supported but could be added if needed.
+
+### Error Analysis Configuration
+
+The `explain_error` tool uses AI-powered analysis via MCP sampling. The timeout for LLM requests can be configured:
+
+#### SWI_MCP_ERROR_ANALYSIS_TIMEOUT_MS
+
+Set the timeout (in milliseconds) for error analysis requests. This is especially important when using slow LLMs like LM Studio or local models.
+
+```bash
+# Default: 60000ms (60 seconds)
+# Increase for slow local models
+export SWI_MCP_ERROR_ANALYSIS_TIMEOUT_MS=120000
+
+# Or inline with server start
+SWI_MCP_ERROR_ANALYSIS_TIMEOUT_MS=120000 npm start
+```
+
+**Default**: 60 seconds (60000ms)
+
+**When to increase**:
+- Using LM Studio with local models
+- Using slow cloud LLMs with high latency
+- Complex error analysis requiring longer generation time
+
+**Note**: Fast-path explanations (15+ common error patterns) are instant and not affected by this timeout.
+
+### Common Pitfalls
+
+#### Understanding the `clauses` Tool Input Format
+
+**The most common mistake**: Treating array elements as lines of code instead of complete clauses.
+
+❌ **WRONG** - Splitting a single rule across array elements:
+```typescript
+// This FAILS with syntax errors - each element is incomplete
+await clauses({
+  operation: 'assert',
+  clauses: [
+    "solve(X) :-",
+    "  length(X, 10),",
+    "  X ins 1..10."
+  ]
+});
+```
+
+✅ **CORRECT** - Multi-line rule as a single string:
+```typescript
+// This works - entire rule is one complete clause
+await clauses({
+  operation: 'assert',
+  clauses: "solve(X) :- length(X, 10), X ins 1..10, label(X)."
+});
+```
+
+✅ **CORRECT** - Array of multiple complete clauses:
+```typescript
+// Each element is a complete, independent clause
+await clauses({
+  operation: 'assert',
+  clauses: [
+    "safe(_, _, _, []).",
+    "safe(Q, D, R, [H|T]) :- Q #\\= H, abs(Q - H) #\\= D, safe(Q, D + 1, R, T).",
+    "solve(Board) :- length(Board, 20), Board ins 1..20, all_distinct(Board)."
+  ]
+});
+```
+
+#### Comments Are Not Supported in `clauses` Tool
+
+❌ **WRONG** - Including comments in assertions:
+```typescript
+await clauses({
+  operation: 'assert',
+  clauses: "% This is a comment\nsolve(X) :- length(X, 10)."
+});
+// Fails: Comments cause Prolog syntax errors in assertz()
+```
+
+✅ **CORRECT** - Use files tool for commented code:
+```prolog
+% Create a file: queens.pl
+% N-Queens problem solver using CLP(FD)
+solve(Board) :-
+    length(Board, 20),
+    Board ins 1..20,
+    all_distinct(Board).
+```
+
+```typescript
+// Load the file
+await files({ operation: 'import', filename: 'queens.pl' });
+```
+
+#### When to Use Which Tool
+
+**Use `clauses` tool when:**
+- Adding simple facts: `parent(john, mary).`
+- Adding rules without comments
+- Loading additional libraries (note: clpfd is pre-loaded)
+- Working with complete, self-contained clauses
+
+**Use `files` tool when:**
+- Code includes comments (% annotations)
+- Complex multi-predicate systems
+- Code already exists in .pl files
+- Want to preserve documentation
+
+**Example: 20 Queens Problem**
+
+❌ **Inefficient** - Fighting with `clauses` tool (will fail many times):
+```typescript
+// Agent tries to pass multi-line code with comments
+// Gets syntax errors, retries 15+ times, wastes tokens
+```
+
+✅ **Efficient** - Correct approach:
+```typescript
+// Option 1: Complete clauses without comments (clpfd pre-loaded - use directly)
+await clauses({ operation: 'assert', clauses: 'safe(_, _, _, []).' });
+await clauses({ operation: 'assert', clauses: 'safe(Q, D, R, [H|T]) :- Q #\\= H, abs(Q - H) #\\= D, safe(Q, D + 1, R, T).' });
+// ... etc
+
+// Option 2: Create file and import (BEST for complex code)
+// 1. Write queens.pl with full comments
+// 2. await files({ operation: 'import', filename: 'queens.pl' })
+```
+
+### Limitations
+
+#### DCG Rules Not Supported
+
+Definite Clause Grammar (DCG) notation using `-->` is not supported in imported files. Use the expanded difference-list form instead:
+
+```prolog
+% ❌ DCG notation (not supported)
+sentence --> noun, verb.
+
+% ✅ Expanded difference-list form (supported)
+sentence(S0, S) :- noun(S0, S1), verb(S1, S).
+```
 
 ## Examples
 
