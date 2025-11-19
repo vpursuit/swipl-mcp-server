@@ -96,7 +96,7 @@ describe("Prolog Prompts", () => {
       const text = messages[0].content.text;
       expect(text).toContain("scheduling");
       expect(text).toContain("Task1 (5 days)");
-      expect(text).toContain("files");
+      expect(text).toContain("pre-loaded");
       expect(text).toContain("clpfd");
       expect(text).toContain("STEP");
       expect(text).toContain("constraint");
@@ -131,7 +131,7 @@ describe("Prolog Prompts", () => {
       const text = messages[0].content.text;
       expect(text).toContain(puzzle);
       expect(text).not.toContain("3 interesting logic puzzles");
-      expect(text).toContain("files");
+      expect(text).toContain("pre-loaded");
       expect(text).toContain("WORKFLOW");
     });
 
