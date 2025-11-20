@@ -1561,18 +1561,21 @@ export class PrologInterface {
 
   /**
    * Pure helper: Format clause for Prolog (remove trailing period, wrap rules)
-   * DRY principle - reused by assert/retract operations
+   * DRY principle - reused by retract operations
+   *
+   * Note: For batch assertions, use parse_and_assert_clauses which leverages
+   * Prolog's native parsing instead of TypeScript string manipulation.
    *
    * Rules (clauses with :-) must be wrapped in parentheses to prevent
-   * operator precedence issues when used as arguments to assertz/retract
+   * operator precedence issues when used as arguments to retract
    */
   private formatClauseForProlog(clause: string): string {
     const normalized = this.normalizeClause(clause);
     const withoutPeriod = normalized.slice(0, -1); // Remove trailing period
 
     // Wrap rules in parentheses to avoid precedence issues
-    // e.g., assertz(foo(X) :- bar(X), baz(X)) would parse as two arguments
-    // but assertz((foo(X) :- bar(X), baz(X))) parses correctly
+    // e.g., retract(foo(X) :- bar(X), baz(X)) would parse as two arguments
+    // but retract((foo(X) :- bar(X), baz(X))) parses correctly
     if (withoutPeriod.includes(':-')) {
       return `(${withoutPeriod})`;
     }
@@ -1597,6 +1600,35 @@ export class PrologInterface {
    * @param file - File path (required if type='file')
    * @returns Success status with ID or error message
    */
+  /**
+   * Store source entry for an already-asserted clause
+   * Use this after batch assertions to populate source storage
+   *
+   * @param clause - Prolog clause (already asserted)
+   * @param type - Origin: 'inline' for direct assertion, 'file' for file import
+   * @param file - File path (required if type='file')
+   * @returns Source entry ID
+   */
+  storeSourceEntry(
+    clause: string,
+    type: 'inline' | 'file',
+    file?: string
+  ): string {
+    const id = this.generateSourceId();
+    const normalized = this.normalizeClause(clause);
+
+    this.kbSourceStorage.set(id, {
+      id,
+      sourceText: normalized,
+      type,
+      file,
+      timestamp: Date.now(),
+      compiled: true
+    });
+
+    return id;
+  }
+
   async assertClauseWithSource(
     clause: string,
     type: 'inline' | 'file',

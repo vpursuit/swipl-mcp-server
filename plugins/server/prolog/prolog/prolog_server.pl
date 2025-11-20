@@ -200,6 +200,98 @@ dispatch(retract(Fact), _) :- !,
 dispatch(retractall(Fact), _) :- !,
     ( catch(retractall(knowledge_base:Fact), E, (reply(error(E)), fail)) -> reply(ok) ; true ).
 
+% ========== BATCH CLAUSE PARSING (Array → Stream) ==========
+
+% Parse and assert multiple clauses from an array of strings
+% Prolog handles ALL processing: period normalization, joining, parsing
+% This eliminates TypeScript string manipulation entirely.
+dispatch(parse_and_assert_clauses(ClausesList), _) :- !,
+    parse_and_assert_clauses_impl(ClausesList, Result),
+    reply(Result).
+
+% Implementation: Normalize periods, join to string, create stream, parse
+% Returns line-based results for simple TypeScript parsing
+parse_and_assert_clauses_impl(ClausesList, results(Lines)) :-
+    % Add periods where needed (Prolog handles this, not TypeScript)
+    maplist(ensure_period, ClausesList, WithPeriods),
+    % Join into single string with newlines
+    atomics_to_string(WithPeriods, '\n', JoinedString),
+    % Parse using stream (handles multi-line naturally)
+    setup_call_cleanup(
+        open_string(JoinedString, Stream),
+        (   read_and_assert_all_clauses_with_output(Stream, [], LinesRev),
+            reverse(LinesRev, Lines)
+        ),
+        close(Stream)
+    ).
+
+% Ensure clause ends with period (for read_term to work)
+% Handle incomplete clauses that would create invalid syntax
+ensure_period(Str, WithPeriod) :-
+    % Already has period
+    (   sub_string(Str, _, 1, 0, ".")
+    ->  WithPeriod = Str
+    % Incomplete clause (ends with operators) - keep as-is, will generate parse error
+    ;   (   string_concat(_, ":-", Str)
+        ;   string_concat(_, ",", Str)
+        ;   string_concat(_, "(", Str)
+        )
+    ->  WithPeriod = Str
+    % Complete clause without period - add it
+    ;   string_concat(Str, ".", WithPeriod)
+    ).
+
+% Read clauses and output simple line-based results
+read_and_assert_all_clauses_with_output(Stream, Acc, Lines) :-
+    catch(
+        read_term(Stream, Term, [
+            variable_names(VarNames),
+            singletons(_Singletons),
+            syntax_errors(error),
+            module(knowledge_base)
+        ]),
+        ParseError,
+        (   % Parse error - format and stop
+            format_parse_error(ParseError, ErrorMsg),
+            format(string(Line), 'ERROR::(incomplete clause)::~w', [ErrorMsg]),
+            reverse([Line|Acc], Lines)
+        )
+    ),
+    % If catch didn't trigger, process the term normally
+    (   var(Lines)  % Lines not set by error handler, so we have a valid term
+    ->  (   Term == end_of_file
+        ->  Lines = Acc
+        ;   % Process this clause
+            term_to_source_string(Term, VarNames, SourceText),
+            (   Term = (_ --> _)
+            ->  format(string(Line), 'ERROR::~w::DCG rules not supported', [SourceText]),
+                read_and_assert_all_clauses_with_output(Stream, [Line|Acc], Lines)
+            ;   Term = (:- _Directive)
+            ->  % Skip directives
+                read_and_assert_all_clauses_with_output(Stream, Acc, Lines)
+            ;   % Regular clause - try to assert
+                (   catch(assert_knowledge_base_term_safe(Term), AssertError, fail)
+                ->  % Success - format and continue
+                    format(string(Line), 'SUCCESS::~w', [SourceText]),
+                    read_and_assert_all_clauses_with_output(Stream, [Line|Acc], Lines)
+                ;   % Assertion failed (security or validation error) - format and continue
+                    catch(assert_knowledge_base_term_safe(Term), AssertError, true),
+                    format_assertion_error(AssertError, ErrMsg),
+                    format(string(Line), 'ERROR::~w::~w', [SourceText, ErrMsg]),
+                    read_and_assert_all_clauses_with_output(Stream, [Line|Acc], Lines)
+                )
+            )
+        )
+    ;   % Lines already set by error handler
+        true
+    ).
+
+% Format parse errors
+format_parse_error(error(syntax_error(What), _Context), Msg) :- !,
+    format(string(Msg), 'Syntax error: ~w', [What]).
+format_parse_error(Error, Msg) :-
+    format(string(Msg), 'Parse error: ~w', [Error]).
+
 % ========== STANDARD QUERY MODE (call_nth/2) ==========
 
 % String-based query start (new preferred approach)

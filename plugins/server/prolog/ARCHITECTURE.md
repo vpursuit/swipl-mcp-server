@@ -378,6 +378,76 @@ User File: test.pl
 - Guard was overriding the real imports and causing failures
 - Removing it lets the proper library predicates work
 
+## Batch Clause Assertion
+
+### Architecture
+
+The clause assertion system uses Prolog's native parsing capabilities to handle arrays of clauses efficiently and correctly.
+
+**Flow:**
+
+```
+TypeScript (tools.ts)
+    ↓ Array of clause strings
+    ["parent(john, mary)", "grandparent(X,Z) :- parent(X,Y), parent(Y,Z)"]
+    ↓ Escape for Prolog string literals
+    ["\"parent(john, mary)\"", "\"grandparent(X,Z) :- parent(X,Y), parent(Y,Z)\""]
+    ↓ Serialize to Prolog list
+    parse_and_assert_clauses([...])
+    ↓
+Prolog (prolog_server.pl)
+    ↓ Normalize periods (Prolog syntax requirement)
+    ["parent(john, mary).", "grandparent(X,Z) :- parent(X,Y), parent(Y,Z)."]
+    ↓ Join with newlines
+    "parent(john, mary).\ngrandparent(X,Z) :- parent(X,Y), parent(Y,Z)."
+    ↓ Create string stream
+    open_string(..., Stream)
+    ↓ Read terms with Prolog's parser
+    read_term(Stream, Term, [module(knowledge_base), ...])
+    ↓ Validate and assert each term
+    assert_knowledge_base_term_safe(Term)
+    ↓ Return line-based results
+    results(["SUCCESS::parent(john,mary).", "SUCCESS::grandparent(X,Z):-..."])
+    ↓
+TypeScript (tools.ts)
+    ↓ Parse simple line-based results
+    ↓ Store original user input for workspace snapshots
+    prologInterface.storeSourceEntry(originalClause, 'inline')
+```
+
+### Benefits
+
+1. **Multi-line clause support**: Naturally handles clauses split across array elements via Prolog's stream reading
+2. **Consistent parsing**: Files and arrays use identical `read_term` logic
+3. **No TypeScript duplication**: Zero string manipulation or syntax analysis in TypeScript
+4. **Robust error handling**: Prolog's parser catches syntax errors with proper messages
+5. **Security validation**: All clauses pass through `assert_knowledge_base_term_safe`
+
+### Implementation
+
+**Prolog Side** (`prolog_server.pl`):
+```prolog
+parse_and_assert_clauses(ClausesList) :-
+    maplist(ensure_period, ClausesList, WithPeriods),
+    atomics_to_string(WithPeriods, '\n', JoinedString),
+    setup_call_cleanup(
+        open_string(JoinedString, Stream),
+        read_and_assert_all_clauses_with_output(Stream, [], Lines),
+        close(Stream)
+    ),
+    reply(results(Lines)).
+```
+
+**TypeScript Side** (`tools.ts`):
+```typescript
+// Only: escape strings and serialize
+const escapedClauses = clauseArray.map(clause =>
+  `"${clause.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+);
+const prologList = `[${escapedClauses.join(', ')}]`;
+const result = await prologInterface.query(`parse_and_assert_clauses(${prologList})`);
+```
+
 ## Design Principles
 
 1. **Security First**: Validation before execution, isolation between trust boundaries
@@ -385,6 +455,12 @@ User File: test.pl
 3. **Defense in Depth**: Multiple security layers (parsing, validation, sandbox, isolation)
 4. **Predictable Behavior**: Controlled operator sets, explicit whitelists
 5. **User Empowerment**: Safe libraries enabled while maintaining security
+6. **Leverage Prolog's Native Capabilities**: Use Prolog's built-in parsing and term manipulation instead of reimplementing in TypeScript
+   - Parse terms with `read_term` and `read_term_from_atom` (not regex or string splitting)
+   - Join multi-line clauses via string streams (`open_string` + `read_term` loop)
+   - Validate syntax through Prolog's parser (syntax errors caught naturally)
+   - Reconstruct source with `term_to_source_string` (preserves semantics)
+   - **Rationale**: Prolog knows Prolog syntax better than TypeScript ever will. Avoids duplicating complex parsing logic, reduces bugs, and maintains consistency with how `.pl` files are processed.
 
 ## See Also
 

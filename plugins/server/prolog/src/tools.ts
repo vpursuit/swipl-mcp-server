@@ -61,8 +61,8 @@ export function getCapabilitiesSummary(): CapabilitiesSummary {
     modes: ["standard", "engine"],
     predicates: {
       standard_prolog: "All standard SWI-Prolog predicates available",
-      clpfd_available: true,
-      clpfd_note: "library(clpfd) available via safe library loading - see SECURITY.md for whitelist",
+      clpfd_preloaded: true,
+      clpfd_note: "CLP(FD) is PRE-LOADED and ready to use. Constraint operators (#=, ins, #>, all_different, etc.) work immediately in queries. Use engine mode for constraint solving with label/1.",
     },
     tools: {
       core: ["capabilities"],
@@ -134,15 +134,18 @@ export function getCapabilitiesSummary(): CapabilitiesSummary {
       ],
     },
     available_libraries: {
-      note: "Load libraries using knowledge_base_load_library tool or via :- use_module(library(...)) in .pl files",
-      safe_libraries: [
+      note: "Pre-loaded libraries are immediately available. Additional safe libraries can be loaded via :- use_module(library(...)) in .pl files.",
+      preloaded: [
         "clpfd",
         "lists",
         "apply",
-        "aggregate",
-        "assoc",
         "pairs",
         "ordsets",
+        "between",
+      ],
+      safe_libraries: [
+        "aggregate",
+        "assoc",
         "clpb",
         "solution_sequences",
         "yall",
@@ -786,36 +789,75 @@ TOOL SELECTION GUIDE:
         return createErrorResponse("At least one clause required", startTime);
       }
 
-      // Validate each clause
-      for (const clause of clauseArray) {
-        if (typeof clause !== "string" || clause.length > MAX_FACT_LENGTH) {
-          return createErrorResponse(
-            `Each clause must be a string with max ${MAX_FACT_LENGTH} characters`,
-            startTime,
-            { error_code: "clause_too_long" }
-          );
-        }
-      }
-
       try {
         await prologInterface.start();
         const clauseResults: ClauseOperationResult[] = [];
         let errorCount = 0;
 
         if (operation === "assert") {
-          // Use source-preserving assert
-          for (const clause of clauseArray) {
-            const result = await prologInterface.assertClauseWithSource(clause, "inline");
-            clauseResults.push({
-              clause,
-              status: result.success ? "success" : "error",
-              message: result.error || "ok",
-            });
-            if (!result.success) errorCount++;
+          // Send array to Prolog - Prolog handles ALL processing:
+          // - Period normalization (Prolog syntax requirement)
+          // - Joining multi-line clauses
+          // - Parsing with read_term
+          // - Error detection and reporting
+          // TypeScript only does: escaping for Prolog string literals
+          const escapedClauses = clauseArray.map(clause =>
+            `"${clause.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+          );
+          const prologList = `[${escapedClauses.join(', ')}]`;
+
+          // Call Prolog's parse_and_assert_clauses predicate with array
+          const result = await prologInterface.query(`parse_and_assert_clauses(${prologList})`);
+
+          // Parse line-based results: results([Line1, Line2, ...])
+          // Each line is: "SUCCESS::clause" or "ERROR::clause::message"
+          const match = result.match(/results\(\[(.*)\]\)/s);
+          if (match) {
+            const linesStr = match[1];
+
+            // Extract individual quoted strings from the list
+            const lineMatches = linesStr.matchAll(/"([^"]+)"/g);
+            let resultIndex = 0;  // Track which original clause this result corresponds to
+            for (const lineMatch of lineMatches) {
+              const line = lineMatch[1];
+              const parts = line.split('::');
+
+              if (parts[0] === 'SUCCESS') {
+                // Store ORIGINAL user input, not Prolog's reconstructed version
+                // This preserves spacing and formatting
+                const originalClause = clauseArray[resultIndex] || parts[1];
+                prologInterface.storeSourceEntry(originalClause, 'inline');
+                clauseResults.push({
+                  clause: parts[1] || '(clause)',  // Use reconstructed for display
+                  status: 'success',
+                  message: 'ok'
+                });
+              } else if (parts[0] === 'ERROR') {
+                clauseResults.push({
+                  clause: parts[1] || '(parse error)',
+                  status: 'error',
+                  message: parts[2] || 'Unknown error'
+                });
+                errorCount++;
+              }
+              resultIndex++;
+            }
+
+            // If no results, it means empty input or all directives skipped
+            if (clauseResults.length === 0) {
+              clauseResults.push({
+                clause: '(no clauses)',
+                status: 'success',
+                message: 'No clauses to assert'
+              });
+            }
+          } else {
+            // Fallback if parsing fails
+            return createErrorResponse(`Unexpected Prolog response: ${result}`, startTime);
           }
         } else {
           // operation === 'retract'
-          // Use source-aware retract
+          // Keep retract as individual operations (less common, can optimize later if needed)
           for (const clause of clauseArray) {
             const success = await prologInterface.retractClauseWithSource(clause);
             clauseResults.push({
